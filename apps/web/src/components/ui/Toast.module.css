@@ -1,0 +1,37 @@
+.region {
+  position: fixed;
+  inset-inline: 0;
+  bottom: max(var(--space-5), env(safe-area-inset-bottom));
+  z-index: var(--z-skip);
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-4);
+  pointer-events: none;
+}
+
+.toast {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: 100%;
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface-plate);
+  box-shadow: 0 16px 40px -12px rgb(0 0 0 / 0.9);
+  color: var(--text-strong);
+  font-size: var(--text-sm);
+}
+
+.glyph {
+  display: inline-flex;
+}
+
+.toast[data-tone="success"] .glyph {
+  color: var(--positive);
+}
+
+.toast[data-tone="error"] .glyph {
+  color: var(--negative);
+}

@@ -1,0 +1,82 @@
+# Runtime environment files contain secrets and must never be committed.
+.env
+.env.local
+.env.testnet
+.env.mainnet
+.env.*
+.env.*.local
+.envrc
+.direnv/
+
+# Keep environment schemas in source control.
+!.env.testnet.example
+!.env.mainnet.example
+
+# Internal planning, evidence, and operational documentation are private.
+docs/
+
+# Common generated output
+node_modules/
+.next/
+.turbo/
+.vercel/
+.netlify/
+dist/
+coverage/
+out/
+cache/
+broadcast/
+artifacts/
+typechain-types/
+lcov.info
+*.log
+*.pid
+*.tsbuildinfo
+
+# Foundry and deployment-local state
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+contracts/deployments/
+
+# Supabase local runtime state; migrations and config remain tracked.
+supabase/.branches/
+supabase/.temp/
+supabase/.env
+supabase/.env.local
+
+# Signing material and provider credentials
+*.pem
+*.key
+*.keystore
+*.jks
+*.p12
+*.pfx
+keystore/
+keystores/
+secrets/
+credentials/
+
+# Local databases and temporary data
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+tmp/
+temp/
+
+# OS and editor files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Agent-local state
+.codex/
+.agents/
+.claude/
+.cursor/
+.windsurf/
+.aws/

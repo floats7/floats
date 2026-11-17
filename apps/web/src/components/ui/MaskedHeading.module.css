@@ -1,0 +1,15 @@
+.heading {
+  display: flex;
+  flex-direction: column;
+}
+
+.mask {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.12em;
+  margin-bottom: -0.12em;
+}
+
+.line {
+  display: block;
+}

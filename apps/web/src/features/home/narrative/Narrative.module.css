@@ -1,0 +1,74 @@
+.track {
+  height: calc((var(--steps) * var(--step) + 1) * 100dvh);
+}
+
+.stage {
+  position: sticky;
+  top: 0;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.meta {
+  position: absolute;
+  top: calc(var(--header-height) + 0.75rem);
+  right: var(--gutter);
+  z-index: 1;
+  color: var(--text-strong);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  line-height: 1.4;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.meta p {
+  display: grid;
+  margin: 0;
+}
+
+.meta span + span {
+  color: var(--text-muted);
+}
+
+.copy {
+  position: absolute;
+  top: calc(var(--header-height) + 2.5rem + 4dvh);
+  right: var(--gutter);
+  left: var(--gutter);
+  z-index: 1;
+}
+
+.foot {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: var(--space-2);
+  align-self: end;
+  padding: 0 var(--gutter) var(--space-3);
+}
+
+.scale {
+  justify-self: end;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 40rem) {
+  .meta {
+    display: none;
+  }
+}
+
+@media (min-width: 64rem) {
+  .copy {
+    left: 61%;
+    max-width: 32rem;
+  }
+}

@@ -1,0 +1,23 @@
+.list {
+  display: grid;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-block: var(--space-3);
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.row dd {
+  margin: 0;
+  text-align: right;
+}
+
+.row[data-strong="true"] {
+  color: var(--text-strong);
+  font-size: var(--text-lg);
+}

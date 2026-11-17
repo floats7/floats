@@ -1,0 +1,11 @@
+.icon {
+  display: inline-block;
+  flex: none;
+  vertical-align: -0.15em;
+}
+
+.separator {
+  margin-inline: 0.45em;
+  vertical-align: 0.05em;
+  opacity: 0.7;
+}

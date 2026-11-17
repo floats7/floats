@@ -1,0 +1,92 @@
+.dialog {
+  width: min(30rem, 100% - 2rem);
+  max-height: calc(100dvh - 2rem);
+  margin: auto;
+  padding: 0;
+  overflow: visible;
+  border: 1px solid var(--line-base);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-body);
+}
+
+.dialog::backdrop {
+  background: rgb(0 0 0 / 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.dialog[open] {
+  animation: rise var(--duration-base) var(--ease-out);
+}
+
+.dialog[open]::backdrop {
+  animation: fade var(--duration-base) var(--ease-out);
+}
+
+.dialog[data-closing="true"] {
+  animation: sink 180ms ease-in forwards;
+}
+
+.dialog[data-closing="true"]::backdrop {
+  animation: fade 180ms ease-in reverse forwards;
+}
+
+.surface {
+  display: grid;
+  gap: var(--space-5);
+  max-height: calc(100dvh - 2rem);
+  padding: clamp(var(--space-4), 5vw, var(--space-6));
+  overflow-y: auto;
+  border-radius: inherit;
+  background: linear-gradient(180deg, var(--surface-plate), var(--surface-raised));
+  box-shadow: var(--shadow-plate), 0 40px 80px -20px rgb(0 0 0 / 0.9);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.title {
+  font-size: var(--text-xl);
+}
+
+.close {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: calc(-1 * var(--space-3));
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--duration-base) var(--ease-out);
+}
+
+.close:hover {
+  color: var(--text-strong);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+}
+
+@keyframes sink {
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}

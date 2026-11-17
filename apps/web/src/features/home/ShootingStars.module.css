@@ -1,0 +1,54 @@
+.sky {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* A thin line with a bright head. It travels along its own axis, then waits out the rest of the cycle unseen. */
+.streak {
+  position: absolute;
+  width: 10rem;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.85));
+  opacity: 0;
+  transform: rotate(var(--angle)) translateX(0);
+  animation: fall var(--period) linear var(--delay) infinite;
+  will-change: transform, opacity;
+}
+
+.streak::after {
+  content: "";
+  position: absolute;
+  top: -1.25px;
+  right: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 8px 2px rgb(255 255 255 / 0.7);
+}
+
+@keyframes fall {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateX(0);
+  }
+  1% {
+    opacity: 1;
+  }
+  4% {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateX(42rem);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateX(42rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .streak {
+    display: none;
+  }
+}

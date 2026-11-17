@@ -1,0 +1,281 @@
+/* ==========================================================================
+   Floatss design tokens: black, white and brushed metal.
+   Components consume semantic tokens only; raw values live here.
+   ========================================================================== */
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --surface-void: #000;
+  --surface-base: #070708;
+  --surface-raised: #0e0e10;
+  --surface-plate: #151517;
+  --surface-paper: #fff;
+
+  /* Text */
+  --text-strong: #fff;
+  --text-body: #d9d9dc;
+  --text-muted: #9b9ba1;
+  --text-on-paper: #0a0a0b;
+  --text-on-paper-muted: #55555b;
+
+  /* Lines */
+  --line-soft: rgb(255 255 255 / 0.08);
+  --line-base: rgb(255 255 255 / 0.14);
+  --line-strong: rgb(255 255 255 / 0.32);
+  --line-on-paper: rgb(0 0 0 / 0.14);
+
+  /* Metal */
+  --metal-light: #f6f7f9;
+  --metal-mid: #a7abb3;
+  --metal-dark: #565a62;
+  --metal-chrome: linear-gradient(
+    115deg,
+    #fff 0%,
+    #c4c8cf 18%,
+    #7b7f87 38%,
+    #eceef2 54%,
+    #868a92 72%,
+    #fafbfc 100%
+  );
+  --metal-brushed: repeating-linear-gradient(
+    90deg,
+    rgb(255 255 255 / 0.035) 0 1px,
+    transparent 1px 3px
+  );
+
+  /* Trend: the only chromatic colors. Always paired with an arrow and a sign. */
+  --positive: #3ddc97;
+  --negative: #ff6b6b;
+
+  /* Focus */
+  --focus-ring: 0 0 0 2px var(--surface-void), 0 0 0 4px var(--text-strong);
+
+  /* Type */
+  --font-display: var(--font-funnel-display), "Helvetica Neue", Arial, sans-serif;
+  --font-body: var(--font-funnel-sans), "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-chivo-mono), ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.5rem;
+  --text-2xl: clamp(1.75rem, 1.2rem + 2vw, 2.5rem);
+  --text-3xl: clamp(2.25rem, 1.2rem + 3.6vw, 4rem);
+  --text-display: clamp(2.5rem, 1rem + 4.4vw, 4.5rem);
+  --text-giant: clamp(5rem, 2rem + 14vw, 12.5rem);
+
+  /* Space (4pt rhythm) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4.5rem;
+  --space-9: 7rem;
+
+  /* Shape: square and technical, with a hairline radius only on small tags. */
+  --radius-sm: 2px;
+  --radius-md: 0;
+  --radius-pill: 2px;
+
+  /* Elevation */
+  --shadow-plate: inset 0 1px 0 rgb(255 255 255 / 0.07), 0 18px 40px -24px rgb(0 0 0 / 0.9);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 180ms;
+  --duration-base: 320ms;
+
+  /* Layout */
+  --header-height: 4.25rem;
+  --container-width: 120rem;
+  --gutter: 1.5rem;
+
+  /* Layers */
+  --z-header: 40;
+  --z-menu: 50;
+  --z-skip: 100;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-padding-top: calc(var(--header-height) + var(--space-4));
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--surface-void);
+  color: var(--text-body);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+figure,
+dl,
+dd {
+  margin: 0;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--text-strong);
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 0.9;
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+::selection {
+  background: var(--text-strong);
+  color: var(--surface-void);
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.container {
+  width: min(100% - 2 * var(--gutter), var(--container-width));
+  margin-inline: auto;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.metal-text {
+  background: var(--metal-chrome);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Square index marker, as on a technical drawing. */
+.eyebrow::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  background: currentColor;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.skip-link {
+  position: fixed;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: var(--z-skip);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--text-strong);
+  color: var(--text-on-paper);
+  font-weight: 600;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus-visible {
+  transform: none;
+}
+
+/* Decorative glows may extend past the viewport; never let them add scroll. */
+main {
+  overflow-x: clip;
+}
+
+/* On paper, the semantic tokens flip so every child adapts without extra rules. */
+[data-tone="paper"] {
+  --text-strong: #000;
+  --text-body: #1a1a1c;
+  --text-muted: var(--text-on-paper-muted);
+  --line-soft: rgb(0 0 0 / 0.12);
+  --line-base: rgb(0 0 0 / 0.2);
+  --line-strong: rgb(0 0 0 / 0.5);
+  --surface-base: #f4f4f5;
+  --surface-raised: #fff;
+  --surface-plate: #ececee;
+}

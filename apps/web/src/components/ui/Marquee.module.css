@@ -1,0 +1,50 @@
+.wrapper {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.viewport {
+  display: flex;
+  overflow: hidden;
+  border-block: 1px solid var(--line-base);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+
+.track {
+  display: flex;
+  flex-shrink: 0;
+  min-width: 100%;
+  align-items: center;
+  justify-content: space-around;
+  animation: scroll 42s linear infinite;
+}
+
+.viewport[data-paused="true"] .track {
+  animation-play-state: paused;
+}
+
+.toggle {
+  justify-self: end;
+  min-height: 2.75rem;
+  padding: 0 var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+.toggle:hover {
+  color: var(--text-strong);
+}
+
+@keyframes scroll {
+  to {
+    transform: translateX(-100%);
+  }
+}

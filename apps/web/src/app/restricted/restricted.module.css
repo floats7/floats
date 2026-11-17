@@ -1,0 +1,17 @@
+.page {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-5);
+  padding-block: var(--space-9);
+}
+
+.title {
+  max-width: 14ch;
+  font-size: var(--text-3xl);
+}
+
+.body {
+  max-width: 34rem;
+  color: var(--text-muted);
+  font-size: var(--text-lg);
+}

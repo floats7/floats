@@ -1,0 +1,27 @@
+.header {
+  display: grid;
+  gap: var(--space-6);
+  align-items: end;
+  padding-block: clamp(var(--space-6), 8vw, var(--space-8)) var(--space-6);
+}
+
+.copy {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.title {
+  font-size: var(--text-3xl);
+}
+
+.description {
+  max-width: 38rem;
+  color: var(--text-muted);
+  font-size: var(--text-lg);
+}
+
+@media (min-width: 60rem) {
+  .header {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}

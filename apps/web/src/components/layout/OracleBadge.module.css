@@ -1,0 +1,54 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--line-base);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.dot {
+  position: relative;
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 1px solid var(--text-strong);
+  border-radius: 50%;
+}
+
+/* Live is a solid, pulsing dot. Off-hours is half filled. Stale is hollow. */
+.badge[data-status="live"] .dot {
+  background: var(--text-strong);
+}
+
+.badge[data-status="live"] .dot::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 1px solid var(--text-strong);
+  border-radius: 50%;
+  animation: ping 2.4s var(--ease-out) infinite;
+}
+
+.badge[data-status="off-hours"] .dot {
+  background: linear-gradient(90deg, var(--text-strong) 50%, transparent 50%);
+}
+
+.badge[data-status="stale"] {
+  border-style: dashed;
+}
+
+@keyframes ping {
+  from {
+    opacity: 0.7;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}

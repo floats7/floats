@@ -1,0 +1,50 @@
+.paper {
+  background:
+    var(--metal-brushed),
+    linear-gradient(180deg, #fff, var(--surface-paper));
+  color: var(--text-on-paper);
+}
+
+.inner {
+  display: grid;
+  gap: var(--space-6);
+  padding-block: var(--space-8);
+}
+
+.title {
+  color: var(--text-on-paper);
+  font-size: var(--text-3xl);
+}
+
+.rules {
+  border-top: 1px solid var(--text-on-paper);
+}
+
+.rule {
+  display: grid;
+  gap: var(--space-2) var(--space-5);
+  padding-block: var(--space-5);
+  border-bottom: 1px solid var(--line-on-paper);
+}
+
+.number {
+  color: var(--text-on-paper-muted);
+  font-size: var(--text-sm);
+}
+
+.ruleTitle {
+  color: var(--text-on-paper);
+  font-size: var(--text-xl);
+}
+
+.body {
+  max-width: 40rem;
+  color: var(--text-on-paper-muted);
+}
+
+@media (min-width: 48rem) {
+  .rule {
+    grid-template-columns: 4rem 12rem minmax(0, 1fr);
+    align-items: baseline;
+  }
+}

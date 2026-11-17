@@ -1,0 +1,30 @@
+.card {
+  --pointer-x: 50%;
+  --pointer-y: 0%;
+  position: relative;
+  isolation: isolate;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, var(--surface-plate), var(--surface-raised));
+  box-shadow: var(--shadow-plate);
+  transition: border-color var(--duration-base) var(--ease-out);
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(360px circle at var(--pointer-x) var(--pointer-y), rgb(255 255 255 / 0.1), transparent 65%);
+  opacity: 0;
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+
+.card:hover {
+  border-color: var(--line-base);
+}
+
+.card:hover::before {
+  opacity: 1;
+}

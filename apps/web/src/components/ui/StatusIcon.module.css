@@ -1,0 +1,42 @@
+.icon {
+  width: 4.5rem;
+  height: 4.5rem;
+}
+
+.icon[data-status="success"] {
+  color: var(--positive);
+}
+
+.icon[data-status="failed"] {
+  color: var(--negative);
+}
+
+.ring {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  opacity: 0.35;
+}
+
+.mark {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.spinner {
+  width: 4.5rem;
+  height: 4.5rem;
+  border: 3px solid var(--line-base);
+  border-top-color: var(--text-strong);
+  border-radius: 50%;
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

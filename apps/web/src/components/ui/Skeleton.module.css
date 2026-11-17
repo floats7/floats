@@ -1,0 +1,14 @@
+.skeleton {
+  display: block;
+  width: var(--width);
+  height: var(--height);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(100deg, var(--surface-plate) 30%, rgb(255 255 255 / 0.1) 50%, var(--surface-plate) 70%) 0 0 / 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}

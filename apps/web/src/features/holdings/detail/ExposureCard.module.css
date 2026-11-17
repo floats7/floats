@@ -1,0 +1,28 @@
+.section {
+  padding-top: var(--space-8);
+}
+
+.card {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  border: 1px solid var(--line-base);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, var(--surface-plate), var(--surface-raised));
+}
+
+.title {
+  font-size: var(--text-xl);
+}
+
+.value {
+  color: var(--text-strong);
+  font-size: var(--text-3xl);
+  line-height: 1;
+}
+
+.copy {
+  max-width: 32rem;
+  color: var(--text-muted);
+}

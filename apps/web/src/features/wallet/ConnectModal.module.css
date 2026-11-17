@@ -1,0 +1,30 @@
+.body,
+.result {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.result {
+  justify-items: center;
+  text-align: center;
+}
+
+.heading {
+  font-size: var(--text-xl);
+}
+
+.copy {
+  color: var(--text-muted);
+}
+
+.note {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+}

@@ -1,0 +1,29 @@
+{
+  "name": "floats",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "check:public": "node --experimental-transform-types scripts/check-public-repo.ts",
+    "test:api": "node --experimental-transform-types --test services/api/test/**/*.test.ts",
+    "test:indexer": "node --experimental-transform-types --test services/indexer/test/**/*.test.ts",
+    "test:keeper": "node --experimental-transform-types --test services/keeper/test/**/*.test.ts",
+    "migrate:supabase": "node --experimental-transform-types scripts/apply-supabase-migrations.ts",
+    "generate:deployment-manifest": "node --experimental-transform-types scripts/generate-deployment-manifest.ts",
+    "indexer:catch-up": "node --experimental-transform-types scripts/catch-up-indexer.ts",
+    "indexer:inspect": "node --experimental-transform-types scripts/inspect-indexer-state.ts",
+    "verify:core-activation": "node --experimental-transform-types scripts/verify-core-activation.ts",
+    "verify:deployment": "node --experimental-transform-types scripts/verify-deployment.ts"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "5.7.0",
+    "pg": "^8.16.3",
+    "viem": "2.58.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@types/pg": "^8.15.6",
+    "supabase": "^3.2.0",
+    "typescript": "5.9.3"
+  }
+}

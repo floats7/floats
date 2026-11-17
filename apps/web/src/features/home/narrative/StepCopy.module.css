@@ -1,0 +1,52 @@
+.copy {
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
+}
+
+.headline {
+  font-size: var(--text-3xl);
+}
+
+.word {
+  display: inline-block;
+  margin-right: 0.24em;
+}
+
+.sub {
+  max-width: 30rem;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.list {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.item {
+  display: flex;
+  gap: var(--space-3);
+  color: rgb(255 255 255 / 0.3);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: color var(--duration-base) var(--ease-out);
+}
+
+.item[data-active="true"] {
+  color: var(--text-strong);
+}
+
+/* Short screens (a phone on its side): keep the headline and drop the extras so nothing runs under the rule bar. */
+@media (max-height: 40rem) {
+  .headline {
+    font-size: var(--text-xl);
+  }
+
+  .sub,
+  .list {
+    display: none;
+  }
+}

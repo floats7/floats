@@ -1,0 +1,106 @@
+.hero {
+  position: relative;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  min-height: calc(100dvh - var(--header-height));
+  overflow: hidden;
+}
+
+/* The metallic limb of a horizon, a quiet nod to orbit-view photography. */
+.limb {
+  position: absolute;
+  bottom: -46vw;
+  left: 50%;
+  width: 150vw;
+  aspect-ratio: 2.4;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, #000 82%, transparent 100%);
+  box-shadow:
+    inset 0 2px 0 rgb(255 255 255 / 0.55),
+    inset 0 18px 60px rgb(190 196 208 / 0.28),
+    0 -40px 120px rgb(255 255 255 / 0.1);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.copy {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  padding: 19dvh var(--gutter) 0;
+  text-align: center;
+}
+
+.title {
+  align-items: center;
+  font-size: var(--text-display);
+}
+
+.footer {
+  position: relative;
+  display: grid;
+  gap: var(--space-4);
+  padding: 0 var(--gutter) var(--space-4);
+}
+
+.caption {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.number,
+.name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--text-strong);
+}
+
+.number::before,
+.name::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  background: currentColor;
+}
+
+.name {
+  grid-column: 2;
+}
+
+.text {
+  grid-column: 3 / 7;
+  max-width: 34rem;
+  color: var(--text-muted);
+}
+
+@media (max-width: 48rem) {
+  .copy {
+    padding-top: 16dvh;
+  }
+
+  .name {
+    grid-column: 2 / 7;
+  }
+
+  .text {
+    grid-column: 1 / -1;
+  }
+}
+
+/* A phone on its side is too short for headline, scene and caption together, so the hero grows past the fold. */
+@media (max-height: 40rem) {
+  .hero {
+    min-height: 36rem;
+  }
+
+  .copy {
+    padding-top: var(--space-6);
+  }
+}

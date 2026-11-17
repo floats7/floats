@@ -1,0 +1,133 @@
+import type { Alert, AlertSink, JobName, TransactionRequest } from "./types.ts";
+import { TransactionCoordinator } from "./transaction-coordinator.ts";
+
+export interface KeeperJob<TInput> {
+  readonly name: JobName;
+  run(input: TInput): Promise<void>;
+}
+
+abstract class TransactionJob<TInput extends { idempotencyKey: string; request: TransactionRequest }>
+  implements KeeperJob<TInput>
+{
+  abstract readonly name: JobName;
+  constructor(protected readonly coordinator: TransactionCoordinator) {}
+
+  async run(input: TInput): Promise<void> {
+    await this.coordinator.execute(this.name, input.idempotencyKey, input.request);
+  }
+}
+
+export class EntryExitJob extends TransactionJob<{
+  idempotencyKey: string;
+  request: TransactionRequest;
+}> {
+  readonly name = "entry-exit" as const;
+}
+
+export class RebalanceJob extends TransactionJob<{
+  idempotencyKey: string;
+  request: TransactionRequest;
+}> {
+  readonly name = "rebalance" as const;
+}
+
+export class DriftJob implements KeeperJob<{
+  idempotencyKey: string;
+  driftBps: number;
+  maximumDriftBps: number;
+}> {
+  readonly name = "drift" as const;
+  constructor(private readonly alerts: AlertSink) {}
+
+  async run(input: { idempotencyKey: string; driftBps: number; maximumDriftBps: number }) {
+    if (input.driftBps <= input.maximumDriftBps) return;
+    await this.alerts.publish({
+      code: "EXCESSIVE_DRIFT",
+      severity: "warning",
+      message: "Index drift exceeds the configured threshold",
+      context: input,
+    });
+  }
+}
+
+export class OracleHealthJob implements KeeperJob<{
+  idempotencyKey: string;
+  symbol: string;
+  health: string;
+}> {
+  readonly name = "oracle-health" as const;
+  constructor(private readonly alerts: AlertSink) {}
+
+  async run(input: { idempotencyKey: string; symbol: string; health: string }) {
+    if (input.health === "Live") return;
+    await this.alerts.publish({
+      code: "STALE_ORACLE",
+      severity: input.health === "Invalid" || input.health === "Paused" ? "critical" : "warning",
+      message: `Oracle ${input.symbol} is ${input.health}`,
+      context: input,
+    });
+  }
+}
+
+export class AlertJob implements KeeperJob<{ idempotencyKey: string; alerts: readonly Alert[] }> {
+  readonly name = "alert" as const;
+  constructor(private readonly sink: AlertSink) {}
+
+  async run(input: { idempotencyKey: string; alerts: readonly Alert[] }) {
+    for (const alert of input.alerts) await this.sink.publish(alert);
+  }
+}
+
+export class OperationalHealthJob implements KeeperJob<{
+  idempotencyKey: string;
+  premiumDiscountBps: number;
+  maximumPremiumDiscountBps: number;
+  gasBalance: bigint;
+  minimumGasBalance: bigint;
+  pendingNonceAgeMs: number;
+  maximumPendingNonceAgeMs: number;
+}> {
+  readonly name = "alert" as const;
+  constructor(private readonly sink: AlertSink) {}
+
+  async run(input: {
+    idempotencyKey: string;
+    premiumDiscountBps: number;
+    maximumPremiumDiscountBps: number;
+    gasBalance: bigint;
+    minimumGasBalance: bigint;
+    pendingNonceAgeMs: number;
+    maximumPendingNonceAgeMs: number;
+  }) {
+    if (Math.abs(input.premiumDiscountBps) > input.maximumPremiumDiscountBps) {
+      await this.sink.publish({
+        code: "PREMIUM_DISCOUNT",
+        severity: "warning",
+        message: "Vault premium or discount exceeds the configured threshold",
+        context: {
+          idempotencyKey: input.idempotencyKey,
+          premiumDiscountBps: input.premiumDiscountBps,
+        },
+      });
+    }
+    if (input.gasBalance < input.minimumGasBalance) {
+      await this.sink.publish({
+        code: "LOW_GAS",
+        severity: "critical",
+        message: "Keeper gas balance is below the configured minimum",
+        context: { idempotencyKey: input.idempotencyKey },
+      });
+    }
+    if (input.pendingNonceAgeMs > input.maximumPendingNonceAgeMs) {
+      await this.sink.publish({
+        code: "STUCK_NONCE",
+        severity: "critical",
+        message: "Keeper nonce has remained pending beyond the configured maximum",
+        context: {
+          idempotencyKey: input.idempotencyKey,
+          pendingNonceAgeMs: input.pendingNonceAgeMs,
+        },
+      });
+    }
+  }
+}

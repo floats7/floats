@@ -1,0 +1,90 @@
+.panel {
+  display: grid;
+  gap: var(--space-5);
+  padding: clamp(var(--space-4), 4vw, var(--space-6));
+  border: 1px solid var(--line-base);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, var(--surface-plate), var(--surface-raised));
+  box-shadow: var(--shadow-plate);
+}
+
+.toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.labelRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.label {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.max {
+  min-height: 2.75rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-strong);
+  font-size: var(--text-sm);
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+  cursor: pointer;
+}
+
+.input {
+  width: 100%;
+  min-height: 4rem;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--line-base);
+  border-radius: var(--radius-sm);
+  background: var(--surface-void);
+  color: var(--text-strong);
+  font-size: var(--text-2xl);
+  transition: border-color var(--duration-base) var(--ease-out);
+}
+
+.input:hover {
+  border-color: var(--line-strong);
+}
+
+.input:focus-visible {
+  border-color: var(--text-strong);
+}
+
+.input[aria-invalid="true"] {
+  border-style: dashed;
+  border-color: var(--text-strong);
+}
+
+/* Reserved space keeps the form from jumping when an error appears. */
+.error {
+  min-height: 1.5rem;
+  color: var(--text-strong);
+  font-size: var(--text-sm);
+}
+
+.preview {
+  min-height: 11rem;
+}
+
+.hint {
+  color: var(--text-muted);
+}
+
+.note {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}

@@ -1,0 +1,19 @@
+.item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ticker {
+  color: var(--text-strong);
+}
+
+.price {
+  color: var(--text-muted);
+}

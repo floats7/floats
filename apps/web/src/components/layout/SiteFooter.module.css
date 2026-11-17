@@ -1,0 +1,113 @@
+.footer {
+  margin-top: var(--space-9);
+  overflow: hidden;
+  background: linear-gradient(180deg, #e8e6e1 0%, #e8e6e1 38%, #cdcfd6 72%, #b4b7c3 100%);
+  color: var(--text-body);
+}
+
+.cta {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-5);
+  padding: var(--space-9) var(--gutter) var(--space-9);
+  text-align: center;
+}
+
+.chip {
+  padding: 1px var(--space-2);
+  border: 1px solid var(--text-strong);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.title {
+  font-size: var(--text-3xl);
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6) var(--space-4);
+  padding: 0 var(--gutter) var(--space-8);
+}
+
+.heading,
+.network {
+  margin-bottom: var(--space-2);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.network {
+  align-self: start;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  color: var(--text-strong);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+
+.link:hover {
+  opacity: 0.55;
+}
+
+.legal {
+  display: grid;
+  gap: var(--space-2);
+  padding: 0 var(--gutter) var(--space-5);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.disclaimer {
+  max-width: 60rem;
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+/* A full-width logotype closes the page, cropped slightly by the viewport edge. */
+.wordmark {
+  margin: 0 0 -0.12em;
+  padding-inline: var(--gutter);
+  color: var(--text-strong);
+  font-family: var(--font-display);
+  font-size: clamp(4rem, 22.5vw, 30rem);
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  line-height: 0.78;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+@media (min-width: 48rem) {
+  .columns {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .network {
+    grid-column: 5 / 7;
+    text-align: right;
+  }
+
+  .legal {
+    grid-template-columns: 1fr auto;
+    align-items: start;
+    gap: var(--space-5);
+  }
+}

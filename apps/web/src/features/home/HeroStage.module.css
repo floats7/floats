@@ -1,0 +1,25 @@
+.stage {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  animation: stage-in 1.4s var(--ease-out) both;
+}
+
+.stage canvas {
+  display: block;
+}
+
+.fallback {
+  position: absolute;
+  inset: 0 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: min(100%, 48rem);
+}
+
+/* Fade only: a scale transform would make the canvas measure itself oversized and lock in an off-centre size. */
+@keyframes stage-in {
+  from {
+    opacity: 0;
+  }
+}
