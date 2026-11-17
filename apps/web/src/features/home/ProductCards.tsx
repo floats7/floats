@@ -51,7 +51,7 @@ export function ProductCards() {
     const node = scroller.current;
     const first = slideAt(0);
     if (!node || !first) return;
-    const stride = first.offsetWidth + parseFloats(getComputedStyle(node).columnGap || "0");
+    const stride = first.offsetWidth + parseFloat(getComputedStyle(node).columnGap || "0");
     setCurrent(Math.min(PRODUCTS.length - 1, Math.round(node.scrollLeft / stride)));
   };
 

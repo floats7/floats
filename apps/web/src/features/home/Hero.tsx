@@ -7,7 +7,7 @@ import styles from "./Hero.module.css";
 
 export function Hero() {
   return (
-    <section className={styles.hero} aria-labelledby="hero-title" data-hud-index="001" data-hud-title="Floatss" data-hud-meta="Onchain IPO index">
+    <section className={styles.hero} aria-labelledby="hero-title" data-hud-index="001" data-hud-title="Floats" data-hud-meta="Onchain IPO index">
       <ShootingStars />
       <span className={styles.limb} aria-hidden="true" />
       <HeroStage />

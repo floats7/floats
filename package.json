@@ -5,9 +5,11 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "check:public": "node --experimental-transform-types scripts/check-public-repo.ts",
-    "test:api": "node --experimental-transform-types --test services/api/test/**/*.test.ts",
-    "test:indexer": "node --experimental-transform-types --test services/indexer/test/**/*.test.ts",
-    "test:keeper": "node --experimental-transform-types --test services/keeper/test/**/*.test.ts",
+    "test:api": "node --experimental-transform-types --test apps/api/test/**/*.test.ts",
+    "test:indexer": "node --experimental-transform-types --test apps/indexer/test/**/*.test.ts",
+    "test:keeper": "node --experimental-transform-types --test apps/keeper/test/**/*.test.ts",
+    "start:api": "node --experimental-transform-types apps/api/src/server.ts",
+    "start:indexer": "node --experimental-transform-types apps/indexer/src/worker.ts",
     "migrate:supabase": "node --experimental-transform-types scripts/apply-supabase-migrations.ts",
     "generate:deployment-manifest": "node --experimental-transform-types scripts/generate-deployment-manifest.ts",
     "indexer:catch-up": "node --experimental-transform-types scripts/catch-up-indexer.ts",
@@ -23,6 +25,7 @@
   "devDependencies": {
     "@types/node": "24.10.1",
     "@types/pg": "^8.15.6",
+    "railway": "^3.17.0",
     "supabase": "^3.2.0",
     "typescript": "5.9.3"
   }

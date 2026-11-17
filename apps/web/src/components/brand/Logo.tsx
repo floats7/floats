@@ -6,9 +6,9 @@ const MARK_SIZE = 40;
 
 export function Logo() {
   return (
-    <Link href="/" className={styles.logo} aria-label="Floatss home">
+    <Link href="/" className={styles.logo} aria-label="Floats home">
       <Image src="/brand/floats-logo.png" alt="" width={MARK_SIZE} height={MARK_SIZE} className={styles.mark} priority />
-      <span className={styles.word}>Floatss</span>
+      <span className={styles.word}>Floats</span>
     </Link>
   );
 }

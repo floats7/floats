@@ -42,6 +42,10 @@ export function HeroStage() {
 
   return (
     <div ref={ref} className={styles.stage}>
+      <span className="visually-hidden">
+        The fIPO medal is surrounded by representative top US companies: Apple, Microsoft, NVIDIA,
+        Alphabet, Amazon, SpaceX, Meta, Broadcom, Tesla, and Eli Lilly.
+      </span>
       {webgl === true && <HeroScene active={visible && !reducedMotion} animate={!reducedMotion} />}
       {webgl === false && (
         <div className={styles.fallback}>

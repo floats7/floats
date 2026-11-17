@@ -22,13 +22,6 @@ const FAR_OBJECTS = [
   { label: "DEX pool", x: 1450, y: 640, appear: 0.54 },
 ] as const;
 
-const TRAJECTORIES = [
-  "M 480 640 C 600 480, 760 420, 860 300",
-  "M 860 300 C 960 230, 1060 190, 1180 170",
-  "M 560 520 C 760 560, 940 600, 1040 600",
-  "M 1040 600 C 1200 560, 1280 500, 1330 430",
-] as const;
-
 interface OrbitSceneProps {
   /** Overall scroll progress through the pinned section, 0 to 1. */
   progress: MotionValue<number>;
@@ -46,12 +39,6 @@ function FarObject({ label, x, y, appear, progress }: (typeof FAR_OBJECTS)[numbe
       </text>
     </motion.g>
   );
-}
-
-function Trajectory({ d, index, progress }: { d: string; index: number; progress: MotionValue<number> }) {
-  const start = 0.2 + index * 0.08;
-  const pathLength = useTransform(progress, [start, start + 0.14], [0, 1]);
-  return <motion.path d={d} className={styles.trajectory} style={{ pathLength }} />;
 }
 
 /** The index drawn as an orbital system: a planet of rings with constituents in orbit, pulling back as you scroll. */
@@ -115,9 +102,6 @@ export function OrbitScene({ progress, activeRing }: OrbitSceneProps) {
         })}
 
         <motion.g style={{ opacity: outerOpacity }}>
-          {TRAJECTORIES.map((d, index) => (
-            <Trajectory key={d} d={d} index={index} progress={progress} />
-          ))}
           {FAR_OBJECTS.map((object) => (
             <FarObject key={object.label} {...object} progress={progress} />
           ))}

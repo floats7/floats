@@ -35,6 +35,7 @@ export interface PublicConfigDto {
   readonly blockExplorerUrl: string;
   readonly vaultAddress: string;
   readonly usdgAddress: string;
+  readonly walletConnectProjectId: string;
 }
 
 export interface IndexHoldingDto {
@@ -108,7 +109,7 @@ export interface WalletTransactionDto {
 }
 
 export class FloatsApiClient {
-  public constructor(private readonly basePath = "/api") {}
+  public constructor(private readonly basePath = resolveApiBaseUrl()) {}
 
   public getPublicConfig(signal?: AbortSignal): Promise<PublicConfigDto> {
     return this.get<PublicConfigDto>("/config", signal);
@@ -163,6 +164,7 @@ export class FloatsApiClient {
     const response = await fetch(`${this.basePath}${path}`, {
       method: "GET",
       headers: { Accept: "application/json" },
+      credentials: "include",
       signal,
     });
     const body = await response.json() as { readonly data?: T } | ApiErrorBody;
@@ -178,6 +180,7 @@ export class FloatsApiClient {
       method: "POST",
       headers: { Accept: "application/json", "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+      credentials: "include",
       signal,
     });
     const body = await response.json() as { readonly data?: T } | ApiErrorBody;
@@ -187,6 +190,12 @@ export class FloatsApiClient {
     }
     return body.data as T;
   }
+}
+
+function resolveApiBaseUrl(): string {
+  const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (!configured) return "/api";
+  return `${configured.replace(/\/+$/, "")}/api`;
 }
 
 export const floatApi = new FloatsApiClient();

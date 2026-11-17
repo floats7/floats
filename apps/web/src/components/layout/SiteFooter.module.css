@@ -48,6 +48,10 @@
   align-self: start;
 }
 
+.network > :last-child {
+  margin-left: auto;
+}
+
 .link {
   display: inline-flex;
   align-items: center;

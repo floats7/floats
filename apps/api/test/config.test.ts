@@ -9,6 +9,7 @@ const validEnvironment: NodeJS.ProcessEnv = {
   BLOCK_EXPLORER_URL: "https://explorer.testnet.chain.robinhood.com",
   SUPABASE_URL: "https://example.supabase.co",
   SUPABASE_SECRET_KEY: "sb_secret_example",
+  WALLETS_CONNECT_PROJECT_ID: "0123456789abcdef0123456789abcdef",
   FLOATS_VAULT_ADDRESS: `0x${"1".repeat(40)}`,
   USDG_ADDRESS: `0x${"2".repeat(40)}`,
 };
@@ -17,7 +18,7 @@ test("public configuration excludes all Supabase values", () => {
   const publicConfig = createPublicConfig(loadServerConfig(validEnvironment), {
     vaultAddress: validEnvironment.FLOATS_VAULT_ADDRESS!,
     usdgAddress: validEnvironment.USDG_ADDRESS!,
-  });
+  }, validEnvironment.WALLETS_CONNECT_PROJECT_ID!);
 
   assert.deepEqual(publicConfig, {
     appEnvironment: "testnet",
@@ -25,6 +26,7 @@ test("public configuration excludes all Supabase values", () => {
     blockExplorerUrl: "https://explorer.testnet.chain.robinhood.com/",
     vaultAddress: validEnvironment.FLOATS_VAULT_ADDRESS,
     usdgAddress: validEnvironment.USDG_ADDRESS,
+    walletConnectProjectId: validEnvironment.WALLETS_CONNECT_PROJECT_ID,
   });
   assert.equal("supabaseUrl" in publicConfig, false);
   assert.equal("supabaseSecretKey" in publicConfig, false);

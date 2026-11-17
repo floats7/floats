@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LinkButton } from "@/components/ui/Button";
+import { XLink } from "@/components/brand/XLink";
 import { DISCLAIMER, NAV_LINKS } from "@/lib/constants";
 import styles from "./SiteFooter.module.css";
 
@@ -37,16 +38,19 @@ export function SiteFooter() {
             </ul>
           </nav>
         ))}
-        <p className={styles.network}>Deployed on Robinhood Chain</p>
+        <div className={styles.network}>
+          <p>Deployed on Robinhood Chain</p>
+          <XLink showHandle />
+        </div>
       </div>
 
       <div className={styles.legal}>
-        <p>&copy; 2026 Floatss. All rights reserved.</p>
+        <p>&copy; 2026 Floats. All rights reserved.</p>
         <p className={styles.disclaimer}>{DISCLAIMER} Not available in restricted jurisdictions.</p>
       </div>
 
       <p className={styles.wordmark} aria-hidden="true">
-        Floatss
+        Floats
       </p>
     </footer>
   );

@@ -26,7 +26,7 @@ const INTRO_STEPS: readonly NarrativeStep[] = [
   {
     id: "why",
     eyebrow: "Why we exist",
-    headline: "Floatss exists to put every new listing within reach.",
+    headline: "Floats exists to put every new listing within reach.",
     sub: "Today, a new listing is one stock at a time.",
     compare: { small: "One listing", big: "The whole class" },
     hud: ["The new listing class", "Today"],

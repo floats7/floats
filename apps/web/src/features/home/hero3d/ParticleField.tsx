@@ -17,9 +17,9 @@ interface ParticleFieldProps {
 }
 
 function buildGeometry(count: number): BufferGeometry {
-  const positions = new Floats32Array(count * 3);
-  const scales = new Floats32Array(count);
-  const phases = new Floats32Array(count);
+  const positions = new Float32Array(count * 3);
+  const scales = new Float32Array(count);
+  const phases = new Float32Array(count);
 
   for (let index = 0; index < count; index++) {
     const radius = INNER_RADIUS + Math.cbrt(Math.random()) * (OUTER_RADIUS - INNER_RADIUS);

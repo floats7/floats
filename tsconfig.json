@@ -13,5 +13,5 @@
     "target": "ES2022",
     "types": ["node"]
   },
-  "include": ["services/**/*.ts", "scripts/**/*.ts"]
+  "include": ["apps/api/**/*.ts", "apps/indexer/**/*.ts", "apps/keeper/**/*.ts", "scripts/**/*.ts"]
 }

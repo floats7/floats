@@ -76,13 +76,6 @@
   opacity: 0.7;
 }
 
-.trajectory {
-  fill: none;
-  stroke: #fff;
-  stroke-dasharray: 3 6;
-  opacity: 0.45;
-}
-
 @keyframes orbit {
   from {
     transform: rotate(var(--start, 0deg));

@@ -1,6 +1,6 @@
-# Floatss Web
+# Floats Web
 
-Next.js 16 and React 19 frontend for Floatss. Black, white and brushed-metal design system with motion powered by `motion`.
+Next.js 16 and React 19 frontend for Floats. Black, white and brushed-metal design system with motion powered by `motion`.
 
 ## Commands
 

@@ -1,4 +1,4 @@
-import { createIndexerCycle, createProtocolIndexer } from "../services/indexer/src/bootstrap.ts";
+import { createIndexerCycle, createProtocolIndexer } from "../apps/indexer/src/bootstrap.ts";
 
 function requireMaximumCycles(environment: NodeJS.ProcessEnv): number {
   const raw = environment.INDEXER_MAX_CATCH_UP_CYCLES?.trim() ?? "100";

@@ -20,6 +20,7 @@ function context(readModels: Partial<ReadModelRepository> = {}): ApiContext {
       blockExplorerUrl: "https://explorer.testnet.chain.robinhood.com/",
       vaultAddress: `0x${"1".repeat(40)}`,
       usdgAddress: `0x${"2".repeat(40)}`,
+      walletConnectProjectId: "0123456789abcdef0123456789abcdef",
     },
     vaultAddress: `0x${"1".repeat(40)}`,
     readModels: readModels as ReadModelRepository,

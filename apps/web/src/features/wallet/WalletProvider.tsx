@@ -1,10 +1,12 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type { AppKit } from "@reown/appkit/react";
 import { useToast } from "@/components/ui/Toast";
 import { floatApi } from "@/lib/api-client";
-import { isAddress, type Eip1193Provider } from "@/lib/eip1193";
+import { getInjectedProvider, isAddress, type Eip1193Provider } from "@/lib/eip1193";
 import { ConnectModal, type ConnectPhase } from "./ConnectModal";
+import { getWalletConnectAppKit } from "./wallet-connect";
 
 interface WalletApi {
   address: string | null;
@@ -25,29 +27,34 @@ export function useWallet(): WalletApi {
 export function WalletProvider({ children }: { children: ReactNode }) {
   const { notify } = useToast();
   const [address, setAddress] = useState<string | null>(null);
+  const [provider, setProvider] = useState<Eip1193Provider | null>(null);
   const [phase, setPhase] = useState<ConnectPhase>("closed");
+  const appKitRef = useRef<AppKit | null>(null);
+  const unsubscribeAccountRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    const provider = window.ethereum;
-    if (!provider?.on) return;
+    const injectedProvider = getInjectedProvider();
+    if (!injectedProvider?.on) return;
     const accountsChanged = (...args: unknown[]) => {
       const accounts = args[0];
       const next = Array.isArray(accounts) ? accounts.find(isAddress) : undefined;
       setAddress(next?.toLowerCase() ?? null);
     };
     const chainChanged = () => setAddress(null);
-    provider.on("accountsChanged", accountsChanged);
-    provider.on("chainChanged", chainChanged);
+    injectedProvider.on("accountsChanged", accountsChanged);
+    injectedProvider.on("chainChanged", chainChanged);
     return () => {
-      provider.removeListener?.("accountsChanged", accountsChanged);
-      provider.removeListener?.("chainChanged", chainChanged);
+      injectedProvider.removeListener?.("accountsChanged", accountsChanged);
+      injectedProvider.removeListener?.("chainChanged", chainChanged);
     };
   }, []);
 
-  const connect = useCallback(async () => {
+  useEffect(() => () => unsubscribeAccountRef.current?.(), []);
+
+  const connectBrowserWallet = useCallback(async () => {
     setPhase("connecting");
     try {
-      const provider = window.ethereum;
+      const provider = getInjectedProvider();
       if (!provider) throw new Error("WALLET_PROVIDER_MISSING");
       const config = await floatApi.getPublicConfig();
       const requiredChain = `0x${config.chainId.toString(16)}`;
@@ -62,6 +69,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       const account = accounts.find(isAddress);
       if (!account) throw new Error("WALLET_ACCOUNT_MISSING");
       setAddress(account.toLowerCase());
+      setProvider(provider);
       setPhase("closed");
       notify("Wallet connected", "success");
     } catch {
@@ -70,26 +78,64 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, [notify]);
 
+  const connectWalletConnect = useCallback(async () => {
+    setPhase("connecting");
+    try {
+      const appKit = await getWalletConnectAppKit();
+      appKitRef.current = appKit;
+      unsubscribeAccountRef.current?.();
+      unsubscribeAccountRef.current = appKit.subscribeAccount((account) => {
+        if (!account.isConnected || !isAddress(account.address)) return;
+        const walletProvider = appKit.getWalletProvider();
+        if (!isEip1193Provider(walletProvider)) return;
+        setAddress(account.address.toLowerCase());
+        setProvider(walletProvider);
+        setPhase("closed");
+        notify("Wallet connected", "success");
+      }, "eip155");
+      setPhase("closed");
+      await appKit.open({ view: "Connect" });
+    } catch (error) {
+      console.error("WalletConnect initialization failed", error);
+      setPhase("rejected");
+      notify("WalletConnect failed to open", "error");
+    }
+  }, [notify]);
+
   const close = useCallback(() => {
     setPhase("closed");
   }, []);
 
   const disconnect = useCallback(() => {
+    if (appKitRef.current && provider !== getInjectedProvider()) {
+      void appKitRef.current.disconnect("eip155");
+    }
     setAddress(null);
+    setProvider(null);
     notify("Wallet disconnected");
-  }, [notify]);
+  }, [notify, provider]);
 
   const api = useMemo<WalletApi>(() => ({
     address,
     openConnect: () => setPhase("idle"),
     disconnect,
-    provider: typeof window === "undefined" ? null : window.ethereum ?? null,
-  }), [address, disconnect]);
+    provider,
+  }), [address, disconnect, provider]);
 
   return (
     <WalletContext.Provider value={api}>
       {children}
-      <ConnectModal phase={phase} onConnect={connect} onCancel={close} onClose={close} />
+      <ConnectModal
+        phase={phase}
+        onBrowserConnect={connectBrowserWallet}
+        onWalletConnect={connectWalletConnect}
+        onCancel={close}
+        onClose={close}
+      />
     </WalletContext.Provider>
   );
+}
+
+function isEip1193Provider(value: unknown): value is Eip1193Provider {
+  return typeof value === "object" && value !== null && "request" in value && typeof value.request === "function";
 }

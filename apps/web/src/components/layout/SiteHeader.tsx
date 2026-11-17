@@ -4,6 +4,7 @@ import { useMotionValueEvent, useScroll } from "motion/react";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Logo } from "@/components/brand/Logo";
+import { XLink } from "@/components/brand/XLink";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { NAV_LINKS } from "@/lib/constants";
@@ -46,6 +47,7 @@ export function SiteHeader() {
         </nav>
 
         <div className={styles.actions}>
+          <XLink />
           <OracleBadge />
           <WalletButton />
         </div>

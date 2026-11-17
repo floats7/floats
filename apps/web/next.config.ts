@@ -2,13 +2,14 @@ import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
 
 const development = process.env.NODE_ENV === "development";
+const apiOrigin = resolveApiOrigin(process.env.NEXT_PUBLIC_API_URL);
 const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${development ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  "connect-src 'self'",
+  `connect-src 'self'${apiOrigin ? ` ${apiOrigin}` : ""} https://*.walletconnect.com wss://*.walletconnect.com https://*.reown.com wss://*.reown.com https://*.web3modal.org`,
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -38,3 +39,12 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+function resolveApiOrigin(value: string | undefined): string | null {
+  if (!value) return null;
+  const url = new URL(value);
+  if (url.protocol !== "https:" && url.hostname !== "localhost") {
+    throw new Error("NEXT_PUBLIC_API_URL must use HTTPS");
+  }
+  return url.origin;
+}

@@ -9,12 +9,13 @@ export type ConnectPhase = "closed" | "idle" | "connecting" | "rejected";
 
 interface ConnectModalProps {
   phase: ConnectPhase;
-  onConnect: () => void;
+  onBrowserConnect: () => void;
+  onWalletConnect: () => void;
   onCancel: () => void;
   onClose: () => void;
 }
 
-export function ConnectModal({ phase, onConnect, onCancel, onClose }: ConnectModalProps) {
+export function ConnectModal({ phase, onBrowserConnect, onWalletConnect, onCancel, onClose }: ConnectModalProps) {
   const connecting = phase === "connecting";
 
   return (
@@ -22,8 +23,11 @@ export function ConnectModal({ phase, onConnect, onCancel, onClose }: ConnectMod
       {phase === "idle" && (
         <div className={styles.body}>
           <p className={styles.copy}>Connect a wallet on Robinhood Chain to mint, redeem and track your fIPO position.</p>
-          <Button onClick={onConnect}>Browser wallet</Button>
-          <p className={styles.note}>By connecting you agree to the terms of use. Floatss never takes custody of your funds.</p>
+          <div className={styles.walletOptions}>
+            <Button onClick={onBrowserConnect}>Browser wallet</Button>
+            <Button variant="outline" onClick={onWalletConnect}>WalletConnect</Button>
+          </div>
+          <p className={styles.note}>By connecting you agree to the terms of use. Floats never takes custody of your funds.</p>
         </div>
       )}
 
@@ -44,7 +48,8 @@ export function ConnectModal({ phase, onConnect, onCancel, onClose }: ConnectMod
           <h3 className={styles.heading}>Connection rejected</h3>
           <p className={styles.copy}>The request was declined, so nothing was connected. You can try again whenever you are ready.</p>
           <div className={styles.actions}>
-            <Button onClick={onConnect}>Try again</Button>
+            <Button onClick={onBrowserConnect}>Try browser wallet</Button>
+            <Button variant="outline" onClick={onWalletConnect}>WalletConnect</Button>
             <Button variant="outline" onClick={onClose}>
               Close
             </Button>

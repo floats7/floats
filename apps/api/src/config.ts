@@ -14,6 +14,7 @@ export interface PublicConfig {
   readonly blockExplorerUrl: string;
   readonly vaultAddress: string;
   readonly usdgAddress: string;
+  readonly walletConnectProjectId: string;
 }
 
 export interface PublicProtocolAddresses {
@@ -58,12 +59,20 @@ export function loadServerConfig(environment: NodeJS.ProcessEnv): ServerConfig {
   };
 }
 
-export function createPublicConfig(config: ServerConfig, addresses: PublicProtocolAddresses): PublicConfig {
+export function createPublicConfig(
+  config: ServerConfig,
+  addresses: PublicProtocolAddresses,
+  walletConnectProjectId: string,
+): PublicConfig {
+  if (!/^[0-9a-f]{32}$/i.test(walletConnectProjectId)) {
+    throw new Error("WALLETS_CONNECT_PROJECT_ID must be a 32-character project ID");
+  }
   return {
     appEnvironment: config.appEnvironment,
     chainId: config.chainId,
     blockExplorerUrl: config.blockExplorerUrl.toString(),
     vaultAddress: addresses.vaultAddress,
     usdgAddress: addresses.usdgAddress,
+    walletConnectProjectId,
   };
 }

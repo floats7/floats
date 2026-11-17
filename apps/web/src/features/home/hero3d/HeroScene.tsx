@@ -3,17 +3,16 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import { ACESFilmicToneMapping, MathUtils, type Group } from "three";
-import { CONSTITUENTS } from "@/data/constituents";
 import { CoinRing } from "./CoinRing";
 import { Environment } from "./Environment";
 import { Medal } from "./Medal";
 import { ParticleField } from "./ParticleField";
 import { useFaceTextures } from "./useFaceTextures";
+import { HERO_ASSETS } from "./hero-assets";
+import { useAssetTextures } from "./useAssetTextures";
 
 const DESKTOP_MIN_WIDTH = 960;
 const MEDAL_LABEL = "fIPO";
-const TICKERS = CONSTITUENTS.map((item) => item.ticker);
-const LABELS = [MEDAL_LABEL, ...TICKERS];
 const POINTER_EASING = 3;
 /** Orbit radius plus coin radius, in scene units, and the share of the half-width the ring may fill. */
 const RING_EXTENT = 3.4;
@@ -50,7 +49,8 @@ function Stage({ animate }: { animate: boolean }) {
   const pointer = useNormalizedPointer();
   const size = useThree((state) => state.size);
   const viewport = useThree((state) => state.viewport);
-  const faces = useFaceTextures(LABELS, 150);
+  const medalFaces = useFaceTextures([MEDAL_LABEL], 150);
+  const assetFaces = useAssetTextures(HERO_ASSETS);
 
   const wide = size.width >= DESKTOP_MIN_WIDTH;
   const particleCount = wide ? 2000 : 900;
@@ -80,12 +80,12 @@ function Stage({ animate }: { animate: boolean }) {
       <Environment />
       <ParticleField count={particleCount} opacityRef={particleOpacity} animate={animate} />
       <group ref={rig}>
-        {faces && (
+        {medalFaces && assetFaces && (
           <>
             <group ref={medal}>
-              <Medal face={faces.get(MEDAL_LABEL)!} />
+              <Medal face={medalFaces.get(MEDAL_LABEL)!} />
             </group>
-            <CoinRing tickers={TICKERS} faces={faces} animate={animate} />
+            <CoinRing assets={HERO_ASSETS} faces={assetFaces} animate={animate} />
           </>
         )}
       </group>

@@ -89,7 +89,7 @@
 }
 
 @media (max-width: 80rem) {
-  .actions > :first-child {
+  .actions > :nth-child(2) {
     display: none;
   }
 }

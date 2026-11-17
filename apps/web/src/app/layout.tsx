@@ -8,8 +8,8 @@ import { fontVariables } from "@/lib/fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Floatss | Onchain IPO index", template: "%s | Floatss" },
-  description: "One token for every newly listed company. Floatss is an ERC-4626 index vault on Robinhood Chain.",
+  title: { default: "Floats | Onchain IPO index", template: "%s | Floats" },
+  description: "One token for every newly listed company. Floats is an ERC-4626 index vault on Robinhood Chain.",
 };
 
 export const viewport: Viewport = {

@@ -20,7 +20,11 @@ export function createApiContext(environment: NodeJS.ProcessEnv): ApiContext {
     secretKey: serverConfig.supabaseSecretKey,
   });
   return {
-    publicConfig: createPublicConfig(serverConfig, { vaultAddress, usdgAddress }),
+    publicConfig: createPublicConfig(
+      serverConfig,
+      { vaultAddress, usdgAddress },
+      requireValue(environment, "WALLETS_CONNECT_PROJECT_ID"),
+    ),
     vaultAddress,
     readModels: new ReadModelRepository(client, {
       environment: serverConfig.appEnvironment,
@@ -44,4 +48,10 @@ function requireAddress(environment: NodeJS.ProcessEnv, key: string): string {
     throw new Error(`${key} must be a configured EVM address`);
   }
   return value.toLowerCase();
+}
+
+function requireValue(environment: NodeJS.ProcessEnv, key: string): string {
+  const value = environment[key]?.trim();
+  if (!value) throw new Error(`${key} must be configured`);
+  return value;
 }
