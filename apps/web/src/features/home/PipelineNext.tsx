@@ -1,25 +1,29 @@
+"use client";
+
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { AssetLogo } from "@/components/ui/AssetLogo";
 import { StatusChip } from "@/components/ui/StatusChip";
-import { PIPELINE } from "@/data/pipeline";
 import { formatDate } from "@/lib/format";
+import { marketCandidateStatusLabel } from "@/lib/market-candidate";
+import { useMarketCandidates } from "@/features/pipeline/useMarketCandidates";
 import styles from "./PipelineNext.module.css";
 
 const COUNT = 3;
 
 export function PipelineNext() {
+  const { candidates } = useMarketCandidates();
   return (
     <div className={styles.block}>
       <h3 className={styles.title}>Next in line</h3>
       <ul className={styles.list}>
-        {PIPELINE.slice(0, COUNT).map((item) => (
+        {candidates.slice(0, COUNT).map((item) => (
           <li key={item.id}>
             <Link href={`/pipeline/${item.id}`} className={styles.row}>
-              <AssetLogo name={item.name} symbol={item.ticker} src={item.logoUrl} size="sm" />
+              <AssetLogo name={item.name} symbol={item.symbol} src={item.logoUrl ?? undefined} size="sm" />
               <span className={styles.name}>{item.name}</span>
-              <StatusChip tone="muted">{item.status}</StatusChip>
-              <span className={`${styles.date} tabular`}>Enters {formatDate(item.entryDate)}</span>
+              <StatusChip tone="muted">{marketCandidateStatusLabel(item.status)}</StatusChip>
+              <span className={`${styles.date} tabular`}>{item.eligibleFrom ? `Eligible ${formatDate(item.eligibleFrom)}` : "Eligibility TBA"}</span>
             </Link>
           </li>
         ))}

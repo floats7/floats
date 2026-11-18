@@ -6,6 +6,7 @@ import type { ApiContext } from "../src/context.ts";
 import {
   getLatestIndexState,
   getMarket,
+  getMarketCandidates,
   getMarketHistory,
   getMarkets,
   getNavHistory,
@@ -97,6 +98,50 @@ test("market endpoints expose capability-driven assets and bounded canonical his
 
   const invalid = await getMarket(marketContext, "ticker");
   assert.equal(invalid.status, 400);
+});
+
+test("market candidates expose lifecycle state without database internals", async () => {
+  const response = await getMarketCandidates(context({
+    listMarketCandidates: async () => [{
+      candidate_id: "anthropic",
+      symbol: "ANT",
+      company_name: "Anthropic",
+      lifecycle_status: "listing_expected",
+      ipo_date: "2026-11-19",
+      expected_listing_date: "2026-11-19",
+      eligible_from: "2026-11-25",
+      source_url: "https://www.sec.gov/example",
+      token_address: null,
+      logo_url: null,
+      token_live: false,
+      oracle_ready: false,
+      liquidity_ready: false,
+      governance_approved: false,
+      disabled_reason: "Official stock token pending",
+      last_checked_at: null,
+    }],
+  }));
+
+  assert.equal(response.status, 200);
+  const payload = await response.json() as {
+    data: Array<{ id: string; status: string; checks: { tokenLive: boolean } }>;
+  };
+  assert.deepEqual(payload.data, [{
+    id: "anthropic",
+    symbol: "ANT",
+    name: "Anthropic",
+    status: "listing_expected",
+    ipoDate: "2026-11-19",
+    listingDate: "2026-11-19",
+    eligibleFrom: "2026-11-25",
+    sourceUrl: "https://www.sec.gov/example",
+    tokenAddress: null,
+    logoUrl: null,
+    checks: { tokenLive: false, priceFeed: false, liquidity: false },
+    governanceApproved: false,
+    disabledReason: "Official stock token pending",
+    lastCheckedAt: null,
+  }]);
 });
 
 test("index state joins holdings at the exact NAV block", async () => {

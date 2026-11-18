@@ -134,6 +134,25 @@ export interface DistributedRateLimitResult {
   readonly resetAt: number;
 }
 
+export interface MarketCandidateReadModel {
+  readonly candidate_id: string;
+  readonly symbol: string;
+  readonly company_name: string;
+  readonly lifecycle_status: string;
+  readonly ipo_date: string | null;
+  readonly expected_listing_date: string | null;
+  readonly eligible_from: string | null;
+  readonly source_url: string | null;
+  readonly token_address: string | null;
+  readonly logo_url: string | null;
+  readonly token_live: boolean;
+  readonly oracle_ready: boolean;
+  readonly liquidity_ready: boolean;
+  readonly governance_approved: boolean;
+  readonly disabled_reason: string | null;
+  readonly last_checked_at: string | null;
+}
+
 export class ReadModelRepository {
   public constructor(
     private readonly client: SupabaseRestClient,
@@ -148,6 +167,15 @@ export class ReadModelRepository {
     query.set("order", "symbol.asc");
     query.set("limit", "100");
     return this.client.select<readonly AssetReadModel[]>("assets", query, signal);
+  }
+
+  public listMarketCandidates(signal?: AbortSignal): Promise<readonly MarketCandidateReadModel[]> {
+    const query = this.scopedQuery(
+      "candidate_id,symbol,company_name,lifecycle_status,ipo_date,expected_listing_date,eligible_from,source_url,token_address,logo_url,token_live,oracle_ready,liquidity_ready,governance_approved,disabled_reason,last_checked_at",
+    );
+    query.set("order", "expected_listing_date.desc.nullslast,symbol.asc");
+    query.set("limit", "500");
+    return this.client.select<readonly MarketCandidateReadModel[]>("market_candidates", query, signal);
   }
 
   public latestNav(vaultAddress: string, signal?: AbortSignal): Promise<readonly NavReadModel[]> {

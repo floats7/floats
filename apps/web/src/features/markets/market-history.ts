@@ -11,7 +11,7 @@ const RANGE_MS: Readonly<Partial<Record<NavRange, number>>> = {
 export function buildMarketSeries(
   history: readonly MarketHistoryPointDto[],
 ): Record<NavRange, readonly NavPoint[]> {
-  const valid = history.map((point) => ({
+  const valid = history.filter((point) => BigInt(point.valueUsd18) > 0n).map((point) => ({
     timestamp: Date.parse(point.observedAt),
     value: decimalUnitsToNumber(point.valueUsd18, 18),
   })).filter((point) => Number.isFinite(point.timestamp) && Number.isFinite(point.value))

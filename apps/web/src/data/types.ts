@@ -9,24 +9,10 @@ export interface Constituent {
   price: number;
 }
 
-export type PipelineStatus = "upcoming" | "listed" | "queued";
-
 export interface EligibilityChecks {
   tokenLive: boolean;
   priceFeed: boolean;
   liquidity: boolean;
-}
-
-export interface PipelineItem {
-  id: string;
-  name: string;
-  ticker: string;
-  logoUrl: string;
-  contractAddress: `0x${string}`;
-  status: PipelineStatus;
-  ipoDate: string;
-  entryDate: string;
-  checks: EligibilityChecks;
 }
 
 export type ChangeKind = "add" | "remove" | "weights";

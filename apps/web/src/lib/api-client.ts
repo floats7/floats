@@ -29,6 +29,16 @@ export interface RegistryChangeDto {
   readonly observed_at: string;
 }
 
+export interface OperationalActionDto {
+  readonly transaction_hash: string;
+  readonly log_index: number;
+  readonly block_number: number;
+  readonly module: "vault" | "fees" | "rebalance";
+  readonly action: string;
+  readonly payload: Readonly<Record<string, unknown>>;
+  readonly observed_at: string;
+}
+
 export interface PublicConfigDto {
   readonly appEnvironment: "testnet" | "mainnet";
   readonly chainId: number;
@@ -205,6 +215,7 @@ export interface MarketAssetDto {
   readonly uid: string | null;
   readonly symbol: string;
   readonly name: string;
+  readonly logoUrl: string | null;
   readonly decimals: number;
   readonly status: "active" | "removed" | "unavailable";
   readonly priceUsd18: string | null;
@@ -220,6 +231,36 @@ export interface MarketHistoryPointDto {
   readonly valueUsd18: string;
   readonly observedAt: string;
 }
+
+export interface MarketCandidateDto {
+  readonly id: string;
+  readonly symbol: string;
+  readonly name: string;
+  readonly status: MarketCandidateStatus;
+  readonly ipoDate: string | null;
+  readonly listingDate: string | null;
+  readonly eligibleFrom: string | null;
+  readonly tokenAddress: string | null;
+  readonly logoUrl: string | null;
+  readonly checks: { readonly tokenLive: boolean; readonly priceFeed: boolean; readonly liquidity: boolean };
+  readonly governanceApproved: boolean;
+  readonly disabledReason: string | null;
+  readonly sourceUrl: string | null;
+  readonly lastCheckedAt: string | null;
+}
+
+export type MarketCandidateStatus =
+  | "upcoming"
+  | "listing_expected"
+  | "listed"
+  | "token_pending"
+  | "token_live"
+  | "oracle_pending"
+  | "liquidity_pending"
+  | "governance_pending"
+  | "active"
+  | "suspended"
+  | "removed";
 
 export class FloatsApiClient {
   public constructor(private readonly basePath = resolveApiBaseUrl()) {}
@@ -246,6 +287,17 @@ export class FloatsApiClient {
     return this.get<readonly RegistryChangeDto[]>(`/registry-changes?limit=${limit}`, signal);
   }
 
+  public getOperationalActions(
+    module: OperationalActionDto["module"],
+    limit = 20,
+    signal?: AbortSignal,
+  ): Promise<readonly OperationalActionDto[]> {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+      throw new Error("Operational action limit must be between 1 and 100");
+    }
+    return this.get<readonly OperationalActionDto[]>(`/operations?module=${module}&limit=${limit}`, signal);
+  }
+
   public getIndexState(signal?: AbortSignal): Promise<IndexStateDto | null> {
     return this.get<IndexStateDto | null>("/index-state", signal);
   }
@@ -267,6 +319,10 @@ export class FloatsApiClient {
 
   public getMarkets(signal?: AbortSignal): Promise<readonly MarketAssetDto[]> {
     return this.get<readonly MarketAssetDto[]>("/markets", signal);
+  }
+
+  public getMarketCandidates(signal?: AbortSignal): Promise<readonly MarketCandidateDto[]> {
+    return this.get<readonly MarketCandidateDto[]>("/market-candidates", signal);
   }
 
   public getMarket(assetId: string, signal?: AbortSignal): Promise<MarketAssetDto> {
@@ -345,6 +401,7 @@ export class FloatsApiClient {
       method: "GET",
       headers: { Accept: "application/json" },
       credentials: "include",
+      cache: "no-store",
       signal,
     });
     const body = await response.json() as { readonly data?: T } | ApiErrorBody;

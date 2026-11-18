@@ -7,12 +7,14 @@ import { AssetLogo } from "@/components/ui/AssetLogo";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusChip } from "@/components/ui/StatusChip";
+import { useIndexState } from "@/features/index-state/IndexStateProvider";
 import { OptionsChain } from "@/features/options/OptionsChain";
 import { OptionsVaultPanel } from "@/features/options/OptionsVaultPanel";
 import { TradePanel } from "@/features/trade/TradePanel";
 import { formatPercent, formatUsd } from "@/lib/format";
 import { decimalUnitsToNumber } from "@/lib/units";
 import { floatApi, type MarketHistoryPointDto } from "@/lib/api-client";
+import { buildNavSeries, resolveSharePriceUsd18 } from "@/lib/nav-history";
 import type { MarketProductId } from "./types";
 import { useMarkets } from "./useMarkets";
 import { buildMarketSeries } from "./market-history";
@@ -20,7 +22,11 @@ import styles from "./markets.module.css";
 
 export function MarketDetailView({ assetId }: { readonly assetId: string }) {
   const { markets, loading, error, refresh } = useMarkets();
-  const market = markets.find((candidate) => candidate.id.toLowerCase() === assetId.toLowerCase());
+  const { data: indexState, navHistory } = useIndexState();
+  const normalizedAssetId = assetId.toLowerCase();
+  const market = normalizedAssetId === "index"
+    ? markets.find((candidate) => candidate.kind === "index")
+    : markets.find((candidate) => candidate.id.toLowerCase() === normalizedAssetId);
   const enabled = useMemo(() => market?.products.filter((product) => product.enabled) ?? [], [market]);
   const [product, setProduct] = useState<MarketProductId>();
   const [history, setHistory] = useState<readonly MarketHistoryPointDto[]>([]);
@@ -33,6 +39,11 @@ export function MarketDetailView({ assetId }: { readonly assetId: string }) {
 
   useEffect(() => {
     if (!market) return;
+    if (market.kind === "index") {
+      setHistory([]);
+      setHistoryLoading(false);
+      return;
+    }
     const controller = new AbortController();
     setHistoryLoading(true);
     floatApi.getMarketHistory(market.id, 500, controller.signal)
@@ -50,18 +61,23 @@ export function MarketDetailView({ assetId }: { readonly assetId: string }) {
   if (error) return <PageHeader eyebrow="Market" title="Market unavailable" description="Finalized market state could not be loaded." aside={<button type="button" onClick={refresh}>Try again</button>} />;
   if (!market) return <PageHeader eyebrow="Market" title="Asset not found" description="This asset is not present in the canonical market registry." />;
 
-  const marketSeries = buildMarketSeries(history);
+  const marketSeries = market.kind === "index"
+    ? buildNavSeries(navHistory)
+    : buildMarketSeries(history);
+  const priceUsd18 = market.kind === "index"
+    ? (indexState ? resolveSharePriceUsd18(indexState) : null) ?? market.priceUsd18
+    : market.priceUsd18;
   return (
     <>
       <PageHeader
         eyebrow="Market detail"
         title={market.symbol}
         description={market.name}
-        aside={<div className={styles.headerIdentity}><AssetLogo name={market.name} symbol={market.symbol} size="lg" /><StatusChip tone={market.status === "active" ? "solid" : "outline"}>{market.status}</StatusChip></div>}
+        aside={<div className={styles.headerIdentity}><AssetLogo name={market.name} symbol={market.symbol} src={market.kind === "index" ? "/brand/floats-logo.png" : market.logoUrl ?? undefined} size="lg" /><StatusChip tone={market.status === "active" ? "solid" : "outline"}>{market.status}</StatusChip></div>}
       />
       <div className={`container ${styles.detailGrid}`}>
         <section className={styles.chartPanel} aria-labelledby="market-chart-title">
-          <div className={styles.sectionTitle}><div><p className="eyebrow">Market data</p><h2 id="market-chart-title">{market.chartKind === "nav" ? "NAV history" : "Price history"}</h2></div><strong>{market.priceUsd18 ? formatUsd(decimalUnitsToNumber(market.priceUsd18, 18)) : "Unavailable"}</strong></div>
+          <div className={styles.sectionTitle}><div><p className="eyebrow">Market data</p><h2 id="market-chart-title">{market.chartKind === "nav" ? "NAV history" : "Price history"}</h2></div><strong>{priceUsd18 ? formatUsd(decimalUnitsToNumber(priceUsd18, 18)) : "Unavailable"}</strong></div>
           {marketSeries.ALL.length >= 2 ? <RangeChart seriesByRange={marketSeries} /> : (
             <EmptyState title="Historical chart is not available yet" description="The chart will appear after this asset has at least two canonical finalized observations." />
           )}

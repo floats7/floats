@@ -12,11 +12,13 @@ export function buildNavSeries(
   history: readonly NavHistoryPointDto[],
 ): Record<NavRange, readonly NavPoint[]> {
   const valid = history
-    .filter((point) => point.sharePriceUsd18 !== null)
-    .map((point) => ({
-      timestamp: Date.parse(point.observedAt),
-      value: decimalUnitsToNumber(point.sharePriceUsd18!, 18),
-    }))
+    .flatMap((point) => {
+      const sharePriceUsd18 = resolveSharePriceUsd18(point);
+      return sharePriceUsd18 === null ? [] : [{
+        timestamp: Date.parse(point.observedAt),
+        value: decimalUnitsToNumber(sharePriceUsd18, 18),
+      }];
+    })
     .filter((point) => Number.isFinite(point.timestamp) && Number.isFinite(point.value))
     .sort((left, right) => left.timestamp - right.timestamp);
   const latest = valid.at(-1)?.timestamp ?? 0;
@@ -38,6 +40,18 @@ export function buildNavSeries(
     "1M": pointsFor("1M"),
     ALL: pointsFor("ALL"),
   };
+}
+
+export function resolveSharePriceUsd18(
+  point: Pick<NavHistoryPointDto, "navUsd18" | "totalSupply18" | "sharePriceUsd18">,
+): string | null {
+  const reported = point.sharePriceUsd18 === null ? 0n : BigInt(point.sharePriceUsd18);
+  if (reported > 0n) return reported.toString();
+
+  const nav = BigInt(point.navUsd18);
+  const supply = BigInt(point.totalSupply18);
+  if (nav === 0n || supply === 0n) return null;
+  return (nav * 10n ** 18n / supply).toString();
 }
 
 function formatLabel(timestamp: number, range: NavRange): string {

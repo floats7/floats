@@ -7,14 +7,16 @@ import { Icon, Separator } from "@/components/ui/Icon";
 import { AssetLogo } from "@/components/ui/AssetLogo";
 import { Reveal } from "@/components/ui/Reveal";
 import { StatusChip } from "@/components/ui/StatusChip";
-import { PIPELINE } from "@/data/pipeline";
 import { AS_OF, daysBetween } from "@/lib/dates";
 import { formatDate } from "@/lib/format";
 import { SPRING } from "@/lib/motion";
+import { marketCandidateStatusLabel } from "@/lib/market-candidate";
 import { EligibilityChecks } from "./EligibilityChecks";
 import styles from "./PipelineTimeline.module.css";
+import { useMarketCandidates } from "./useMarketCandidates";
 
-function entryCopy(entryDate: string): string {
+function entryCopy(entryDate: string | null): string {
+  if (!entryDate) return "Listing schedule is awaiting confirmation";
   const days = daysBetween(AS_OF, entryDate);
   if (days <= 0) return "Eligible now, awaiting final checks";
   return `Enters the index in ${days} ${days === 1 ? "day" : "days"} if all checks pass`;
@@ -22,6 +24,7 @@ function entryCopy(entryDate: string): string {
 
 /** Vertical timeline whose spine fills as the reader scrolls. */
 export function PipelineTimeline() {
+  const { candidates, loading, error, refresh } = useMarketCandidates();
   const ref = useRef<HTMLOListElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start 75%", "end 60%"] });
   const scaleY = useSpring(scrollYProgress, SPRING.soft);
@@ -32,24 +35,24 @@ export function PipelineTimeline() {
         <motion.span className={styles.fill} style={{ scaleY }} />
       </span>
 
-      {PIPELINE.map((item) => (
+      {candidates.map((item) => (
         <li key={item.id} className={styles.entry}>
           <span className={styles.node} aria-hidden="true" />
           <Reveal className={styles.card}>
             <div className={styles.head}>
               <div className={styles.identity}>
-                <AssetLogo name={item.name} symbol={item.ticker} src={item.logoUrl} size="md" />
+                <AssetLogo name={item.name} symbol={item.symbol} src={item.logoUrl ?? undefined} size="md" />
                 <div>
-                <p className="eyebrow">{item.ticker}</p>
+                <p className="eyebrow">{item.symbol}</p>
                 <h2 className={styles.name}>{item.name}</h2>
                 </div>
               </div>
-              <StatusChip tone={item.status === "queued" ? "solid" : "outline"}>{item.status}</StatusChip>
+              <StatusChip tone={item.status === "active" ? "solid" : "outline"}>{marketCandidateStatusLabel(item.status)}</StatusChip>
             </div>
             <p className={`${styles.dates} tabular`}>
-              IPO {formatDate(item.ipoDate)} <Separator /> Day 5 on {formatDate(item.entryDate)}
+              IPO {item.ipoDate ? formatDate(item.ipoDate) : "TBA"} <Separator /> Day 5 {item.eligibleFrom ? formatDate(item.eligibleFrom) : "TBA"}
             </p>
-            <p className={styles.copy}>{entryCopy(item.entryDate)}</p>
+            <p className={styles.copy}>{entryCopy(item.eligibleFrom)}</p>
             <EligibilityChecks checks={item.checks} />
             <Link href={`/pipeline/${item.id}`} className={styles.more}>
               View details
@@ -58,6 +61,8 @@ export function PipelineTimeline() {
           </Reveal>
         </li>
       ))}
+      {loading && <li className={styles.entry}>Loading pipeline…</li>}
+      {!loading && error && <li className={styles.entry}>Pipeline unavailable. <button type="button" onClick={refresh}>Try again</button></li>}
     </ol>
   );
 }

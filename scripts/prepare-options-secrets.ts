@@ -48,6 +48,7 @@ if (keeperKey) {
   setMissing("KEEPER_ADDRESS", privateKeyToAccount(generated).address);
 }
 setMissing("KEEPER_POLL_INTERVAL_MS", "15000");
+setMissing("KEEPER_RUN_ONCE", "false");
 setMissing("OPTIONS_DESIRED_SERIES_JSON", "[]");
 
 const signerToken = values.get("SIGNER_INTERNAL_AUTH_TOKEN")?.trim() || randomBytes(32).toString("base64url");

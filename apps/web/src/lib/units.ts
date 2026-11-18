@@ -13,7 +13,9 @@ export function formatUnits(value: string, decimals: number, displayDecimals = 4
   if (!/^[0-9]+$/.test(value)) throw new Error("Invalid unit value");
   const padded = value.padStart(decimals + 1, "0");
   const whole = decimals === 0 ? padded : padded.slice(0, -decimals);
-  const fraction = decimals === 0 ? "" : padded.slice(-decimals, -decimals + displayDecimals);
+  const fraction = decimals === 0
+    ? ""
+    : padded.slice(-decimals).slice(0, Math.min(displayDecimals, decimals));
   const trimmed = fraction.replace(/0+$/, "");
   return trimmed ? `${whole}.${trimmed}` : whole;
 }

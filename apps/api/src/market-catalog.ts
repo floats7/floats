@@ -24,6 +24,7 @@ export interface MarketAsset {
   readonly uid: string | null;
   readonly symbol: string;
   readonly name: string;
+  readonly logoUrl: string | null;
   readonly decimals: number;
   readonly status: "active" | "removed" | "unavailable";
   readonly priceUsd18: string | null;
@@ -48,10 +49,11 @@ export class MarketCatalog {
   ) {}
 
   public async list(signal?: AbortSignal): Promise<readonly MarketAsset[]> {
-    const [assets, navRows, series] = await Promise.all([
+    const [assets, navRows, series, candidates] = await Promise.all([
       this.readModels.listActiveAssets(signal),
       this.readModels.latestNav(this.config.vaultAddress, signal),
       this.readModels.listOptionsSeries(signal),
+      this.readModels.listMarketCandidates(signal),
     ]);
     const nav = navRows[0];
     const holdings = nav
@@ -67,6 +69,10 @@ export class MarketCatalog {
       ...currentAssets.map((asset) => this.metadata.read(asset.token_address)),
     ]);
     const seriesByUnderlying = groupSeries(series);
+    const candidateByAddress = new Map(candidates.flatMap((candidate) => candidate.token_address
+      ? [[candidate.token_address.toLowerCase(), candidate] as const]
+      : []));
+    const candidateBySymbol = new Map(candidates.map((candidate) => [candidate.symbol.toUpperCase(), candidate]));
 
     const indexMetadata = metadata[0] ?? null;
     const index = this.indexMarket(indexMetadata, nav, seriesByUnderlying);
@@ -75,6 +81,8 @@ export class MarketCatalog {
       metadata[indexPosition + 1] ?? null,
       holdingByAddress.get(asset.token_address.toLowerCase()),
       seriesByUnderlying,
+      candidateByAddress.get(asset.token_address.toLowerCase())
+        ?? candidateBySymbol.get(asset.symbol.toUpperCase()),
     ));
     return [index, ...constituents];
   }
@@ -123,6 +131,7 @@ export class MarketCatalog {
       uid: null,
       symbol: metadata?.symbol ?? shortAddress(address),
       name: metadata?.name ?? "Index vault token",
+      logoUrl: null,
       decimals: metadata?.decimals ?? 18,
       status: nav ? "active" : "unavailable",
       priceUsd18: nav?.share_price_usd_18 ?? null,
@@ -143,6 +152,7 @@ export class MarketCatalog {
     metadata: Awaited<ReturnType<TokenMetadataSource["read"]>>,
     holding: HoldingReadModel | undefined,
     seriesByUnderlying: ReadonlyMap<string, readonly OptionsSeriesReadModel[]>,
+    candidate: { readonly logo_url: string | null } | undefined,
   ): MarketAsset {
     const address = asset.token_address.toLowerCase();
     const activeSeries = countActive(seriesByUnderlying.get(address));
@@ -153,6 +163,7 @@ export class MarketCatalog {
       uid: asset.asset_uid,
       symbol: metadata?.symbol ?? asset.symbol,
       name: metadata?.name ?? `${asset.symbol} market asset`,
+      logoUrl: candidate?.logo_url ?? null,
       decimals: metadata?.decimals ?? asset.decimals,
       status: asset.registry_status === "active" ? "active" : asset.registry_status === "removed" ? "removed" : "unavailable",
       priceUsd18: holding?.normalized_price_usd_18 ?? null,

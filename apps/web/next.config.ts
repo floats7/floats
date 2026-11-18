@@ -7,7 +7,7 @@ const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${development ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://cdn.robinhood.com",
+  "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
   `connect-src 'self'${apiOrigin ? ` ${apiOrigin}` : ""} https://*.walletconnect.com wss://*.walletconnect.com https://*.reown.com wss://*.reown.com https://*.web3modal.org`,
   "object-src 'none'",

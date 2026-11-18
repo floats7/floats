@@ -1,0 +1,100 @@
+.section {
+  display: grid;
+  gap: var(--space-5);
+  padding-top: var(--space-8);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.header > div {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.header h2 {
+  font-size: var(--text-3xl);
+}
+
+.intro,
+.card p,
+.note {
+  color: var(--text-muted);
+}
+
+.intro {
+  max-width: 42rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  border-top: 1px solid var(--line-base);
+  border-left: 1px solid var(--line-base);
+}
+
+.card {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-height: 13rem;
+  padding: var(--space-5);
+  border-right: 1px solid var(--line-base);
+  border-bottom: 1px solid var(--line-base);
+  background: var(--surface-base);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.cardHeader h3 {
+  font-size: var(--text-sm);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.healthIcon {
+  display: inline-grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border: 1px solid var(--line-base);
+  border-radius: 50%;
+}
+
+.card[data-health="healthy"] .healthIcon {
+  color: var(--surface-base);
+  background: var(--text-strong);
+}
+
+.value {
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  font-weight: 500;
+}
+
+.card p,
+.note {
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+.retry {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.note {
+  max-width: 48rem;
+}

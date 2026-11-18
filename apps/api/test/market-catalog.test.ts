@@ -32,6 +32,9 @@ test("catalog derives identity and products without frontend symbol branching", 
     async listOptionsSeries() {
       return [{ underlying: token, state: "0" }];
     },
+    async listMarketCandidates() {
+      return [{ token_address: token, symbol: "FALLBACK", logo_url: "https://assets.example/asset.png" }];
+    },
   } as unknown as ReadModelRepository;
   const metadata: TokenMetadataSource = {
     async read(address) {
@@ -52,6 +55,7 @@ test("catalog derives identity and products without frontend symbol branching", 
   assert.equal(markets[1]?.symbol, "ASSET");
   assert.equal(markets[1]?.activeOptionSeries, 1);
   assert.equal(markets[1]?.products[0]?.enabled, true);
+  assert.equal(markets[1]?.logoUrl, "https://assets.example/asset.png");
   assert.equal(markets.length, 2);
   assert.equal(markets.some((market) => market.address === staleToken), false);
 });

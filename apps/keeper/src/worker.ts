@@ -1,6 +1,7 @@
 import { Pool, type QueryResultRow } from "pg";
 import { getAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { postgresTls } from "../../../packages/database/src/postgres-tls.ts";
 
 import {
   OptionsSeriesCreationJob,
@@ -33,7 +34,7 @@ if (account.address.toLowerCase() !== config.keeperAddress.toLowerCase()) {
 const database = new Pool({
   connectionString: config.databaseUrl,
   max: 3,
-  ssl: { rejectUnauthorized: true },
+  ssl: postgresTls(process.env.SUPABASE_DB_CA_BASE64, config.environment === "mainnet"),
 });
 const state = new SupabaseKeeperState(
   new PostgresKeeperStateDatabase(database),
@@ -98,6 +99,7 @@ while (!stopping) {
       message: error instanceof Error ? error.message : "UNKNOWN_ERROR",
     }));
   }
+  if (config.runOnce) break;
   const remaining = Math.max(0, config.pollIntervalMs - (Date.now() - startedAt));
   if (!stopping) await delay(remaining);
 }
@@ -161,6 +163,7 @@ function loadConfig(env: NodeJS.ProcessEnv) {
     environment,
     chainId,
     pollIntervalMs,
+    runOnce: booleanValue(env.KEEPER_RUN_ONCE ?? "false", "KEEPER_RUN_ONCE"),
     privateKey: privateKey as Hex,
     keeperAddress: address(required("KEEPER_ADDRESS"), "KEEPER_ADDRESS"),
     rpcUrl: secureUrl(required("RPC_URL")),
@@ -235,6 +238,11 @@ function secureUrl(value: string): string {
   const url = new URL(value);
   if (url.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(url.hostname)) throw new Error("RPC_URL must use HTTPS");
   return url.toString();
+}
+function booleanValue(value: string, label: string): boolean {
+  if (value === "true") return true;
+  if (value === "false") return false;
+  throw new Error(`${label} must be true or false`);
 }
 function delay(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));

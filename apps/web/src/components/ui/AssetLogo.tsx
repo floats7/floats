@@ -6,7 +6,7 @@ import styles from "./AssetLogo.module.css";
 interface AssetLogoProps {
   name: string;
   symbol: string;
-  src: string;
+  src?: string;
   size?: "sm" | "md" | "lg";
 }
 
@@ -16,7 +16,7 @@ export function AssetLogo({ name, symbol, src, size = "md" }: AssetLogoProps) {
 
   return (
     <span className={`${styles.frame} ${styles[size]}`}>
-      {failed ? (
+      {failed || !src ? (
         <span className={styles.fallback} aria-label={`${name} logo`} role="img">
           {symbol.slice(0, 2)}
         </span>

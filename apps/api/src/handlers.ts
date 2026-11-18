@@ -142,6 +142,30 @@ export async function getAssets(context: ApiContext, signal?: AbortSignal): Prom
   }
 }
 
+export async function getMarketCandidates(context: ApiContext, signal?: AbortSignal): Promise<Response> {
+  try {
+    const candidates = await context.readModels.listMarketCandidates(signal);
+    return json({ data: candidates.map((item) => ({
+      id: item.candidate_id,
+      symbol: item.symbol,
+      name: item.company_name,
+      status: item.lifecycle_status,
+      ipoDate: item.ipo_date,
+      listingDate: item.expected_listing_date,
+      eligibleFrom: item.eligible_from,
+      sourceUrl: item.source_url,
+      tokenAddress: item.token_address,
+      logoUrl: item.logo_url,
+      checks: { tokenLive: item.token_live, priceFeed: item.oracle_ready, liquidity: item.liquidity_ready },
+      governanceApproved: item.governance_approved,
+      disabledReason: item.disabled_reason,
+      lastCheckedAt: item.last_checked_at,
+    })) }, 200, PUBLIC_CACHE);
+  } catch {
+    return internalError();
+  }
+}
+
 export async function getMarkets(context: ApiContext, signal?: AbortSignal): Promise<Response> {
   try {
     return json({ data: await context.markets.list(signal) }, 200, PUBLIC_CACHE);

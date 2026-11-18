@@ -37,7 +37,7 @@ abstract contract OptionsCanaryConfiguration {
             OptionsPriceOracle(vm.envAddress("OPTIONS_PRICE_ORACLE_ADDRESS"));
         address[] memory tokens = coreRegistry.getActiveTokens();
         uint48 expiry = uint48(vm.envUint("OPTIONS_CANARY_EXPIRY"));
-        if (expiry <= block.timestamp + 1 days) revert("canary expiry too close");
+        _validateExpiry(expiry);
 
         targets = new address[](tokens.length * 2);
         values = new uint256[](tokens.length * 2);
@@ -75,19 +75,31 @@ abstract contract OptionsCanaryConfiguration {
         }
         salt = keccak256(
             abi.encode(
-                "FLOATS_OPTIONS_CANARY",
-                block.chainid,
-                vm.envString("DEPLOYMENT_VERSION"),
-                expiry
+                "FLOATS_OPTIONS_CANARY", block.chainid, vm.envString("DEPLOYMENT_VERSION"), expiry
             )
         );
+    }
+
+    function _validateExpiry(uint48 expiry) private view {
+        if (expiry <= block.timestamp + 1 days) revert("canary expiry too close");
+        // Friday at 16:00 New York is 20:00 or 21:00 UTC, depending on DST.
+        if ((uint256(expiry) / 1 days) % 7 != 1) revert("canary expiry must be Friday");
+        uint256 utcTime = uint256(expiry) % 1 days;
+        if (utcTime != 20 hours && utcTime != 21 hours) {
+            revert("canary expiry must be 16:00 America/New_York");
+        }
     }
 }
 
 contract ScheduleOptionsCanary is OptionsCanaryConfiguration {
     function run() external returns (bytes32 operationId) {
-        (TimelockController timelock, address[] memory targets, uint256[] memory values,
-            bytes[] memory payloads, bytes32 salt) = _operation();
+        (
+            TimelockController timelock,
+            address[] memory targets,
+            uint256[] memory values,
+            bytes[] memory payloads,
+            bytes32 salt
+        ) = _operation();
         operationId = timelock.hashOperationBatch(targets, values, payloads, bytes32(0), salt);
         vm.startBroadcast(vm.envUint("ADMIN_PRIVATE_KEY"));
         timelock.scheduleBatch(targets, values, payloads, bytes32(0), salt, timelock.getMinDelay());
@@ -97,8 +109,13 @@ contract ScheduleOptionsCanary is OptionsCanaryConfiguration {
 
 contract ExecuteOptionsCanary is OptionsCanaryConfiguration {
     function run() external returns (bytes32 operationId) {
-        (TimelockController timelock, address[] memory targets, uint256[] memory values,
-            bytes[] memory payloads, bytes32 salt) = _operation();
+        (
+            TimelockController timelock,
+            address[] memory targets,
+            uint256[] memory values,
+            bytes[] memory payloads,
+            bytes32 salt
+        ) = _operation();
         operationId = timelock.hashOperationBatch(targets, values, payloads, bytes32(0), salt);
         vm.startBroadcast(vm.envUint("ADMIN_PRIVATE_KEY"));
         timelock.executeBatch(targets, values, payloads, bytes32(0), salt);

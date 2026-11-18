@@ -6,6 +6,7 @@ import {
   getFeeRates,
   getLatestIndexState,
   getMarket,
+  getMarketCandidates,
   getMarketHistory,
   getMarkets,
   getNavHistory,
@@ -99,6 +100,7 @@ async function route(request: Request, url: URL): Promise<Response> {
   if (request.method === "GET" && endpoint === "fee-rates") return getFeeRates(context);
   if (request.method === "GET" && endpoint === "assets") return getAssets(context, request.signal);
   if (request.method === "GET" && endpoint === "markets") return getMarkets(context, request.signal);
+  if (request.method === "GET" && endpoint === "market-candidates") return getMarketCandidates(context, request.signal);
   const marketHistoryMatch = endpoint.match(/^markets\/(index|0x[0-9a-fA-F]{40})\/history$/);
   if (request.method === "GET" && marketHistoryMatch?.[1]) {
     return getMarketHistory(context, marketHistoryMatch[1], url, request.signal);

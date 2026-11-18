@@ -89,6 +89,20 @@ export type Database = {
                   Relationships: [
 
                   ]
+                },"market_candidates": {
+                  Row: {
+                    "asset_uid": string | null,"candidate_id": string,"chain_id": number,"company_name": string,"disabled_reason": string | null,"eligible_from": string | null,"environment": Database["public"]['Enums']["network_environment"],"expected_listing_date": string | null,"governance_approved": boolean,"ipo_date": string | null,"isin": string | null,"last_checked_at": string | null,"lifecycle_status": string,"liquidity_ready": boolean,"logo_url": string | null,"oracle_ready": boolean,"source_url": string | null,"symbol": string,"token_address": string | null,"token_live": boolean,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "asset_uid"?: string | null,"candidate_id": string,"chain_id": number,"company_name": string,"disabled_reason"?: string | null,"eligible_from"?: string | null,"environment": Database["public"]['Enums']["network_environment"],"expected_listing_date"?: string | null,"governance_approved"?: boolean,"ipo_date"?: string | null,"isin"?: string | null,"last_checked_at"?: string | null,"lifecycle_status": string,"liquidity_ready"?: boolean,"logo_url"?: string | null,"oracle_ready"?: boolean,"source_url"?: string | null,"symbol": string,"token_address"?: string | null,"token_live"?: boolean,"updated_at"?: string
+                  }
+                  Update: {
+                    "asset_uid"?: string | null,"candidate_id"?: string,"chain_id"?: number,"company_name"?: string,"disabled_reason"?: string | null,"eligible_from"?: string | null,"environment"?: Database["public"]['Enums']["network_environment"],"expected_listing_date"?: string | null,"governance_approved"?: boolean,"ipo_date"?: string | null,"isin"?: string | null,"last_checked_at"?: string | null,"lifecycle_status"?: string,"liquidity_ready"?: boolean,"logo_url"?: string | null,"oracle_ready"?: boolean,"source_url"?: string | null,"symbol"?: string,"token_address"?: string | null,"token_live"?: boolean,"updated_at"?: string
+                  }
+                  Relationships: [
+
+                  ]
                 },"nav_snapshots": {
                   Row: {
                     "block_hash": string,"block_number": number,"canonical": boolean,"chain_id": number,"environment": Database["public"]['Enums']["network_environment"],"nav_usd_18": number,"observed_at": string,"oracle_health": NonNullable<Json>,"share_price_usd_18": number | null,"total_supply_18": number,"vault_address": string

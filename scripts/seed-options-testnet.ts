@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { Client } from "pg";
 import { createPublicClient, http, parseAbi } from "viem";
+import { postgresTls } from "../packages/database/src/postgres-tls.ts";
 
 const environmentPath = process.argv[2];
 if (!environmentPath) throw new Error("Usage: seed-options-testnet.ts <environment-file>");
@@ -21,6 +22,7 @@ const chainId = Number(required("CHAIN_ID"));
 const database = new Client({
   connectionString: required("SUPABASE_DB_URL"),
   application_name: "floats-options-testnet-seed",
+  ssl: postgresTls(values.get("SUPABASE_DB_CA_BASE64")),
 });
 const rpc = createPublicClient({
   transport: http(required("RPC_URL")),

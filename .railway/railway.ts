@@ -43,7 +43,7 @@ export default defineRailway((context) => {
 
   const indexer = service("floats-indexer", {
     build: "npm install",
-    start: "npm run start:indexer",
+    start: "npm run start:operations",
     replicas: 1,
     env: {
       APP_ENV: network,
@@ -60,9 +60,18 @@ export default defineRailway((context) => {
       NAV_ORACLE_ADDRESS: preserve(),
       NODE_ENV: preserve(),
       REBALANCER_ADDRESS: preserve(),
+      RPC_URL: preserve(),
       RPC_INDEXER: preserve(),
       SUPABASE_SECRET_KEY: preserve(),
       SUPABASE_URL: preserve(),
+      SUPABASE_DB_URL: preserve(),
+      SUPABASE_DB_CA_BASE64: preserve(),
+      KEEPER_ADDRESS: preserve(),
+      KEEPER_PRIVATE_KEY: preserve(),
+      KEEPER_POLL_INTERVAL_MS: preserve(),
+      KEEPER_RUN_ONCE: preserve(),
+      MARKET_CANDIDATE_SYNC_INTERVAL_MS: preserve(),
+      OPTIONS_DESIRED_SERIES_JSON: preserve(),
       OPTIONS_SERIES_REGISTRY_ADDRESS: preserve(),
       OPTIONS_MARKET_ADDRESS: preserve(),
       OPTIONS_SETTLEMENT_ENGINE_ADDRESS: preserve(),
@@ -80,6 +89,7 @@ export default defineRailway((context) => {
     env: {
       APP_ENV: network,
       CHAIN_ID: preserve(),
+      PORT: "8080",
       QUOTE_VERIFIER_ADDRESS: preserve(),
       OPTIONS_QUOTE_SIGNER_PRIVATE_KEY: preserve(),
       SIGNER_INTERNAL_AUTH_TOKEN: preserve(),
@@ -95,8 +105,10 @@ export default defineRailway((context) => {
     env: {
       APP_ENV: network,
       CHAIN_ID: preserve(),
+      PORT: "8080",
       RPC_URL: preserve(),
       SUPABASE_DB_URL: preserve(),
+      SUPABASE_DB_CA_BASE64: preserve(),
       OPTIONS_VAULT_ADDRESS: preserve(),
       QUOTE_VERIFIER_ADDRESS: preserve(),
       OPTIONS_QUOTE_SIGNER_ADDRESS: preserve(),
@@ -107,27 +119,12 @@ export default defineRailway((context) => {
     },
   });
 
-  const keeper = service("floats-options-keeper", {
-    build: "npm install",
-    start: "npm run start:keeper",
-    replicas: 1,
-    env: {
-      APP_ENV: network,
-      CHAIN_ID: preserve(),
-      RPC_URL: preserve(),
-      SUPABASE_DB_URL: preserve(),
-      KEEPER_ADDRESS: preserve(),
-      KEEPER_PRIVATE_KEY: preserve(),
-      KEEPER_POLL_INTERVAL_MS: preserve(),
-      OPTIONS_DESIRED_SERIES_JSON: preserve(),
-      OPTIONS_SERIES_REGISTRY_ADDRESS: preserve(),
-      OPTIONS_SETTLEMENT_ENGINE_ADDRESS: preserve(),
-      OPTIONS_VAULT_ADDRESS: preserve(),
-    },
-  });
+  const backendServices = network === "testnet"
+    ? [api, indexer, pricer, signer]
+    : [api, indexer];
 
   return project("Floats", {
-    resources: [web, group("Backend", [api, indexer, keeper, pricer, signer])],
+    resources: [web, group("Backend", backendServices)],
   });
 });
 

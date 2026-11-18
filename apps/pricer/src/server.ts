@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { Pool } from "pg";
 import { getAddress } from "viem";
+import { postgresTls } from "../../../packages/database/src/postgres-tls.ts";
 
 import { AuthoritativePricingContextSource } from "./authoritative-context.ts";
 import { RpcOptionsChainPricingReader } from "./chain-pricing-reader.ts";
@@ -12,7 +13,11 @@ import { PrivateQuoteRuntime, type RuntimeQuoteRequest } from "./runtime.ts";
 import { PricerService } from "./service.ts";
 
 const config = loadConfig(process.env);
-const database = new Pool({ connectionString: config.databaseUrl, max: 5, ssl: { rejectUnauthorized: true } });
+const database = new Pool({
+  connectionString: config.databaseUrl,
+  max: 5,
+  ssl: postgresTls(process.env.SUPABASE_DB_CA_BASE64, config.environment === "mainnet"),
+});
 const context = new AuthoritativePricingContextSource(
   database,
   new RpcOptionsChainPricingReader(config.rpcUrl, config.optionsVault),
@@ -43,6 +48,7 @@ createServer(async (request, response) => {
     return json(response, 200, await runtime.quote(quoteRequest));
   } catch (error) {
     const code = error instanceof Error ? error.message : "QUOTE_FAILED";
+    console.error(JSON.stringify({ event: "quote_failed", code }));
     return json(response, 400, { error: code });
   }
 }).listen(config.port, "0.0.0.0", () => console.log(JSON.stringify({ event: "pricer_started", environment: config.environment })));

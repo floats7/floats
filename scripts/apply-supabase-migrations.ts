@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { Client } from "pg";
+import { postgresTls } from "../packages/database/src/postgres-tls.ts";
 
 const migrationsDirectory = "supabase/migrations";
 const migrationPattern = /^\d{12}_[a-z0-9_]+\.sql$/;
@@ -56,7 +57,11 @@ for (const filename of files) {
   if (!migrationPattern.test(filename)) fail(`invalid migration filename: ${filename}`);
 }
 
-const client = new Client({ connectionString: databaseUrl, application_name: `floats-${environment}-migrator` });
+const client = new Client({
+  connectionString: databaseUrl,
+  ssl: postgresTls(values.get("SUPABASE_DB_CA_BASE64"), environment === "mainnet"),
+  application_name: `floats-${environment}-migrator`,
+});
 await client.connect();
 
 try {

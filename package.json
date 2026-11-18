@@ -10,6 +10,8 @@
     "test:keeper": "node --experimental-transform-types --test apps/keeper/test/**/*.test.ts",
     "test:pricer": "node --experimental-transform-types --test apps/pricer/test/**/*.test.ts",
     "test:signer": "node --experimental-transform-types --test apps/signer/test/**/*.test.ts",
+    "test:database": "node --experimental-transform-types --test packages/database/test/**/*.test.ts",
+    "test:web": "node --experimental-transform-types --test apps/web/test/**/*.test.ts",
     "test:differential": "node --experimental-transform-types scripts/differential-core-model.ts",
     "quality:contracts": "forge fmt --check && forge lint contracts/src --severity high --severity med && forge test --no-match-path 'contracts/test/CoreTestnetFork.t.sol'",
     "coverage:contracts": "forge coverage --report summary --no-match-path 'contracts/test/CoreTestnetFork.t.sol'",
@@ -17,6 +19,7 @@
     "start:api": "node --experimental-transform-types apps/api/src/server.ts",
     "start:indexer": "node --experimental-transform-types apps/indexer/src/worker.ts",
     "start:keeper": "node --experimental-transform-types apps/keeper/src/worker.ts",
+    "start:operations": "node --experimental-transform-types apps/operations/src/worker.ts",
     "start:signer": "node --experimental-transform-types apps/signer/src/server.ts",
     "start:pricer": "node --experimental-transform-types apps/pricer/src/server.ts",
     "migrate:supabase": "node --experimental-transform-types scripts/apply-supabase-migrations.ts",
@@ -30,6 +33,11 @@
     "prepare:options-secrets": "node --experimental-transform-types scripts/prepare-options-secrets.ts",
     "record:options-addresses": "node --experimental-transform-types scripts/update-options-addresses.ts",
     "configure:railway-options": "node --experimental-transform-types scripts/configure-railway-options.ts",
+    "configure:railway-core": "node --experimental-transform-types scripts/configure-railway-core.ts",
+    "validate:options-expiry": "node --experimental-transform-types scripts/validate-options-expiry.ts",
+    "import:market-candidates": "node --experimental-transform-types scripts/import-market-candidates.ts",
+    "sync:rhj-candidates": "node --experimental-transform-types scripts/sync-rhj-market-candidates.ts",
+    "verify:market-candidates": "node --experimental-transform-types scripts/verify-market-candidates.ts",
     "seed:options-testnet": "node --experimental-transform-types scripts/seed-options-testnet.ts"
   },
   "dependencies": {

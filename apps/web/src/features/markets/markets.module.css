@@ -7,6 +7,15 @@
 .price { display: grid; gap: var(--space-2); }
 .price span, .meta dt { color: var(--text-muted); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .08em; }
 .price strong { font-size: clamp(1.75rem, 4vw, 3rem); }
+.sparkline { display: grid; gap: var(--space-2); min-width: 0; color: var(--text-muted); }
+.sparkline[data-direction="up"] { color: var(--positive, #80e0ad); }
+.sparkline[data-direction="down"] { color: var(--negative, #ef8c8c); }
+.sparklineHeader { display: flex; justify-content: space-between; gap: var(--space-3); color: var(--text-muted); font-size: var(--text-xs); letter-spacing: .06em; text-transform: uppercase; }
+.sparkline svg { display: block; width: 100%; height: 5.5rem; overflow: visible; }
+.sparklineBaseline, .sparklinePath, .sparklinePending { fill: none; vector-effect: non-scaling-stroke; }
+.sparklineBaseline { stroke: var(--line-soft); stroke-width: 1; }
+.sparklinePath { stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sparklinePending { stroke: var(--line-strong); stroke-width: 1.5; stroke-dasharray: 5 7; opacity: .65; }
 .meta, .marketFacts { display: grid; gap: var(--space-3); margin: 0; }
 .meta div, .marketFacts div { display: flex; justify-content: space-between; gap: var(--space-4); border-top: 1px solid var(--line-soft); padding-top: var(--space-3); }
 .meta dd, .marketFacts dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
