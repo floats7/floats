@@ -24,8 +24,8 @@ export interface InKindQuote {
 
 const percentOf = (value: number, percent: number) => (value * percent) / 100;
 
-/** Cash flows pay the off-hours surcharge; in-kind flows never do. */
-export const cashFeeRate = (offHours: boolean) => FEES.cashRate + (offHours ? FEES.offHoursSurcharge : 0);
+/** Cash fees are fixed; unsafe off-hours cash flows are disabled instead of surcharged. */
+export const cashFeeRate = () => FEES.cashRate;
 
 export function parseAmount(raw: string): number | null {
   const value = Number(raw);

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Reveal } from "@/components/ui/Reveal";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -74,7 +75,9 @@ export function ConstituentDetailView({ ticker }: { readonly ticker: string }) {
         <SummaryList rows={rows} />
       </Reveal>
       <nav className="container" aria-label="Holdings navigation">
-        <Link href="/holdings">← Back to all holdings</Link>
+        <Link href="/holdings">
+          <Icon name="arrow-left" size={14} /> Back to all holdings
+        </Link>
       </nav>
     </>
   );

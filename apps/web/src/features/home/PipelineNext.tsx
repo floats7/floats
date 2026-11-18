@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
+import { AssetLogo } from "@/components/ui/AssetLogo";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { PIPELINE } from "@/data/pipeline";
 import { formatDate } from "@/lib/format";
@@ -15,6 +16,7 @@ export function PipelineNext() {
         {PIPELINE.slice(0, COUNT).map((item) => (
           <li key={item.id}>
             <Link href={`/pipeline/${item.id}`} className={styles.row}>
+              <AssetLogo name={item.name} symbol={item.ticker} src={item.logoUrl} size="sm" />
               <span className={styles.name}>{item.name}</span>
               <StatusChip tone="muted">{item.status}</StatusChip>
               <span className={`${styles.date} tabular`}>Enters {formatDate(item.entryDate)}</span>

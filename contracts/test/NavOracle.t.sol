@@ -66,6 +66,111 @@ contract NavOracleTest {
         _assertEq(uint256(observation.health), uint256(NavOracle.Health.Invalid), "invalid health");
     }
 
+    function testReportsUnconfiguredAndFailedTokenObservation() public {
+        MockStockToken unconfiguredToken = new MockStockToken();
+        NavOracle.Observation memory unconfigured = oracle.observe(address(unconfiguredToken));
+        _assertEq(
+            uint256(unconfigured.health), uint256(NavOracle.Health.Unconfigured), "unconfigured"
+        );
+
+        MockStockToken revertingToken = new MockStockToken();
+        MockAggregator revertingTokenFeed = new MockAggregator(8);
+        revertingTokenFeed.setRound(1, 1e8, block.timestamp, 1);
+        _configure(address(revertingToken), address(revertingTokenFeed), 100);
+        revertingToken.setReverts(true);
+
+        NavOracle.Observation memory invalid = oracle.observe(address(revertingToken));
+        _assertEq(uint256(invalid.health), uint256(NavOracle.Health.Invalid), "token call failure");
+    }
+
+    function testReportsFailedFeedObservation() public {
+        feed.setReverts(true);
+        NavOracle.Observation memory observation = oracle.observe(address(token));
+        _assertEq(uint256(observation.health), uint256(NavOracle.Health.Invalid), "feed failure");
+    }
+
+    function testRejectsInvalidRoundValues() public {
+        feed.setRound(2, 0, 9950, 2);
+        _assertHealth(address(token), NavOracle.Health.Invalid, "zero answer");
+
+        feed.setRound(3, -1, 9950, 3);
+        _assertHealth(address(token), NavOracle.Health.Invalid, "negative answer");
+
+        feed.setRound(4, 1, 0, 4);
+        _assertHealth(address(token), NavOracle.Health.Invalid, "zero timestamp");
+
+        feed.setRound(5, 1, block.timestamp + 1, 5);
+        _assertHealth(address(token), NavOracle.Health.Invalid, "future timestamp");
+    }
+
+    function testRejectsConfigurationLengthMismatch() public {
+        address[] memory tokens = new address[](1);
+        address[] memory feeds = new address[](0);
+        uint32[] memory maxAges = new uint32[](1);
+
+        _expectConfigureRevert(tokens, feeds, maxAges, NavOracle.LengthMismatch.selector);
+    }
+
+    function testRejectsInvalidFeedConfiguration() public {
+        address[] memory tokens = new address[](1);
+        address[] memory feeds = new address[](1);
+        uint32[] memory maxAges = new uint32[](1);
+        tokens[0] = address(token);
+        feeds[0] = address(feed);
+        maxAges[0] = 100;
+
+        tokens[0] = address(0);
+        _expectConfigureRevert(tokens, feeds, maxAges, NavOracle.InvalidAddress.selector);
+
+        tokens[0] = address(token);
+        feeds[0] = address(0);
+        _expectConfigureRevert(tokens, feeds, maxAges, NavOracle.InvalidAddress.selector);
+
+        feeds[0] = address(feed);
+        maxAges[0] = 0;
+        _expectConfigureRevert(tokens, feeds, maxAges, NavOracle.InvalidMaxAge.selector);
+    }
+
+    function testRejectsDuplicateTokenAndUnsupportedDecimals() public {
+        address[] memory tokens = new address[](2);
+        address[] memory feeds = new address[](2);
+        uint32[] memory maxAges = new uint32[](2);
+        tokens[0] = address(token);
+        tokens[1] = address(token);
+        feeds[0] = address(feed);
+        feeds[1] = address(feed);
+        maxAges[0] = 100;
+        maxAges[1] = 100;
+        _expectConfigureRevert(tokens, feeds, maxAges, NavOracle.DuplicateToken.selector);
+
+        MockAggregator unsupportedFeed = new MockAggregator(37);
+        tokens = new address[](1);
+        feeds = new address[](1);
+        maxAges = new uint32[](1);
+        tokens[0] = address(new MockStockToken());
+        feeds[0] = address(unsupportedFeed);
+        maxAges[0] = 100;
+        _expectConfigureRevert(tokens, feeds, maxAges, NavOracle.InvalidFeedDecimals.selector);
+    }
+
+    function testRejectsTotalValueLengthMismatch() public view {
+        address[] memory tokens = new address[](1);
+        uint256[] memory amounts = new uint256[](0);
+        try oracle.totalValue(tokens, amounts, 0) {
+            revert("expected total value length revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, NavOracle.LengthMismatch.selector);
+        }
+    }
+
+    function testConstructorRejectsZeroAdmin() public {
+        try new NavOracle(address(0)) {
+            revert("expected zero admin revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, NavOracle.InvalidAddress.selector);
+        }
+    }
+
     function testOnlyAdminCanConfigure() public {
         UnauthorizedOracleCaller caller = new UnauthorizedOracleCaller();
         address[] memory tokens = new address[](1);
@@ -106,6 +211,27 @@ contract NavOracleTest {
         oracle.configureFeeds(tokens, feeds, maxAges);
     }
 
+    function _expectConfigureRevert(
+        address[] memory tokens,
+        address[] memory feeds,
+        uint32[] memory maxAges,
+        bytes4 expectedSelector
+    ) private {
+        try oracle.configureFeeds(tokens, feeds, maxAges) {
+            revert("expected configuration revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, expectedSelector);
+        }
+    }
+
+    function _assertHealth(address tokenAddress, NavOracle.Health expected, string memory message)
+        private
+        view
+    {
+        NavOracle.Observation memory observation = oracle.observe(tokenAddress);
+        _assertEq(uint256(observation.health), uint256(expected), message);
+    }
+
     function _assertEq(uint256 actual, uint256 expected, string memory message) private pure {
         require(actual == expected, message);
     }
@@ -122,13 +248,19 @@ contract NavOracleTest {
 
 contract MockStockToken {
     bool private paused;
+    bool private shouldRevert;
 
     function oraclePaused() external view returns (bool) {
+        require(!shouldRevert, "token observation failed");
         return paused;
     }
 
     function setOraclePaused(bool value) external {
         paused = value;
+    }
+
+    function setReverts(bool value) external {
+        shouldRevert = value;
     }
 }
 
@@ -138,6 +270,7 @@ contract MockAggregator {
     int256 private answer;
     uint256 private updatedAt;
     uint80 private answeredInRound;
+    bool private shouldRevert;
 
     constructor(uint8 decimals_) {
         decimals = decimals_;
@@ -153,7 +286,12 @@ contract MockAggregator {
     }
 
     function latestRoundData() external view returns (uint80, int256, uint256, uint256, uint80) {
+        require(!shouldRevert, "feed observation failed");
         return (roundId, answer, updatedAt, updatedAt, answeredInRound);
+    }
+
+    function setReverts(bool value) external {
+        shouldRevert = value;
     }
 }
 

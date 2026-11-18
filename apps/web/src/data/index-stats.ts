@@ -15,7 +15,6 @@ export const premiumPercent = ((INDEX_STATS.dexPrice - INDEX_STATS.nav) / INDEX_
 export const FEES = {
   cashRate: 0.1,
   inKindRate: 0.02,
-  offHoursSurcharge: 0.1,
   managementRate: 0.75,
   maxSlippage: 0.5,
 } as const;

@@ -33,6 +33,11 @@
   gap: var(--space-4);
 }
 
+.identityCopy {
+  display: grid;
+  gap: var(--space-1);
+}
+
 .title {
   font-size: var(--text-3xl);
 }

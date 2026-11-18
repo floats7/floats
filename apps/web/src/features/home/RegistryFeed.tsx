@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { HudSection } from "@/components/ui/HudSection";
-import { Icon } from "@/components/ui/Icon";
+import { Icon, Separator } from "@/components/ui/Icon";
 import { Reveal } from "@/components/ui/Reveal";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useRegistryChanges } from "@/hooks/useRegistryChanges";
@@ -27,14 +27,19 @@ export function RegistryFeed() {
           <ul className={styles.list}>
             {recentChanges.map((change) => (
               <li key={change.id} className={styles.item}>
-                <time className={`${styles.date} tabular`} dateTime={change.date}>
-                  {formatDate(change.date)}
-                </time>
-                <StatusChip tone="muted">{change.kind}</StatusChip>
-                <p className={styles.text}>
-                  <span className={styles.itemTitle}>{change.title}</span>
-                  {change.detail}
-                </p>
+                <a href={change.explorerUrl} className={styles.itemLink} target="_blank" rel="noreferrer">
+                  <time className={`${styles.date} tabular`} dateTime={change.date}>
+                    {formatDate(change.date)}
+                  </time>
+                  <StatusChip tone="muted">{change.kind}</StatusChip>
+                  <p className={styles.text}>
+                    <span className={styles.itemTitle}>{change.title}</span>
+                    <span className={styles.itemMeta}>
+                      Block {change.blockNumber.toLocaleString("en-US")} <Separator /> {change.detail}
+                    </span>
+                  </p>
+                  <Icon name="external-link" size={14} />
+                </a>
               </li>
             ))}
           </ul>

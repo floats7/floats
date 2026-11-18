@@ -91,6 +91,14 @@ export interface CashQuoteDto {
   readonly feeAmount: string;
 }
 
+export interface FeeRatesDto {
+  readonly blockNumber: string;
+  readonly managementBps: number;
+  readonly cashBps: number;
+  readonly inKindBps: number;
+  readonly offHoursBps: number;
+}
+
 export interface WalletChallengeDto {
   readonly message: string;
   readonly expiresAt: string;
@@ -113,6 +121,10 @@ export class FloatsApiClient {
 
   public getPublicConfig(signal?: AbortSignal): Promise<PublicConfigDto> {
     return this.get<PublicConfigDto>("/config", signal);
+  }
+
+  public getFeeRates(signal?: AbortSignal): Promise<FeeRatesDto> {
+    return this.get<FeeRatesDto>("/fee-rates", signal);
   }
 
   public getRegistryChanges(limit = 50, signal?: AbortSignal): Promise<readonly RegistryChangeDto[]> {

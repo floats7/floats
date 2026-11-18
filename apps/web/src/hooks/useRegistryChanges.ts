@@ -22,8 +22,11 @@ export function useRegistryChanges(): RegistryChangesState {
     const controller = new AbortController();
     setLoading(true);
     setError(false);
-    floatApi.getRegistryChanges(50, controller.signal)
-      .then((rows) => setChanges(rows.map(toRegistryChange)))
+    Promise.all([
+      floatApi.getRegistryChanges(50, controller.signal),
+      floatApi.getPublicConfig(controller.signal),
+    ])
+      .then(([rows, config]) => setChanges(rows.map((row) => toRegistryChange(row, config.blockExplorerUrl))))
       .catch((reason: unknown) => {
         if (!(reason instanceof DOMException && reason.name === "AbortError")) setError(true);
       })
@@ -36,7 +39,7 @@ export function useRegistryChanges(): RegistryChangesState {
   return { changes, loading, error, retry };
 }
 
-function toRegistryChange(row: RegistryChangeDto): RegistryChange {
+function toRegistryChange(row: RegistryChangeDto, blockExplorerUrl: string): RegistryChange {
   const kind = row.change_kind === "constituent_configured"
     ? "add"
     : row.change_kind === "constituent_removed"
@@ -49,7 +52,11 @@ function toRegistryChange(row: RegistryChangeDto): RegistryChange {
     date: row.observed_at.slice(0, 10),
     kind,
     title: titleFor(row.change_kind, subject),
-    detail: `Confirmed at block ${row.block_number}${version}.`,
+    detail: `Confirmed onchain${version}.`,
+    transactionHash: row.transaction_hash,
+    blockNumber: row.block_number,
+    registryVersion: row.registry_version,
+    explorerUrl: `${blockExplorerUrl.replace(/\/$/, "")}/tx/${row.transaction_hash}`,
   };
 }
 

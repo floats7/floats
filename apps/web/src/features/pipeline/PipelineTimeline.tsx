@@ -4,6 +4,7 @@ import { motion, useScroll, useSpring } from "motion/react";
 import Link from "next/link";
 import { useRef } from "react";
 import { Icon, Separator } from "@/components/ui/Icon";
+import { AssetLogo } from "@/components/ui/AssetLogo";
 import { Reveal } from "@/components/ui/Reveal";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { PIPELINE } from "@/data/pipeline";
@@ -36,9 +37,12 @@ export function PipelineTimeline() {
           <span className={styles.node} aria-hidden="true" />
           <Reveal className={styles.card}>
             <div className={styles.head}>
-              <div>
+              <div className={styles.identity}>
+                <AssetLogo name={item.name} symbol={item.ticker} src={item.logoUrl} size="md" />
+                <div>
                 <p className="eyebrow">{item.ticker}</p>
                 <h2 className={styles.name}>{item.name}</h2>
+                </div>
               </div>
               <StatusChip tone={item.status === "queued" ? "solid" : "outline"}>{item.status}</StatusChip>
             </div>

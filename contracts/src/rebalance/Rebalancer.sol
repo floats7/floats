@@ -182,7 +182,11 @@ contract Rebalancer {
         uint256 targetValue = totalValue * targetWeightBps / 10_000;
         uint256 absoluteDelta =
             targetValue >= currentValue ? targetValue - currentValue : currentValue - targetValue;
+        // int256.max is positive and therefore losslessly representable as uint256.
+        // forge-lint: disable-next-line(unsafe-typecast)
         if (absoluteDelta > uint256(type(int256).max)) revert DeltaOverflow(absoluteDelta);
+        // The explicit upper-bound check above proves this conversion cannot truncate.
+        // forge-lint: disable-next-line(unsafe-typecast)
         int256 signedDelta = int256(absoluteDelta);
         return targetValue >= currentValue ? signedDelta : -signedDelta;
     }

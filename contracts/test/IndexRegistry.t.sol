@@ -3,7 +3,14 @@ pragma solidity ^0.8.24;
 
 import { IndexRegistry } from "../src/registry/IndexRegistry.sol";
 
+interface RegistryVm {
+    function warp(uint256 newTimestamp) external;
+}
+
 contract IndexRegistryTest {
+    RegistryVm private constant vm =
+        RegistryVm(address(uint160(uint256(keccak256("hevm cheat code")))));
+
     IndexRegistry private registry;
 
     function setUp() public {
@@ -68,6 +75,119 @@ contract IndexRegistryTest {
         }
     }
 
+    function testRejectsEmptyConfiguration() public {
+        IndexRegistry.ConstituentInput[] memory inputs =
+            new IndexRegistry.ConstituentInput[](0);
+
+        _expectProposalRevert(inputs, uint48(block.timestamp), IndexRegistry.EmptyConfiguration.selector);
+    }
+
+    function testRejectsTooManyConstituents() public {
+        IndexRegistry.ConstituentInput[] memory inputs = _constituents(33, 1);
+
+        _expectProposalRevert(
+            inputs, uint48(block.timestamp), IndexRegistry.TooManyConstituents.selector
+        );
+    }
+
+    function testRejectsZeroTokenAndFeedAddresses() public {
+        IndexRegistry.ConstituentInput[] memory inputs = _twoConstituents();
+        inputs[0].token = address(0);
+        _expectProposalRevert(inputs, uint48(block.timestamp), IndexRegistry.InvalidAddress.selector);
+
+        inputs = _twoConstituents();
+        inputs[0].feed = address(0);
+        _expectProposalRevert(inputs, uint48(block.timestamp), IndexRegistry.InvalidAddress.selector);
+    }
+
+    function testRejectsZeroUid() public {
+        IndexRegistry.ConstituentInput[] memory inputs = _twoConstituents();
+        inputs[0].uid = bytes32(0);
+
+        _expectProposalRevert(inputs, uint48(block.timestamp), IndexRegistry.InvalidUid.selector);
+    }
+
+    function testRejectsInvalidDateRange() public {
+        IndexRegistry.ConstituentInput[] memory inputs = _twoConstituents();
+        inputs[0].exitAfter = inputs[0].eligibleFrom;
+
+        _expectProposalRevert(inputs, uint48(block.timestamp), IndexRegistry.InvalidDateRange.selector);
+    }
+
+    function testRejectsDuplicateUid() public {
+        IndexRegistry.ConstituentInput[] memory inputs = _twoConstituents();
+        inputs[1].uid = inputs[0].uid;
+
+        _expectProposalRevert(inputs, uint48(block.timestamp), IndexRegistry.DuplicateUid.selector);
+    }
+
+    function testRejectsProposalBeforeMinimumDelay() public {
+        IndexRegistry delayedRegistry = new IndexRegistry(address(this), 5 minutes);
+        uint48 tooEarly = uint48(block.timestamp + 5 minutes - 1);
+
+        try delayedRegistry.proposeConfiguration(_twoConstituents(), tooEarly) {
+            revert("expected proposal delay revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, IndexRegistry.TooEarly.selector);
+        }
+    }
+
+    function testRejectsExecutionBeforeValidAfter() public {
+        IndexRegistry delayedRegistry = new IndexRegistry(address(this), 5 minutes);
+        IndexRegistry.ConstituentInput[] memory inputs = _twoConstituents();
+        uint48 validAfter = uint48(block.timestamp + 5 minutes);
+        delayedRegistry.proposeConfiguration(inputs, validAfter);
+
+        try delayedRegistry.executeConfiguration(inputs) {
+            revert("expected execution delay revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, IndexRegistry.TooEarly.selector);
+        }
+
+        vm.warp(validAfter);
+        delayedRegistry.executeConfiguration(inputs);
+        _assertEq(delayedRegistry.version(), 1, "delayed execution version");
+    }
+
+    function testRejectsMissingPendingConfiguration() public {
+        try registry.cancelConfiguration() {
+            revert("expected missing cancellation revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, IndexRegistry.NoPendingConfiguration.selector);
+        }
+
+        try registry.executeConfiguration(_twoConstituents()) {
+            revert("expected missing execution revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, IndexRegistry.NoPendingConfiguration.selector);
+        }
+    }
+
+    function testCancellationClearsPendingConfiguration() public {
+        IndexRegistry.ConstituentInput[] memory inputs = _twoConstituents();
+        registry.proposeConfiguration(inputs, uint48(block.timestamp));
+        registry.cancelConfiguration();
+
+        _assertEq(registry.pendingConfigurationHash(), bytes32(0), "cancelled hash");
+        _assertEq(registry.pendingValidAfter(), 0, "cancelled valid after");
+    }
+
+    function testRejectsMoreThanMaximumTrackedTokens() public {
+        for (uint256 batch; batch < 4; ++batch) {
+            IndexRegistry.ConstituentInput[] memory inputs = _constituents(32, batch * 32 + 1);
+            registry.proposeConfiguration(inputs, uint48(block.timestamp));
+            registry.executeConfiguration(inputs);
+        }
+
+        IndexRegistry.ConstituentInput[] memory overflow = _constituents(1, 129);
+        registry.proposeConfiguration(overflow, uint48(block.timestamp));
+        try registry.executeConfiguration(overflow) {
+            revert("expected tracked token capacity revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, IndexRegistry.TooManyTrackedTokens.selector);
+        }
+    }
+
     function testRejectsMismatchedExecution() public {
         IndexRegistry.ConstituentInput[] memory proposed = _twoConstituents();
         registry.proposeConfiguration(proposed, uint48(block.timestamp));
@@ -90,6 +210,32 @@ contract IndexRegistryTest {
             revert("expected admin revert");
         } catch (bytes memory reason) {
             _assertSelector(reason, IndexRegistry.NotAdmin.selector);
+        }
+    }
+
+    function testOnlyAdminCanCancelAndExecute() public {
+        UnauthorizedRegistryCaller caller = new UnauthorizedRegistryCaller();
+        IndexRegistry.ConstituentInput[] memory inputs = _twoConstituents();
+        registry.proposeConfiguration(inputs, uint48(block.timestamp));
+
+        try caller.cancel(registry) {
+            revert("expected cancel admin revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, IndexRegistry.NotAdmin.selector);
+        }
+
+        try caller.execute(registry, inputs) {
+            revert("expected execute admin revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, IndexRegistry.NotAdmin.selector);
+        }
+    }
+
+    function testConstructorRejectsZeroAdmin() public {
+        try new IndexRegistry(address(0), 0) {
+            revert("expected zero admin revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, IndexRegistry.InvalidAddress.selector);
         }
     }
 
@@ -133,6 +279,39 @@ contract IndexRegistryTest {
         });
     }
 
+    function _constituents(uint256 count, uint256 firstId)
+        private
+        pure
+        returns (IndexRegistry.ConstituentInput[] memory inputs)
+    {
+        inputs = new IndexRegistry.ConstituentInput[](count);
+        uint16 baseWeight = uint16(10_000 / count);
+        uint16 assignedWeight;
+        for (uint256 i; i < count; ++i) {
+            uint16 weight = i + 1 == count ? 10_000 - assignedWeight : baseWeight;
+            uint256 id = firstId + i;
+            inputs[i] = _input(
+                address(uint160(0x1000 + id)),
+                address(uint160(0x2000 + id)),
+                bytes32(id),
+                weight
+            );
+            assignedWeight += weight;
+        }
+    }
+
+    function _expectProposalRevert(
+        IndexRegistry.ConstituentInput[] memory inputs,
+        uint48 validAfter,
+        bytes4 expectedSelector
+    ) private {
+        try registry.proposeConfiguration(inputs, validAfter) {
+            revert("expected proposal revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, expectedSelector);
+        }
+    }
+
     function _assertEq(uint256 actual, uint256 expected, string memory message) private pure {
         require(actual == expected, message);
     }
@@ -158,5 +337,16 @@ contract UnauthorizedRegistryCaller {
         uint48 validAfter
     ) external {
         registry.proposeConfiguration(inputs, validAfter);
+    }
+
+    function cancel(IndexRegistry registry) external {
+        registry.cancelConfiguration();
+    }
+
+    function execute(
+        IndexRegistry registry,
+        IndexRegistry.ConstituentInput[] memory inputs
+    ) external {
+        registry.executeConfiguration(inputs);
     }
 }

@@ -1,7 +1,9 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { createHash } from "node:crypto";
 import { createApiContext } from "./context.ts";
 import {
   getAssets,
+  getFeeRates,
   getLatestIndexState,
   getNavHistory,
   getOperationalActions,
@@ -24,12 +26,55 @@ const server = createServer(async (incoming, outgoing) => {
       return;
     }
     const request = await toRequest(incoming);
+    const limit = sensitiveEndpointLimit(request);
+    if (limit) {
+      const key = `${readClientIp(incoming)}:${new URL(request.url).pathname}`;
+      const result = await context.readModels.takeRateLimit(createHash("sha256").update(key).digest("hex"), limit);
+      if (!result.allowed) {
+        await writeResponse(outgoing, rateLimited(limit, result.resetAt), allowedOrigin);
+        return;
+      }
+      outgoing.setHeader("x-ratelimit-limit", limit.toString());
+      outgoing.setHeader("x-ratelimit-remaining", result.remaining.toString());
+      outgoing.setHeader("x-ratelimit-reset", Math.ceil(result.resetAt / 1_000).toString());
+    }
     const response = await route(request, new URL(request.url));
     await writeResponse(outgoing, response, allowedOrigin);
   } catch {
     await writeResponse(outgoing, internalError(), allowedOrigin);
   }
 });
+
+function sensitiveEndpointLimit(request: Request): number | null {
+  const pathname = new URL(request.url).pathname;
+  if (pathname === "/api/wallet-history") return 10;
+  if (pathname === "/api/quote" && request.method === "POST") return 60;
+  return null;
+}
+
+function readClientIp(request: IncomingMessage): string {
+  const cloudflare = request.headers["cf-connecting-ip"];
+  if (typeof cloudflare === "string" && cloudflare.trim()) return cloudflare.trim();
+  const forwarded = request.headers["x-forwarded-for"];
+  const candidate = Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(",", 1)[0];
+  return candidate?.trim() || request.socket.remoteAddress || "unknown";
+}
+
+function rateLimited(limit: number, resetAt: number): Response {
+  return Response.json(
+    { error: { code: "RATE_LIMITED" } },
+    {
+      status: 429,
+      headers: {
+        "cache-control": "no-store",
+        "retry-after": Math.max(1, Math.ceil((resetAt - Date.now()) / 1_000)).toString(),
+        "x-ratelimit-limit": limit.toString(),
+        "x-ratelimit-remaining": "0",
+        "x-ratelimit-reset": Math.ceil(resetAt / 1_000).toString(),
+      },
+    },
+  );
+}
 
 server.listen(port, "0.0.0.0", () => {
   console.log(`Floats API listening on port ${port}`);
@@ -43,6 +88,7 @@ async function route(request: Request, url: URL): Promise<Response> {
 
   const endpoint = url.pathname.slice(5);
   if (request.method === "GET" && endpoint === "config") return getPublicConfig(context);
+  if (request.method === "GET" && endpoint === "fee-rates") return getFeeRates(context);
   if (request.method === "GET" && endpoint === "assets") return getAssets(context, request.signal);
   if (request.method === "GET" && endpoint === "index-state") return getLatestIndexState(context, request.signal);
   if (request.method === "GET" && endpoint === "nav-history") return getNavHistory(context, url, request.signal);

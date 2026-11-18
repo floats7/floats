@@ -16,7 +16,7 @@ export function Telemetry() {
   const readings = [
     { label: "Price oracle", value: oracle ? ORACLE_LABEL[oracle] : "Checking", live: oracle === "live" },
     { label: "Slippage limit", value: formatPercent(FEES.maxSlippage) },
-    { label: "Timelock", value: "48 hours" },
+    { label: "Timelock", value: "5 minutes" },
     { label: "Management fee", value: `${formatPercent(FEES.managementRate)} / yr` },
     { label: "TVL cap", value: formatUsdCompact(INDEX_STATS.tvlCap) },
     { label: "Rebalance", value: "Quarterly" },

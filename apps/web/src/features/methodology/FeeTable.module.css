@@ -36,6 +36,12 @@
   font-size: var(--text-sm);
 }
 
+.state {
+  margin-top: var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
 @media (min-width: 48rem) {
   .row {
     grid-template-columns: 14rem 10rem minmax(0, 1fr);

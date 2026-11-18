@@ -13,10 +13,32 @@ export const NAV_LINKS: readonly NavLink[] = [
 ];
 
 /**
- * Jurisdictions where Stock Tokens are unavailable.
- * The official list must be confirmed before public launch.
+ * Country-level transaction restrictions published by RHJ.
+ *
+ * Source reviewed 2026-11-18:
+ * https://docs.robinhood.com/rhj/restricted-jurisdictions/
+ *
+ * This edge control is only one compliance layer. A country header cannot
+ * establish residency, U.S. Person status, sanctions status, or eligibility.
  */
-export const RESTRICTED_COUNTRIES: ReadonlySet<string> = new Set(["US", "CA", "GB"]);
+export const RESTRICTED_COUNTRIES: ReadonlySet<string> = new Set([
+  "AE",
+  "BY",
+  "CA",
+  "CH",
+  "CU",
+  "GB",
+  "IR",
+  "KP",
+  "MM",
+  "RU",
+  "SD",
+  "SS",
+  "SY",
+  "UA",
+  "US",
+  "VE",
+]);
 
 export const DISCLAIMER =
-  "Stock Tokens are debt obligations of their issuer, not ownership of shares. fIPO is not a regulated fund.";
+  "Stock Tokens are debt securities issued by RHJ and do not provide legal or beneficial ownership of the underlying shares. Floats is an independent project and is not affiliated with or endorsed by Robinhood.";

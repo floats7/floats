@@ -80,3 +80,5 @@ temp/
 .cursor/
 .windsurf/
 .aws/
+# Next.js development-only agent instructions
+/apps/web/AGENTS.md

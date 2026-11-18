@@ -57,6 +57,49 @@ contract FeeModuleTest {
         _assertEq(emptyModule.lastAccrual(), block.timestamp, "checkpoint advanced");
     }
 
+    function testRateChangeAccruesOldRateBeforeApplyingNewRate() public {
+        uint256 initialSupply = vault.totalSupply();
+        vm.warp(block.timestamp + 180 days);
+        uint256 expectedOldRateShares = initialSupply * 200 * 180 days / 365 days / 10_000;
+
+        module.setRates(
+            FeeModule.Rates({ managementBps: 100, cashBps: 5, inKindBps: 2, offHoursBps: 0 })
+        );
+
+        _assertEq(vault.balanceOf(TREASURY), expectedOldRateShares, "old rate accrued");
+        _assertEq(module.rateFor(FeeModule.FeeKind.Cash), 5, "new cash rate");
+        _assertEq(module.rateFor(FeeModule.FeeKind.InKind), 2, "new in-kind rate");
+
+        uint256 supplyAfterChange = vault.totalSupply();
+        vm.warp(block.timestamp + 185 days);
+        uint256 expectedNewRateShares = supplyAfterChange * 100 * 185 days / 365 days / 10_000;
+        uint256 actualNewRateShares = module.accrue();
+
+        _assertEq(actualNewRateShares, expectedNewRateShares, "new rate accrued");
+        _assertEq(
+            vault.balanceOf(TREASURY),
+            expectedOldRateShares + expectedNewRateShares,
+            "annual split accrual"
+        );
+    }
+
+    function testTreasuryChangeSettlesOldTreasuryBeforeSwitch() public {
+        address newTreasury = address(0xCAFE);
+        vm.warp(block.timestamp + 30 days);
+        uint256 expectedOldTreasuryShares = vault.totalSupply() * 200 * 30 days / 365 days / 10_000;
+
+        module.setTreasury(newTreasury);
+        _assertEq(vault.balanceOf(TREASURY), expectedOldTreasuryShares, "old treasury settled");
+
+        uint256 supplyAfterChange = vault.totalSupply();
+        vm.warp(block.timestamp + 30 days);
+        uint256 expectedNewTreasuryShares = supplyAfterChange * 200 * 30 days / 365 days / 10_000;
+        module.accrue();
+
+        _assertEq(vault.balanceOf(newTreasury), expectedNewTreasuryShares, "new treasury accrual");
+        _assertEq(vault.balanceOf(TREASURY), expectedOldTreasuryShares, "old treasury unchanged");
+    }
+
     function testTransactionFeesRoundUp() public view {
         _assertEq(module.calculateFee(1, FeeModule.FeeKind.Cash), 1, "minimum cash fee");
         _assertEq(module.calculateFee(10_000, FeeModule.FeeKind.InKind), 10, "in-kind fee");
@@ -79,6 +122,13 @@ contract FeeModuleTest {
         } catch (bytes memory reason) {
             _assertSelector(reason, FeeModule.ManagementRateTooHigh.selector);
         }
+
+        invalid = FeeModule.Rates({ managementBps: 0, cashBps: 301, inKindBps: 0, offHoursBps: 0 });
+        _expectInvalidRate(invalid);
+        invalid = FeeModule.Rates({ managementBps: 0, cashBps: 0, inKindBps: 301, offHoursBps: 0 });
+        _expectInvalidRate(invalid);
+        invalid = FeeModule.Rates({ managementBps: 0, cashBps: 0, inKindBps: 0, offHoursBps: 301 });
+        _expectInvalidRate(invalid);
     }
 
     function testOnlyAdminCanConfigureRates() public {
@@ -90,6 +140,39 @@ contract FeeModuleTest {
             revert("expected admin revert");
         } catch (bytes memory reason) {
             _assertSelector(reason, FeeModule.NotAdmin.selector);
+        }
+
+        try caller.setTreasury(module, address(0xCAFE)) {
+            revert("expected treasury admin revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, FeeModule.NotAdmin.selector);
+        }
+    }
+
+    function testRejectsInvalidAddresses() public {
+        try new FeeModule(
+            address(0),
+            IFeeShareVault(address(vault)),
+            TREASURY,
+            FeeModule.Rates({ managementBps: 0, cashBps: 0, inKindBps: 0, offHoursBps: 0 })
+        ) {
+            revert("expected constructor address revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, FeeModule.InvalidAddress.selector);
+        }
+
+        try module.setTreasury(address(0)) {
+            revert("expected treasury address revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, FeeModule.InvalidAddress.selector);
+        }
+    }
+
+    function _expectInvalidRate(FeeModule.Rates memory rates) private {
+        try module.setRates(rates) {
+            revert("expected transaction rate revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, FeeModule.InvalidRate.selector);
         }
     }
 
@@ -124,5 +207,9 @@ contract MockFeeVault {
 contract UnauthorizedFeeCaller {
     function setRates(FeeModule module, FeeModule.Rates memory rates) external {
         module.setRates(rates);
+    }
+
+    function setTreasury(FeeModule module, address treasury) external {
+        module.setTreasury(treasury);
     }
 }

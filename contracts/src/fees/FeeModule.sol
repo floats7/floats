@@ -64,6 +64,8 @@ contract FeeModule {
         admin = admin_;
         vault = vault_;
         treasury = treasury_;
+        // uint48 timestamps remain safe for millions of years; the protocol uses Unix seconds.
+        // forge-lint: disable-next-line(unsafe-typecast)
         lastAccrual = uint48(block.timestamp);
         _validateRates(initialRates);
         rates = initialRates;
@@ -91,6 +93,8 @@ contract FeeModule {
         uint256 elapsed = currentTime - lastAccrual;
         if (elapsed == 0) return 0;
 
+        // uint48 timestamps remain safe for millions of years; the protocol uses Unix seconds.
+        // forge-lint: disable-next-line(unsafe-typecast)
         lastAccrual = uint48(currentTime);
         uint256 supply = vault.totalSupply();
         uint16 rate = rates.managementBps;
@@ -100,6 +104,9 @@ contract FeeModule {
         }
 
         sharesMinted = supply * rate * elapsed / YEAR / BPS_DENOMINATOR;
+        // CEI is complete before this call: lastAccrual is advanced first, the vault is immutable,
+        // and only the admin can mutate rates or treasury. Same-block reentry accrues zero shares.
+        // forge-lint: disable-next-line(reentrancy-no-eth)
         if (sharesMinted != 0) vault.mintFeeShares(treasury, sharesMinted);
         emit FeesAccrued(currentTime, elapsed, sharesMinted);
     }

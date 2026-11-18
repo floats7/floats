@@ -30,13 +30,58 @@ contract SwapQuoteOracleTest {
         try oracle.quote(STOCK, address(0x3000), 1 ether) {
             revert("expected pair revert");
         } catch (bytes memory reason) {
-            require(reason.length >= 4, "missing selector");
-            bytes4 actual;
-            assembly ("memory-safe") {
-                actual := mload(add(reason, 0x20))
-            }
-            require(actual == SwapQuoteOracle.InvalidPair.selector, "unexpected selector");
+            _assertSelector(reason, SwapQuoteOracle.InvalidPair.selector);
         }
+    }
+
+    function testZeroAmountDoesNotReadPrice() public view {
+        require(oracle.quote(address(0xDEAD), address(0xBEEF), 0) == 0, "zero quote");
+    }
+
+    function testRejectsZeroPriceInBothDirections() public view {
+        address unpricedStock = address(0x3000);
+        try oracle.quote(unpricedStock, USDG, 1 ether) {
+            revert("expected stock price revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, SwapQuoteOracle.InvalidPrice.selector);
+        }
+
+        try oracle.quote(USDG, unpricedStock, 1e6) {
+            revert("expected USDG price revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, SwapQuoteOracle.InvalidPrice.selector);
+        }
+    }
+
+    function testRejectsUsdgToUsdgPair() public view {
+        try oracle.quote(USDG, USDG, 1e6) {
+            revert("expected same-token pair revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, SwapQuoteOracle.InvalidPair.selector);
+        }
+    }
+
+    function testConstructorRejectsZeroAddresses() public {
+        try new SwapQuoteOracle(address(0), INavPriceOracle(address(nav))) {
+            revert("expected zero USDG revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, SwapQuoteOracle.InvalidAddress.selector);
+        }
+
+        try new SwapQuoteOracle(USDG, INavPriceOracle(address(0))) {
+            revert("expected zero oracle revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, SwapQuoteOracle.InvalidAddress.selector);
+        }
+    }
+
+    function _assertSelector(bytes memory reason, bytes4 expected) private pure {
+        require(reason.length >= 4, "missing selector");
+        bytes4 actual;
+        assembly ("memory-safe") {
+            actual := mload(add(reason, 0x20))
+        }
+        require(actual == expected, "unexpected selector");
     }
 }
 

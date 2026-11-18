@@ -47,6 +47,9 @@ contract RebalancerTest {
         uint256 amountOut = rebalancer.executeInstruction(instruction);
         _assertEq(amountOut, 80 ether, "amount out");
         _assertEq(tokenOut.balanceOf(address(vault)), 80 ether, "vault output");
+        _assertEq(
+            tokenIn.allowance(address(rebalancer), address(adapter)), 0, "adapter allowance cleared"
+        );
 
         try rebalancer.executeInstruction(instruction) {
             revert("expected replay revert");
@@ -103,6 +106,154 @@ contract RebalancerTest {
             revert("expected keeper revert");
         } catch (bytes memory reason) {
             _assertSelector(reason, Rebalancer.NotKeeper.selector);
+        }
+    }
+
+    function testRejectsZeroInstructionId() public {
+        Rebalancer.Instruction memory instruction = _instruction(10 ether);
+        instruction.id = bytes32(0);
+
+        try rebalancer.executeInstruction(instruction) {
+            revert("expected instruction id revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, Rebalancer.InvalidInstructionId.selector);
+        }
+
+        try rebalancer.authorizeInstruction(
+            bytes32(0), uint48(block.timestamp), uint48(block.timestamp + 1 hours)
+        ) {
+            revert("expected authorization id revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, Rebalancer.InvalidInstructionId.selector);
+        }
+    }
+
+    function testRejectsInvalidAuthorizationWindows() public {
+        bytes32 instructionHash = rebalancer.hashInstruction(_instruction(10 ether));
+        try rebalancer.authorizeInstruction(
+            instructionHash, uint48(block.timestamp + 1 hours), uint48(block.timestamp + 1 hours)
+        ) {
+            revert("expected equal window revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, Rebalancer.InvalidAuthorizationWindow.selector);
+        }
+
+        try rebalancer.authorizeInstruction(
+            instructionHash, uint48(block.timestamp - 2), uint48(block.timestamp - 1)
+        ) {
+            revert("expected expired window revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, Rebalancer.InvalidAuthorizationWindow.selector);
+        }
+    }
+
+    function testRejectsUnauthorizedAndCancelledInstructions() public {
+        Rebalancer.Instruction memory instruction = _instruction(10 ether);
+        try rebalancer.executeInstruction(instruction) {
+            revert("expected unauthorized revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, Rebalancer.NotAuthorized.selector);
+        }
+
+        bytes32 instructionHash = rebalancer.hashInstruction(instruction);
+        rebalancer.authorizeInstruction(
+            instructionHash, uint48(block.timestamp), uint48(block.timestamp + 1 hours)
+        );
+        rebalancer.cancelInstruction(instructionHash);
+        try rebalancer.executeInstruction(instruction) {
+            revert("expected cancelled authorization revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, Rebalancer.NotAuthorized.selector);
+        }
+    }
+
+    function testRejectsInstructionBeforeValidAfter() public {
+        Rebalancer.Instruction memory instruction = _instruction(10 ether);
+        bytes32 instructionHash = rebalancer.hashInstruction(instruction);
+        rebalancer.authorizeInstruction(
+            instructionHash, uint48(block.timestamp + 1), uint48(block.timestamp + 1 hours)
+        );
+
+        try rebalancer.executeInstruction(instruction) {
+            revert("expected early execution revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, Rebalancer.TooEarly.selector);
+        }
+    }
+
+    function testRejectsMissingChunkLimit() public {
+        Rebalancer.Instruction memory instruction = _instruction(10 ether);
+        instruction.route.tokenIn = address(tokenOut);
+        bytes32 instructionHash = rebalancer.hashInstruction(instruction);
+        rebalancer.authorizeInstruction(
+            instructionHash, uint48(block.timestamp), uint48(block.timestamp + 1 hours)
+        );
+
+        try rebalancer.executeInstruction(instruction) {
+            revert("expected missing limit revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, Rebalancer.MissingChunkLimit.selector);
+        }
+    }
+
+    function testRejectsDeltaOverflow() public view {
+        try rebalancer.calculateDelta(uint256(type(int256).max) + 1, 0, 0) {
+            revert("expected delta overflow revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, Rebalancer.DeltaOverflow.selector);
+        }
+    }
+
+    function testRejectsZeroConfigurationAddresses() public {
+        try new Rebalancer(
+            address(0), IRebalanceVault(address(vault)), IRebalanceSwapAdapter(address(adapter))
+        ) {
+            revert("expected zero admin revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, Rebalancer.InvalidAddress.selector);
+        }
+
+        try rebalancer.setKeeper(address(0), true) {
+            revert("expected zero keeper revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, Rebalancer.InvalidAddress.selector);
+        }
+
+        try rebalancer.setChunkLimit(address(0), 1) {
+            revert("expected zero token revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, Rebalancer.InvalidAddress.selector);
+        }
+    }
+
+    function testOnlyAdminCanManageRebalancer() public {
+        UnauthorizedRebalanceCaller caller = new UnauthorizedRebalanceCaller();
+        bytes32 instructionHash = rebalancer.hashInstruction(_instruction(10 ether));
+
+        try caller.setKeeper(rebalancer, address(caller), true) {
+            revert("expected keeper admin revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, Rebalancer.NotAdmin.selector);
+        }
+        try caller.setChunkLimit(rebalancer, address(tokenIn), 1) {
+            revert("expected limit admin revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, Rebalancer.NotAdmin.selector);
+        }
+        try caller.authorize(
+            rebalancer,
+            instructionHash,
+            uint48(block.timestamp),
+            uint48(block.timestamp + 1 hours)
+        ) {
+            revert("expected authorization admin revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, Rebalancer.NotAdmin.selector);
+        }
+        try caller.cancel(rebalancer, instructionHash) {
+            revert("expected cancellation admin revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, Rebalancer.NotAdmin.selector);
         }
     }
 
@@ -194,5 +345,26 @@ contract MockRebalanceToken {
 contract UnauthorizedRebalanceCaller {
     function execute(Rebalancer rebalancer, Rebalancer.Instruction memory instruction) external {
         rebalancer.executeInstruction(instruction);
+    }
+
+    function setKeeper(Rebalancer rebalancer, address keeper, bool allowed) external {
+        rebalancer.setKeeper(keeper, allowed);
+    }
+
+    function setChunkLimit(Rebalancer rebalancer, address token, uint256 limit) external {
+        rebalancer.setChunkLimit(token, limit);
+    }
+
+    function authorize(
+        Rebalancer rebalancer,
+        bytes32 instructionHash,
+        uint48 validAfter,
+        uint48 deadline
+    ) external {
+        rebalancer.authorizeInstruction(instructionHash, validAfter, deadline);
+    }
+
+    function cancel(Rebalancer rebalancer, bytes32 instructionHash) external {
+        rebalancer.cancelInstruction(instructionHash);
     }
 }

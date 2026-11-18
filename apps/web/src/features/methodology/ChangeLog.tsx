@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
+import { Icon } from "@/components/ui/Icon";
 import { Reveal } from "@/components/ui/Reveal";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Tabs } from "@/components/ui/Tabs";
@@ -29,7 +30,7 @@ export function ChangeLog() {
           <h2 id="changes-title" className={styles.title}>
             Changes
           </h2>
-          <p className={styles.sub}>Every registry change passes a 48-hour timelock.</p>
+          <p className={styles.sub}>Every confirmed registry change is indexed from Robinhood Chain and linked to its transaction evidence.</p>
         </div>
         <Tabs label="Filter changes" options={FILTERS} value={filter} onChange={setFilter} />
       </Reveal>
@@ -46,14 +47,39 @@ export function ChangeLog() {
               exit={{ opacity: 0, transition: { duration: DURATION.fast } }}
               transition={{ duration: DURATION.base, ease: EASE_OUT }}
             >
-              <time className={`${styles.date} tabular`} dateTime={change.date}>
-                {formatDate(change.date)}
-              </time>
-              <StatusChip tone="muted">{change.kind}</StatusChip>
-              <div>
-                <h3 className={styles.itemTitle}>{change.title}</h3>
-                <p className={styles.detail}>{change.detail}</p>
-              </div>
+              <a
+                href={change.explorerUrl}
+                className={styles.itemLink}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`${change.title}. View transaction on Robinhood Chain explorer.`}
+              >
+                <time className={`${styles.date} tabular`} dateTime={change.date}>
+                  {formatDate(change.date)}
+                </time>
+                <StatusChip tone="muted">{change.kind}</StatusChip>
+                <div className={styles.copy}>
+                  <h3 className={styles.itemTitle}>{change.title}</h3>
+                  <p className={styles.detail}>{change.detail}</p>
+                  <dl className={styles.metadata}>
+                    <div>
+                      <dt>Block</dt>
+                      <dd className="tabular">{change.blockNumber.toLocaleString("en-US")}</dd>
+                    </div>
+                    <div>
+                      <dt>Registry version</dt>
+                      <dd className="tabular">{change.registryVersion ?? "Not assigned"}</dd>
+                    </div>
+                    <div>
+                      <dt>Transaction</dt>
+                      <dd className="tabular">{shortHash(change.transactionHash)}</dd>
+                    </div>
+                  </dl>
+                </div>
+                <span className={styles.explorer} aria-hidden="true">
+                  Explorer <Icon name="external-link" size={14} />
+                </span>
+              </a>
             </motion.li>
           ))}
         </AnimatePresence>
@@ -70,4 +96,8 @@ export function ChangeLog() {
       )}
     </section>
   );
+}
+
+function shortHash(hash: string): string {
+  return `${hash.slice(0, 10)}…${hash.slice(-8)}`;
 }

@@ -162,6 +162,127 @@ contract FloatsVaultTest {
         _assertEq(amounts[1], 10 ether, "in-kind stock");
     }
 
+    function testConstructorAndAdministrativeValidation() public {
+        try new FloatsVault(
+            IERC20(address(0)),
+            address(this),
+            address(this),
+            IFloatsIndexRegistry(address(registry)),
+            IFloatsNavOracle(address(oracle)),
+            1,
+            "Floats",
+            "fIPO"
+        ) {
+            revert("expected constructor address revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, FloatsVault.InvalidAddress.selector);
+        }
+
+        try new FloatsVault(
+            IERC20(address(usdg)),
+            address(this),
+            address(this),
+            IFloatsIndexRegistry(address(registry)),
+            IFloatsNavOracle(address(oracle)),
+            0,
+            "Floats",
+            "fIPO"
+        ) {
+            revert("expected constructor cap revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, FloatsVault.InvalidCap.selector);
+        }
+
+        _expectInvalidAddressCall(abi.encodeCall(FloatsVault.setFeeModule, (address(0))));
+        _expectInvalidAddressCall(abi.encodeCall(FloatsVault.setRebalancer, (address(0))));
+        try vault.setTvlCap(0) {
+            revert("expected cap revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, FloatsVault.InvalidCap.selector);
+        }
+    }
+
+    function testRejectsInvalidInKindRedemption() public {
+        try vault.redeemInKind(0, address(this), address(this)) {
+            revert("expected zero shares revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, FloatsVault.ZeroShares.selector);
+        }
+
+        try vault.redeemInKind(1, address(0), address(this)) {
+            revert("expected receiver revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, FloatsVault.InvalidAddress.selector);
+        }
+    }
+
+    function testRebalancerAndFeeModuleBoundaries() public {
+        try vault.transferForRebalance(address(usdg), address(this), 1) {
+            revert("expected rebalancer revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, FloatsVault.NotRebalancer.selector);
+        }
+
+        vault.setRebalancer(address(this));
+        _expectInvalidAddressCall(
+            abi.encodeCall(FloatsVault.transferForRebalance, (address(0), address(this), 1))
+        );
+
+        vault.setFeeModule(address(this));
+        _expectInvalidAddressCall(abi.encodeCall(FloatsVault.mintFeeShares, (address(0), 1)));
+    }
+
+    function testGuardianCanPauseButCannotUnpause() public {
+        VaultGuardianCaller guardian = new VaultGuardianCaller();
+        FloatsVault guardedVault = new FloatsVault(
+            IERC20(address(usdg)),
+            address(this),
+            address(guardian),
+            IFloatsIndexRegistry(address(registry)),
+            IFloatsNavOracle(address(oracle)),
+            1_000e6,
+            "Floats",
+            "fIPO"
+        );
+        guardian.setDepositsPaused(guardedVault, true);
+        try guardian.setDepositsPaused(guardedVault, false) {
+            revert("expected guardian unpause revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, FloatsVault.GuardianCannotUnpause.selector);
+        }
+    }
+
+    function testDefensivePauseBranches() public {
+        FloatsVaultHarness harness = new FloatsVaultHarness(
+            IERC20(address(usdg)),
+            IFloatsIndexRegistry(address(registry)),
+            IFloatsNavOracle(address(oracle))
+        );
+        harness.setDepositsPaused(true);
+        try harness.exposedDeposit() {
+            revert("expected internal deposit pause revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, FloatsVault.DepositsPaused.selector);
+        }
+
+        harness.setCashOperationsPaused(true);
+        try harness.exposedWithdraw() {
+            revert("expected internal cash pause revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, FloatsVault.CashOperationsPaused.selector);
+        }
+    }
+
+    function testRejectsFeeAboveAmount() public {
+        vault.deposit(1e6, address(this));
+        vault.setFeeModule(address(new ExcessiveVaultFeeModule()));
+        try vault.previewRedeem(1 ether) {
+            revert("expected excessive fee revert");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, FloatsVault.FeeExceedsAmount.selector);
+        }
+    }
+
     function _assertEq(uint256 actual, uint256 expected, string memory message) private pure {
         require(actual == expected, message);
     }
@@ -181,6 +302,12 @@ contract FloatsVaultTest {
         vault.setFeeModule(address(module));
     }
 
+    function _expectInvalidAddressCall(bytes memory data) private {
+        (bool success, bytes memory reason) = address(vault).call(data);
+        require(!success, "expected invalid address revert");
+        _assertSelector(reason, FloatsVault.InvalidAddress.selector);
+    }
+
     function _assertSelector(bytes memory reason, bytes4 expected) private pure {
         require(reason.length >= 4, "missing revert selector");
         bytes4 actual;
@@ -188,6 +315,34 @@ contract FloatsVaultTest {
             actual := mload(add(reason, 0x20))
         }
         require(actual == expected, "unexpected revert selector");
+    }
+}
+
+contract FloatsVaultHarness is FloatsVault {
+    constructor(
+        IERC20 usdg,
+        IFloatsIndexRegistry registry,
+        IFloatsNavOracle oracle
+    ) FloatsVault(usdg, msg.sender, msg.sender, registry, oracle, 1_000e6, "Floats", "fIPO") { }
+
+    function exposedDeposit() external {
+        _deposit(msg.sender, msg.sender, 1, 1);
+    }
+
+    function exposedWithdraw() external {
+        _withdraw(msg.sender, msg.sender, msg.sender, 1, 1);
+    }
+}
+
+contract VaultGuardianCaller {
+    function setDepositsPaused(FloatsVault vault, bool paused) external {
+        vault.setDepositsPaused(paused);
+    }
+}
+
+contract ExcessiveVaultFeeModule {
+    function calculateFee(uint256 amount, uint8) external pure returns (uint256) {
+        return amount + 1;
     }
 }
 

@@ -6,6 +6,7 @@ const GLYPHS = {
   "arrow-right": <path d="M3 8h10m-4-4 4 4-4 4" />,
   "arrow-left": <path d="M13 8H3m4-4L3 8l4 4" />,
   "arrow-down": <path d="M8 3v10m-4-4 4 4 4-4" />,
+  "external-link": <path d="M9 3h4v4m0-4L7.5 8.5M7 4H3v9h9V9" />,
   "chevron-right": <path d="m6 3 5 5-5 5" />,
   menu: <path d="M2 5h12M2 11h12" />,
   check: <path d="m3 8.5 3.2 3.2L13 4.8" />,

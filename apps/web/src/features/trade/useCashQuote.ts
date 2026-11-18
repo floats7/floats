@@ -13,11 +13,11 @@ interface CashQuoteState {
 
 const EMPTY: CashQuoteState = { quote: null, loading: false, error: false };
 
-export function useCashQuote(raw: string, direction: Direction, mode: TradeMode): CashQuoteState {
+export function useCashQuote(raw: string, direction: Direction, mode: TradeMode, enabled = true): CashQuoteState {
   const [state, setState] = useState<CashQuoteState>(EMPTY);
 
   useEffect(() => {
-    if (mode !== "Cash") {
+    if (mode !== "Cash" || !enabled) {
       setState(EMPTY);
       return;
     }
@@ -43,7 +43,7 @@ export function useCashQuote(raw: string, direction: Direction, mode: TradeMode)
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [raw, direction, mode]);
+  }, [raw, direction, mode, enabled]);
 
   return state;
 }

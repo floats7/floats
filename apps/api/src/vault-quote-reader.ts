@@ -11,12 +11,22 @@ export interface VaultCashQuote {
   readonly feeAmount: string;
 }
 
+export interface VaultFeeRates {
+  readonly blockNumber: string;
+  readonly managementBps: number;
+  readonly cashBps: number;
+  readonly inKindBps: number;
+  readonly offHoursBps: number;
+}
+
 const SELECTOR = {
   previewDeposit: "0xef8b30f7",
   previewRedeem: "0x4cdad506",
   convertToAssets: "0x07a2d13a",
   feeModule: "0xbae41cbf",
   calculateFee: "0x82300ee3",
+  rateFor: "0x312845ff",
+  rates: "0x43f48fbd",
 } as const;
 
 export class VaultQuoteReader {
@@ -63,6 +73,24 @@ export class VaultQuoteReader {
     };
   }
 
+  public async readFeeRates(): Promise<VaultFeeRates> {
+    const blockNumber = await this.#source.getHeadBlockNumber();
+    const feeModule = await this.#callAddress(SELECTOR.feeModule, blockNumber);
+    const [management, cash, inKind, offHours] = await Promise.all([
+      this.#callRateTuple(feeModule, blockNumber),
+      this.#callUintAt(feeModule, SELECTOR.rateFor, [0n], blockNumber),
+      this.#callUintAt(feeModule, SELECTOR.rateFor, [1n], blockNumber),
+      this.#callUintAt(feeModule, SELECTOR.rateFor, [2n], blockNumber),
+    ]);
+    return {
+      blockNumber: blockNumber.toString(),
+      managementBps: boundedBps(management),
+      cashBps: boundedBps(cash),
+      inKindBps: boundedBps(inKind),
+      offHoursBps: boundedBps(offHours),
+    };
+  }
+
   async #callUint(selector: Hex, args: readonly bigint[], blockNumber: bigint): Promise<bigint> {
     return this.#callUintAt(this.vaultAddress, selector, args, blockNumber);
   }
@@ -82,6 +110,12 @@ export class VaultQuoteReader {
     if (!/^0x0{24}[0-9a-fA-F]{40}$/.test(result)) throw new Error("RPC_ADDRESS_RESULT_INVALID");
     return `0x${result.slice(-40).toLowerCase()}` as Address;
   }
+
+  async #callRateTuple(address: Address, blockNumber: bigint): Promise<bigint> {
+    const result = await this.#source.callContract(address, SELECTOR.rates, blockNumber);
+    if (!/^0x[0-9a-fA-F]{256}$/.test(result)) throw new Error("RPC_FEE_RATES_INVALID");
+    return BigInt(`0x${result.slice(2, 66)}`);
+  }
 }
 
 function encodeCall(selector: Hex, args: readonly bigint[]): Hex {
@@ -91,4 +125,9 @@ function encodeCall(selector: Hex, args: readonly bigint[]): Hex {
 function decodeUint(value: Hex): bigint {
   if (!/^0x[0-9a-fA-F]{64}$/.test(value)) throw new Error("RPC_UINT_RESULT_INVALID");
   return BigInt(value);
+}
+
+function boundedBps(value: bigint): number {
+  if (value < 0n || value > 10_000n) throw new Error("RPC_FEE_BPS_INVALID");
+  return Number(value);
 }

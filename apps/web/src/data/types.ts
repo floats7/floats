@@ -21,6 +21,8 @@ export interface PipelineItem {
   id: string;
   name: string;
   ticker: string;
+  logoUrl: string;
+  contractAddress: `0x${string}`;
   status: PipelineStatus;
   ipoDate: string;
   entryDate: string;
@@ -35,6 +37,10 @@ export interface RegistryChange {
   kind: ChangeKind;
   title: string;
   detail: string;
+  transactionHash: string;
+  blockNumber: number;
+  registryVersion: number | null;
+  explorerUrl: string;
 }
 
 export interface NavPoint {

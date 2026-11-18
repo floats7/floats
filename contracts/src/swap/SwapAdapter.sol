@@ -120,7 +120,7 @@ contract SwapAdapter {
         uint16 slippageBps,
         address recipient,
         bytes calldata routerCalldata
-    ) external onlyExecutor nonReentrant returns (uint256 amountOut) {
+    ) external nonReentrant onlyExecutor returns (uint256 amountOut) {
         if (amountIn == 0) revert InvalidAmount();
         if (recipient == address(0)) revert InvalidAddress();
         if (slippageBps > MAX_SLIPPAGE_BPS) revert InvalidSlippage(slippageBps);
@@ -154,6 +154,8 @@ contract SwapAdapter {
         _safeApprove(route.tokenIn, route.router, amountIn);
 
         uint256 outputBefore = IERC20Swap(route.tokenOut).balanceOf(address(this));
+        // executeSwap holds the adapter's nonReentrant lock across this router call.
+        // forge-lint: disable-next-line(reentrancy-no-eth)
         (bool success, bytes memory returnData) = route.router.call(routerCalldata);
         if (!success) revert RouterCallFailed(returnData);
 
@@ -168,12 +170,16 @@ contract SwapAdapter {
 
     function _safeApprove(address token, address spender, uint256 amount) private {
         (bool success, bytes memory data) =
+            // Called only from executeSwap while its nonReentrant lock is held.
+            // forge-lint: disable-next-line(reentrancy-no-eth)
             token.call(abi.encodeCall(IERC20Swap.approve, (spender, amount)));
         if (!success || !_successfulReturn(data)) revert ApprovalFailed(token, spender, amount);
     }
 
     function _safeTransfer(address token, address recipient, uint256 amount) private {
         (bool success, bytes memory data) =
+            // Called only from executeSwap while its nonReentrant lock is held.
+            // forge-lint: disable-next-line(reentrancy-no-eth)
             token.call(abi.encodeCall(IERC20Swap.transfer, (recipient, amount)));
         if (!success || !_successfulReturn(data)) revert TokenTransferFailed(token);
     }
@@ -182,6 +188,8 @@ contract SwapAdapter {
         private
     {
         (bool success, bytes memory data) =
+            // Called only from executeSwap while its nonReentrant lock is held.
+            // forge-lint: disable-next-line(reentrancy-no-eth)
             token.call(abi.encodeCall(IERC20Swap.transferFrom, (sender, recipient, amount)));
         if (!success || !_successfulReturn(data)) revert TokenTransferFailed(token);
     }

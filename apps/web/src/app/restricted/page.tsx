@@ -10,7 +10,7 @@ export default function RestrictedPage() {
       <p className="eyebrow">Region restricted</p>
       <h1 className={styles.title}>Floats is not available where you are.</h1>
       <p className={styles.body}>
-        Stock Tokens cannot be offered in your jurisdiction, so access to minting and redeeming is blocked. You can still read how the index works.
+        Transactional access is unavailable in your jurisdiction. You can still review the methodology, risks, and public onchain record.
       </p>
       <LinkButton href="/methodology" variant="outline">
         Read the methodology

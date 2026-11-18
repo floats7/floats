@@ -77,6 +77,12 @@ export interface ReadModelScope {
   readonly chainId: number;
 }
 
+export interface DistributedRateLimitResult {
+  readonly allowed: boolean;
+  readonly remaining: number;
+  readonly resetAt: number;
+}
+
 export class ReadModelRepository {
   public constructor(
     private readonly client: SupabaseRestClient,
@@ -209,6 +215,26 @@ export class ReadModelRepository {
       p_chain_id: this.scope.chainId,
       p_nonce: nonce,
       p_wallet_address: walletAddress.toLowerCase(),
+    }, signal);
+  }
+
+  public takeRateLimit(
+    keyHash: string,
+    limit: number,
+    windowSeconds = 60,
+    signal?: AbortSignal,
+  ): Promise<DistributedRateLimitResult> {
+    if (!/^[a-f0-9]{64}$/.test(keyHash)) throw new Error("Invalid rate-limit key hash");
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 10_000) throw new Error("Invalid rate-limit maximum");
+    if (!Number.isSafeInteger(windowSeconds) || windowSeconds < 1 || windowSeconds > 86_400) {
+      throw new Error("Invalid rate-limit window");
+    }
+    return this.client.rpc<DistributedRateLimitResult>("take_api_rate_limit", {
+      p_environment: this.scope.environment,
+      p_chain_id: this.scope.chainId,
+      p_key_hash: keyHash,
+      p_limit: limit,
+      p_window_seconds: windowSeconds,
     }, signal);
   }
 

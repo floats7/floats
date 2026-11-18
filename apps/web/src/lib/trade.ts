@@ -1,7 +1,7 @@
 import type { Constituent, TransactionType } from "@/data/types";
 import type { CashQuoteDto } from "./api-client";
 import { formatNumber, formatUsd } from "./format";
-import { cashFeeRate, inKindFeeShares, quoteCash, type Direction, type TradeMode } from "./quote";
+import { cashFeeRate, quoteCash, type Direction, type TradeMode } from "./quote";
 import { unitsToNumber } from "./units";
 
 export interface TradeRequest {
@@ -11,6 +11,7 @@ export interface TradeRequest {
   nav: number;
   offHours: boolean;
   cashQuote?: CashQuoteDto;
+  feeBps?: number;
   inputAmount?: string;
 }
 
@@ -41,13 +42,14 @@ export function computeOutcome(request: TradeRequest): TradeOutcome {
         ? { sharesDelta: output, usdgDelta: -amount, notional: amount }
         : { sharesDelta: -amount, usdgDelta: output, notional: amount * nav };
     }
-    const quote = quoteCash(direction, amount, nav, cashFeeRate(offHours));
+    const quote = quoteCash(direction, amount, nav, cashFeeRate());
     return minting
       ? { sharesDelta: quote.net, usdgDelta: -amount, notional: amount }
       : { sharesDelta: -amount, usdgDelta: quote.net, notional: quote.gross };
   }
 
-  const netShares = amount - inKindFeeShares(amount);
+  const feeBps = request.feeBps ?? 0;
+  const netShares = amount - amount * feeBps / 10_000;
   return { sharesDelta: minting ? netShares : -amount, usdgDelta: 0, notional: amount * nav };
 }
 

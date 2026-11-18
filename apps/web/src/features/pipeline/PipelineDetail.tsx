@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
+import { AssetLogo } from "@/components/ui/AssetLogo";
 import { LinkButton } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -35,7 +36,8 @@ export function PipelineDetail({ item }: { item: PipelineItem }) {
           Pipeline
         </Link>
         <div className={styles.titleRow}>
-          <div>
+          <AssetLogo name={item.name} symbol={item.ticker} src={item.logoUrl} size="lg" />
+          <div className={styles.identityCopy}>
             <p className="eyebrow">{item.ticker}</p>
             <h1 className={styles.title}>{item.name}</h1>
           </div>

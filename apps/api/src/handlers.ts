@@ -8,6 +8,14 @@ export async function getPublicConfig(context: ApiContext): Promise<Response> {
   return json({ data: context.publicConfig }, 200, PUBLIC_CACHE);
 }
 
+export async function getFeeRates(context: ApiContext): Promise<Response> {
+  try {
+    return json({ data: await context.vaultQuotes.readFeeRates() }, 200, PUBLIC_CACHE);
+  } catch {
+    return internalError();
+  }
+}
+
 export async function postVaultQuote(context: ApiContext, request: Request): Promise<Response> {
   let body: unknown;
   try {
