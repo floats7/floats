@@ -1,0 +1,15 @@
+.panel { display: grid; gap: 1rem; }
+.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.tabs button { border: 1px solid var(--line-base); background: var(--surface-base); color: var(--text-muted); transition: border-color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out); }
+.tabs button:hover { border-color: var(--line-strong); color: var(--text-strong); }
+.tabs button[data-side="buy"][aria-selected="true"] { border-color: var(--positive); background: var(--positive); color: var(--text-on-paper); }
+.tabs button[data-side="sell"][aria-selected="true"] { border-color: var(--negative); background: var(--negative); color: var(--text-on-paper); }
+.tabs button:disabled { opacity: .42; }
+.panel label { display: grid; gap: .5rem; }
+.panel input, .panel button { min-height: 2.8rem; }
+.panel .buyAction { border-color: var(--positive); background: var(--positive); color: var(--text-on-paper); font-weight: 700; }
+.panel .sellAction { border-color: var(--negative); background: var(--negative); color: var(--text-on-paper); font-weight: 700; }
+.quote { display: grid; gap: .65rem; margin: 0; }
+.quote div { display: flex; justify-content: space-between; gap: 1rem; }
+.quote dd { margin: 0; text-align: right; }
+.note { color: var(--muted); font-size: .82rem; line-height: 1.5; }

@@ -26,8 +26,8 @@ const PRODUCTS: readonly Product[] = [
   },
   {
     href: "/trade",
-    title: "Mint & Redeem",
-    body: "Enter and exit at NAV with USDG, or move the underlying tokens directly with in-kind settlement.",
+    title: "Buy & Sell",
+    body: "Buy and sell fIPO at NAV with USDG, or exit into the underlying tokens with in-kind settlement.",
     tags: ["Cash", "In-kind", "Slippage guard"],
     art: "trade",
   },

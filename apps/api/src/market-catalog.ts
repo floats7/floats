@@ -138,7 +138,7 @@ export class MarketCatalog {
       targetWeightBps: null,
       oracleHealth: nav ? "nav" : null,
       products: [
-        capability("mint-redeem", "Mint & Redeem", Boolean(nav), "Index state is unavailable"),
+        capability("mint-redeem", "Buy & Sell", Boolean(nav), "Index state is unavailable"),
         optionsCapability(activeSeries),
         capability("liquidity", "Earn", Boolean(this.config.optionsVaultAddress), "Liquidity vault is unavailable"),
       ],
@@ -169,7 +169,10 @@ export class MarketCatalog {
       priceUsd18: holding?.normalized_price_usd_18 ?? null,
       targetWeightBps: asset.target_weight_bps,
       oracleHealth: holding?.oracle_health ?? null,
-      products: [optionsCapability(activeSeries)],
+      products: [
+        capability("spot", "Buy & Sell", this.config.spotRoutes.some((route) => route.tokenAddress === address), "No approved spot route"),
+        optionsCapability(activeSeries),
+      ],
       activeOptionSeries: activeSeries,
       chartKind: "price",
     };

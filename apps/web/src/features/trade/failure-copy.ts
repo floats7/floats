@@ -20,7 +20,7 @@ export const FAILURE_COPY: Record<TradeFailureCode, FailureCopy> = {
   },
   "unsupported-flow": {
     title: "Flow not available",
-    body: "This settlement path is not enabled for real wallet execution yet. Choose a supported cash mint or redeem flow.",
+    body: "This settlement path is not enabled for real wallet execution yet. Buy with cash, or sell with cash or in-kind settlement.",
     canEdit: true,
   },
   unknown: {

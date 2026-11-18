@@ -35,6 +35,7 @@ const serviceVariables: Readonly<Record<string, Readonly<Record<string, string>>
     OPTIONS_MARKET_ADDRESS: optional("OPTIONS_MARKET_ADDRESS"),
     OPTION_TOKEN_ADDRESS: optional("OPTION_TOKEN_ADDRESS"),
     OPTIONS_VAULT_ADDRESS: optional("OPTIONS_VAULT_ADDRESS"),
+    SPOT_ROUTES_JSON: optional("SPOT_ROUTES_JSON") ?? "[]",
   }),
   "floats-indexer": compact({
     APP_ENV: railwayEnvironment,

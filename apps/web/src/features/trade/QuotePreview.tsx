@@ -20,7 +20,7 @@ interface InKindPreviewProps {
 
 export function InKindPreview({ direction, rawShares, inKindFeeBps, data, assets }: InKindPreviewProps) {
   if (direction === "Mint") {
-    return <p>In-kind mint is not implemented by the deployed vault. In-kind redemption remains available.</p>;
+    return <p>Buying with in-kind settlement is not supported by the deployed vault. Use cash to buy, or select Sell for an in-kind exit.</p>;
   }
   if (!rawShares || inKindFeeBps === undefined || !data || BigInt(data.totalSupply18) === 0n) {
     return <p>Finalized vault balances are not available for this preview yet.</p>;
@@ -50,9 +50,9 @@ export function InKindPreview({ direction, rawShares, inKindFeeBps, data, assets
     <div className={styles.legs}>
       <SummaryList
         rows={[
-          { label: "Requested shares", value: `${formatUnits(shares.toString(), 18, 6)} fIPO` },
+          { label: "You sell", value: `${formatUnits(shares.toString(), 18, 6)} fIPO` },
           { label: "Protocol fee", value: `${formatUnits(feeShares.toString(), 18, 6)} fIPO (${formatPercent(inKindFeeBps / 100)})` },
-          { label: "Redeemed shares", value: `${formatUnits(redeemedShares.toString(), 18, 6)} fIPO`, strong: true },
+          { label: "Net shares settled", value: `${formatUnits(redeemedShares.toString(), 18, 6)} fIPO`, strong: true },
           { label: "Settlement slippage", value: "None — proportional in-kind transfer" },
           { label: "Snapshot block", value: data.blockNumber.toString() },
         ]}

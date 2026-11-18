@@ -48,13 +48,14 @@ test("catalog derives identity and products without frontend symbol branching", 
     vaultAddress: vault, usdgAddress: `0x${"5".repeat(40)}`,
     walletConnectProjectId: "0".repeat(32), optionsMarketAddress: `0x${"6".repeat(40)}`,
     optionsVaultAddress: `0x${"7".repeat(40)}`, optionTokenAddress: `0x${"8".repeat(40)}`,
+    spotRoutes: [],
   });
 
   const markets = await catalog.list();
   assert.equal(markets[0]?.symbol, "DYN");
   assert.equal(markets[1]?.symbol, "ASSET");
   assert.equal(markets[1]?.activeOptionSeries, 1);
-  assert.equal(markets[1]?.products[0]?.enabled, true);
+  assert.equal(markets[1]?.products.find((product) => product.id === "options")?.enabled, true);
   assert.equal(markets[1]?.logoUrl, "https://assets.example/asset.png");
   assert.equal(markets.length, 2);
   assert.equal(markets.some((market) => market.address === staleToken), false);

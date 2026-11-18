@@ -12,9 +12,10 @@ import type { TradeRequest } from "@/lib/trade";
 import { stepsFor, type TradeFailureCode, type TradeReceipt } from "@/lib/wallet-transactions";
 import { FAILURE_COPY } from "./failure-copy";
 import { navRow, summaryRows } from "./trade-summary";
+import { retailTradeAction, settlementDescription } from "@/lib/trade-copy";
 import styles from "./TradeModalSteps.module.css";
 
-const verb = (request: TradeRequest) => request.direction.toLowerCase();
+const verb = (request: TradeRequest) => retailTradeAction(request.direction).toLowerCase();
 
 interface ReviewStepProps {
   request: TradeRequest;
@@ -33,6 +34,7 @@ export function ReviewStep({ request, onConfirm, onClose }: ReviewStepProps) {
           The displayed cash quote is read from the vault at block {request.cashQuote?.blockNumber}. Wallet confirmation uses the exact base-unit amount.
         </p>
       )}
+      <p className={styles.note}>Settlement method: {settlementDescription(request.direction, request.mode)}.</p>
       <div className={styles.actions}>
         <Button onClick={onConfirm}>Confirm {verb(request)}</Button>
         <Button variant="outline" onClick={onClose}>
@@ -99,7 +101,7 @@ export function SuccessStep({ request, receipt, onClose }: SuccessStepProps) {
     <div className={styles.center} role="status">
       <StatusIcon status="success" />
       <h3 className={styles.heading}>
-        {minting ? "Minted" : "Redeemed"} {formatNumber(Math.abs(sharesDelta), 4)} fIPO
+        {minting ? "Bought" : "Sold"} {formatNumber(Math.abs(sharesDelta), 4)} fIPO
       </h3>
       <div className={styles.full}>
         <SummaryList
@@ -109,6 +111,11 @@ export function SuccessStep({ request, receipt, onClose }: SuccessStepProps) {
             { label: "Transaction", value: shortAddress(receipt.hash) },
           ]}
         />
+        {receipt.explorerUrl && (
+          <a className={styles.explorerLink} href={`${receipt.explorerUrl.replace(/\/$/, "")}/tx/${receipt.hash}`} target="_blank" rel="noreferrer">
+            View transaction on explorer <Icon name="external-link" />
+          </a>
+        )}
       </div>
       <div className={styles.actions}>
         <LinkButton href="/portfolio" variant="chrome">

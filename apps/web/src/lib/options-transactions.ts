@@ -57,56 +57,72 @@ export async function executeOptionsQuote(input: {
 
 export async function depositOptionsLiquidity(input: {
   provider: Eip1193Provider; account: string; vault: `0x${string}`; usdg: `0x${string}`; assets6: bigint;
+  onStatus?(status: "approval" | "transaction" | "confirming"): void;
 }): Promise<string> {
+  input.onStatus?.("approval");
   const approvalHash = await submit(input.provider, input.account, input.usdg, encodeFunctionData({
     abi: erc20Abi, functionName: "approve", args: [input.vault, input.assets6],
   }));
   await waitForReceipt(input.provider, approvalHash);
+  input.onStatus?.("transaction");
   const hash = await submit(input.provider, input.account, input.vault, encodeFunctionData({
     abi: vaultAbi, functionName: "deposit", args: [input.assets6, input.account as `0x${string}`],
   }));
+  input.onStatus?.("confirming");
   await waitForReceipt(input.provider, hash);
   return hash;
 }
 
 export async function requestOptionsWithdrawal(input: {
   provider: Eip1193Provider; account: string; vault: `0x${string}`; shares18: bigint; unlockAt: number;
+  onStatus?(status: "transaction" | "confirming"): void;
 }): Promise<string> {
+  input.onStatus?.("transaction");
   const hash = await submit(input.provider, input.account, input.vault, encodeFunctionData({
     abi: vaultAbi,
     functionName: "requestWithdrawal",
     args: [input.shares18, input.account as `0x${string}`, input.unlockAt],
   }));
+  input.onStatus?.("confirming");
   await waitForReceipt(input.provider, hash);
   return hash;
 }
 
 export async function claimOptionsPosition(input: {
   provider: Eip1193Provider; account: string; market: `0x${string}`; seriesId: `0x${string}`; size18: bigint;
+  onStatus?(status: "transaction" | "confirming"): void;
 }): Promise<string> {
+  input.onStatus?.("transaction");
   const hash = await submit(input.provider, input.account, input.market, encodeFunctionData({
     abi: claimAbi, functionName: "claim", args: [input.seriesId, input.size18],
   }));
+  input.onStatus?.("confirming");
   await waitForReceipt(input.provider, hash);
   return hash;
 }
 
 export async function claimOptionsWithdrawal(input: {
   provider: Eip1193Provider; account: string; vault: `0x${string}`; requestId: bigint;
+  onStatus?(status: "transaction" | "confirming"): void;
 }): Promise<string> {
+  input.onStatus?.("transaction");
   const hash = await submit(input.provider, input.account, input.vault, encodeFunctionData({
     abi: vaultAbi, functionName: "claimWithdrawal", args: [input.requestId],
   }));
+  input.onStatus?.("confirming");
   await waitForReceipt(input.provider, hash);
   return hash;
 }
 
 export async function cancelOptionsWithdrawal(input: {
   provider: Eip1193Provider; account: string; vault: `0x${string}`; requestId: bigint;
+  onStatus?(status: "transaction" | "confirming"): void;
 }): Promise<string> {
+  input.onStatus?.("transaction");
   const hash = await submit(input.provider, input.account, input.vault, encodeFunctionData({
     abi: vaultAbi, functionName: "cancelWithdrawal", args: [input.requestId],
   }));
+  input.onStatus?.("confirming");
   await waitForReceipt(input.provider, hash);
   return hash;
 }

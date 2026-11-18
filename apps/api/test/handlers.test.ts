@@ -37,6 +37,7 @@ function context(readModels: Partial<ReadModelRepository> = {}): ApiContext {
       optionsMarketAddress: null,
       optionsVaultAddress: null,
       optionTokenAddress: null,
+      spotRoutes: [],
     },
     vaultAddress: `0x${"1".repeat(40)}`,
     readModels: readModels as ReadModelRepository,
@@ -68,7 +69,7 @@ test("market endpoints expose capability-driven assets and bounded canonical his
     priceUsd18: "1000000000000000000",
     targetWeightBps: null,
     oracleHealth: "nav",
-    products: [{ id: "mint-redeem" as const, label: "Mint & Redeem", enabled: true }],
+    products: [{ id: "mint-redeem" as const, label: "Buy & Sell", enabled: true }],
     activeOptionSeries: 0,
     chartKind: "nav" as const,
   };

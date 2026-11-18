@@ -5,6 +5,22 @@
   background: var(--surface-raised);
 }
 
+.embedded {
+  margin-bottom: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.embedded .metrics {
+  grid-template-columns: 1fr;
+}
+
+.embedded .actions {
+  align-items: stretch;
+  flex-direction: column;
+}
+
 .heading {
   display: flex;
   justify-content: space-between;
@@ -58,6 +74,8 @@
   background: var(--surface-plate);
   color: var(--text-muted);
 }
+.actions .depositAction:not(:disabled) { border-color: var(--positive); background: var(--positive); color: var(--text-on-paper); }
+.actions .withdrawAction:not(:disabled) { border-color: var(--negative); background: var(--negative); color: var(--text-on-paper); }
 
 .actions input,
 .actions select {

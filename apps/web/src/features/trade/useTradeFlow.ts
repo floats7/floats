@@ -70,7 +70,7 @@ export function useTradeFlow() {
         usdgAddress: config.usdgAddress,
         onStep: (index) => dispatch({ type: "step", index }),
       });
-      dispatch({ type: "succeed", receipt });
+      dispatch({ type: "succeed", receipt: { ...receipt, explorerUrl: config.blockExplorerUrl } });
     } catch (error) {
       dispatch({ type: "fail", code: error instanceof TradeError ? error.code : "unknown" });
     }

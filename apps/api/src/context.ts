@@ -29,6 +29,7 @@ export function createApiContext(environment: NodeJS.ProcessEnv): ApiContext {
   const optionsVaultAddress = optionalAddress(environment, "OPTIONS_VAULT_ADDRESS");
   const optionsMarketAddress = optionalAddress(environment, "OPTIONS_MARKET_ADDRESS");
   const optionTokenAddress = optionalAddress(environment, "OPTION_TOKEN_ADDRESS");
+  const spotRoutes = readSpotRoutes(environment);
   const optionsPricerUrl = optionalHttpsUrl(environment, "OPTIONS_PRICER_URL");
   const optionsPricerToken = environment.OPTIONS_PRICER_AUTH_TOKEN?.trim();
   if ((optionsPricerUrl === undefined) !== !optionsPricerToken) {
@@ -42,6 +43,7 @@ export function createApiContext(environment: NodeJS.ProcessEnv): ApiContext {
         ...(optionsMarketAddress ? { optionsMarketAddress } : {}),
         ...(optionsVaultAddress ? { optionsVaultAddress } : {}),
         ...(optionTokenAddress ? { optionTokenAddress } : {}),
+        spotRoutes,
       },
       requireValue(environment, "WALLETS_CONNECT_PROJECT_ID"),
     );
@@ -71,6 +73,28 @@ export function createApiContext(environment: NodeJS.ProcessEnv): ApiContext {
       ? { optionsQuotes: new OptionsQuoteClient(optionsPricerUrl, optionsPricerToken) }
       : {}),
   };
+}
+
+function readSpotRoutes(environment: NodeJS.ProcessEnv) {
+  const raw = environment.SPOT_ROUTES_JSON?.trim();
+  if (!raw) return [];
+  const value: unknown = JSON.parse(raw);
+  if (!Array.isArray(value)) throw new Error("SPOT_ROUTES_JSON must be an array");
+  return value.map((item, index) => {
+    if (!item || typeof item !== "object") throw new Error(`SPOT_ROUTES_JSON[${index}] is invalid`);
+    const route = item as Record<string, unknown>;
+    const tokenAddress = addressValue(route.tokenAddress, `SPOT_ROUTES_JSON[${index}].tokenAddress`);
+    const routerAddress = addressValue(route.routerAddress, `SPOT_ROUTES_JSON[${index}].routerAddress`);
+    const quoterAddress = addressValue(route.quoterAddress, `SPOT_ROUTES_JSON[${index}].quoterAddress`);
+    const fee = Number(route.fee);
+    if (![100, 500, 3000, 10000].includes(fee)) throw new Error(`SPOT_ROUTES_JSON[${index}].fee is invalid`);
+    return { tokenAddress, routerAddress, quoterAddress, fee };
+  });
+}
+
+function addressValue(value: unknown, label: string): string {
+  if (typeof value !== "string" || !/^0x[0-9a-fA-F]{40}$/.test(value)) throw new Error(`${label} must be an EVM address`);
+  return value.toLowerCase();
 }
 
 function optionalHttpsUrl(environment: NodeJS.ProcessEnv, key: string): URL | undefined {

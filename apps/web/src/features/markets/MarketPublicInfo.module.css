@@ -1,0 +1,112 @@
+.section {
+  display: grid;
+  gap: var(--space-6);
+  padding-block: var(--space-4) var(--space-9);
+}
+
+.heading,
+.activityHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.heading > div,
+.activityHeader > div {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.heading h2 {
+  font-size: var(--text-3xl);
+}
+
+.activityHeader h3 {
+  font-size: var(--text-xl);
+}
+
+.activityHeader > p {
+  max-width: 31rem;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.structure {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--line-base);
+  border-left: 1px solid var(--line-base);
+}
+
+.structure article {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-height: 12rem;
+  padding: var(--space-5);
+  border-right: 1px solid var(--line-base);
+  border-bottom: 1px solid var(--line-base);
+}
+
+.structure span,
+.activityList > li > span,
+.activityList a {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.structure strong {
+  font-size: var(--text-xl);
+}
+
+.structure p,
+.activityList div span,
+.state {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+.activityList {
+  border-top: 1px solid var(--line-base);
+}
+
+.activityList li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-4) var(--space-3);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.activityList div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.activityList a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-strong);
+}
+
+@media (max-width: 48rem) {
+  .structure {
+    grid-template-columns: 1fr;
+  }
+
+  .activityList li {
+    grid-template-columns: 1fr auto;
+  }
+
+  .activityList li > span {
+    grid-column: 1;
+  }
+}

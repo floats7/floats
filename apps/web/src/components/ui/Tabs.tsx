@@ -10,10 +10,11 @@ interface TabsProps<T extends string> {
   options: readonly T[];
   value: T;
   onChange: (value: T) => void;
+  optionLabel?: (value: T) => string;
 }
 
 /** Segmented control. A shared indicator glides between the options. */
-export function Tabs<T extends string>({ label, options, value, onChange }: TabsProps<T>) {
+export function Tabs<T extends string>({ label, options, value, onChange, optionLabel = String }: TabsProps<T>) {
   const groupId = useId();
 
   const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
@@ -37,11 +38,12 @@ export function Tabs<T extends string>({ label, options, value, onChange }: Tabs
               tabIndex={selected ? 0 : -1}
               className={styles.tab}
               data-selected={selected}
+              data-option={option.toLowerCase()}
               onClick={() => onChange(option)}
               onKeyDown={(event) => handleKeyDown(event, index)}
             >
               {selected && <motion.span layoutId="tab-indicator" className={styles.indicator} transition={SPRING.snappy} />}
-              <span className={styles.text}>{option}</span>
+              <span className={styles.text}>{optionLabel(option)}</span>
             </button>
           );
         })}

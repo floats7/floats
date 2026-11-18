@@ -10,12 +10,23 @@ import { floatApi, type OptionsPortfolioDto } from "@/lib/api-client";
 import { formatUnits } from "@/lib/units";
 import styles from "./OptionsPortfolio.module.css";
 import { cancelOptionsWithdrawal, claimOptionsPosition, claimOptionsWithdrawal } from "@/lib/options-transactions";
+import { OnchainTransactionModal, type OnchainTransactionPhase } from "@/features/transactions/OnchainTransactionModal";
 
-export function OptionsPortfolio() {
+interface PortfolioTransactionState {
+  readonly phase: OnchainTransactionPhase;
+  readonly title: string;
+  readonly stepIndex: number;
+  readonly hash?: string;
+  readonly explorerUrl?: string;
+  readonly error?: string;
+}
+
+export function OptionsPortfolio({ embedded = false }: { readonly embedded?: boolean }) {
   const { address, provider, openConnect } = useWallet();
   const { notify } = useToast();
   const [portfolio, setPortfolio] = useState<OptionsPortfolioDto>();
   const [loading, setLoading] = useState(false);
+  const [transaction, setTransaction] = useState<PortfolioTransactionState>();
 
   useEffect(() => setPortfolio(undefined), [address]);
 
@@ -38,7 +49,7 @@ export function OptionsPortfolio() {
   };
 
   return (
-    <Reveal className={`container ${styles.section}`}>
+    <Reveal className={`${embedded ? styles.embedded : "container"} ${styles.section}`}>
       <div className={styles.heading}>
         <p className="eyebrow">Wallet portfolio</p>
         <h2>Your option positions.</h2>
@@ -57,28 +68,33 @@ export function OptionsPortfolio() {
         />
       ) : (
         <div className={styles.grids}>
-          <PortfolioTable portfolio={portfolio} provider={provider} account={address} notify={notify} />
-          <WithdrawalTable portfolio={portfolio} provider={provider} account={address} notify={notify} />
+          <PortfolioTable portfolio={portfolio} provider={provider} account={address} notify={notify} setTransaction={setTransaction} />
+          <WithdrawalTable portfolio={portfolio} provider={provider} account={address} notify={notify} setTransaction={setTransaction} />
         </div>
       )}
+      <OnchainTransactionModal open={Boolean(transaction)} phase={transaction?.phase ?? "pending"} title={transaction?.title ?? "Portfolio transaction"} steps={["Confirm transaction in wallet", "Wait for onchain confirmation"]} stepIndex={transaction?.stepIndex ?? 0} hash={transaction?.hash} explorerUrl={transaction?.explorerUrl} error={transaction?.error} onClose={() => setTransaction(undefined)} />
     </Reveal>
   );
 }
 
-function PortfolioTable({ portfolio, provider, account, notify }: {
+function PortfolioTable({ portfolio, provider, account, notify, setTransaction }: {
   portfolio: OptionsPortfolioDto;
   provider: ReturnType<typeof useWallet>["provider"];
   account: string;
   notify: (message: string, tone?: "success" | "error") => void;
+  setTransaction: (state: PortfolioTransactionState) => void;
 }) {
   const claim = async (seriesId: string, size18: string) => {
+    setTransaction({ phase: "pending", title: "Claim option position", stepIndex: 0 });
     try {
       if (!provider) throw new Error("WALLET_PROVIDER_MISSING");
       const config = await floatApi.getPublicConfig();
       if (!config.optionsMarketAddress) throw new Error("OPTIONS_NOT_ACTIVE");
-      await claimOptionsPosition({ provider, account, market: config.optionsMarketAddress as `0x${string}`, seriesId: seriesId as `0x${string}`, size18: BigInt(size18) });
+      const hash = await claimOptionsPosition({ provider, account, market: config.optionsMarketAddress as `0x${string}`, seriesId: seriesId as `0x${string}`, size18: BigInt(size18), onStatus: (next) => setTransaction({ phase: "pending", title: "Claim option position", stepIndex: next === "transaction" ? 0 : 1, explorerUrl: config.blockExplorerUrl }) });
+      setTransaction({ phase: "success", title: "Claim option position", stepIndex: 1, hash, explorerUrl: config.blockExplorerUrl });
       notify("Option claim confirmed", "success");
     } catch {
+      setTransaction({ phase: "failed", title: "Claim option position", stepIndex: 0, error: "The option claim is not available or failed simulation." });
       notify("Claim is not available or failed simulation", "error");
     }
   };
@@ -104,31 +120,38 @@ function PortfolioTable({ portfolio, provider, account, notify }: {
   );
 }
 
-function WithdrawalTable({ portfolio, provider, account, notify }: {
+function WithdrawalTable({ portfolio, provider, account, notify, setTransaction }: {
   portfolio: OptionsPortfolioDto;
   provider: ReturnType<typeof useWallet>["provider"];
   account: string;
   notify: (message: string, tone?: "success" | "error") => void;
+  setTransaction: (state: PortfolioTransactionState) => void;
 }) {
   const claim = async (requestId: string) => {
+    setTransaction({ phase: "pending", title: "Claim LP withdrawal", stepIndex: 0 });
     try {
       if (!provider) throw new Error("WALLET_PROVIDER_MISSING");
       const config = await floatApi.getPublicConfig();
       if (!config.optionsVaultAddress) throw new Error("OPTIONS_NOT_ACTIVE");
-      await claimOptionsWithdrawal({ provider, account, vault: config.optionsVaultAddress as `0x${string}`, requestId: BigInt(requestId) });
+      const hash = await claimOptionsWithdrawal({ provider, account, vault: config.optionsVaultAddress as `0x${string}`, requestId: BigInt(requestId), onStatus: (next) => setTransaction({ phase: "pending", title: "Claim LP withdrawal", stepIndex: next === "transaction" ? 0 : 1, explorerUrl: config.blockExplorerUrl }) });
+      setTransaction({ phase: "success", title: "Claim LP withdrawal", stepIndex: 1, hash, explorerUrl: config.blockExplorerUrl });
       notify("Withdrawal claim confirmed", "success");
     } catch {
+      setTransaction({ phase: "failed", title: "Claim LP withdrawal", stepIndex: 0, error: "The withdrawal is not claimable or failed simulation." });
       notify("Withdrawal is not claimable or failed simulation", "error");
     }
   };
   const cancel = async (requestId: string) => {
+    setTransaction({ phase: "pending", title: "Cancel LP withdrawal", stepIndex: 0 });
     try {
       if (!provider) throw new Error("WALLET_PROVIDER_MISSING");
       const config = await floatApi.getPublicConfig();
       if (!config.optionsVaultAddress) throw new Error("OPTIONS_NOT_ACTIVE");
-      await cancelOptionsWithdrawal({ provider, account, vault: config.optionsVaultAddress as `0x${string}`, requestId: BigInt(requestId) });
+      const hash = await cancelOptionsWithdrawal({ provider, account, vault: config.optionsVaultAddress as `0x${string}`, requestId: BigInt(requestId), onStatus: (next) => setTransaction({ phase: "pending", title: "Cancel LP withdrawal", stepIndex: next === "transaction" ? 0 : 1, explorerUrl: config.blockExplorerUrl }) });
+      setTransaction({ phase: "success", title: "Cancel LP withdrawal", stepIndex: 1, hash, explorerUrl: config.blockExplorerUrl });
       notify("Withdrawal request cancelled", "success");
     } catch {
+      setTransaction({ phase: "failed", title: "Cancel LP withdrawal", stepIndex: 0, error: "The withdrawal cancellation failed simulation." });
       notify("Withdrawal cancellation failed simulation", "error");
     }
   };

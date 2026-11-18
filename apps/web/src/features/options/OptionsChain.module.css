@@ -5,6 +5,16 @@
   padding-block: var(--space-7) var(--space-9);
 }
 
+.embedded {
+  grid-template-columns: minmax(0, 1fr);
+  padding-block: 0;
+}
+
+.embedded .ticket {
+  order: -1;
+  position: static;
+}
+
 .chain,
 .ticket {
   border: 1px solid var(--line-base);
@@ -113,6 +123,8 @@
   background: var(--surface-plate);
   color: var(--text-muted);
 }
+.buyAction:not(:disabled) { border-color: var(--positive); background: var(--positive); color: var(--text-on-paper); }
+.sellAction:not(:disabled) { border-color: var(--negative); background: var(--negative); color: var(--text-on-paper); }
 
 .sizeField {
   display: grid;

@@ -18,6 +18,14 @@ export interface PublicConfig {
   readonly optionsMarketAddress: string | null;
   readonly optionsVaultAddress: string | null;
   readonly optionTokenAddress: string | null;
+  readonly spotRoutes: readonly PublicSpotRoute[];
+}
+
+export interface PublicSpotRoute {
+  readonly tokenAddress: string;
+  readonly routerAddress: string;
+  readonly quoterAddress: string;
+  readonly fee: number;
 }
 
 export interface PublicProtocolAddresses {
@@ -26,6 +34,7 @@ export interface PublicProtocolAddresses {
   readonly optionsMarketAddress?: string;
   readonly optionsVaultAddress?: string;
   readonly optionTokenAddress?: string;
+  readonly spotRoutes?: readonly PublicSpotRoute[];
 }
 
 function requireValue(environment: NodeJS.ProcessEnv, key: string): string {
@@ -83,5 +92,6 @@ export function createPublicConfig(
     optionsMarketAddress: addresses.optionsMarketAddress ?? null,
     optionsVaultAddress: addresses.optionsVaultAddress ?? null,
     optionTokenAddress: addresses.optionTokenAddress ?? null,
+    spotRoutes: addresses.spotRoutes ?? [],
   };
 }

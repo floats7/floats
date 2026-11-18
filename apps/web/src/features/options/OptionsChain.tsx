@@ -10,6 +10,7 @@ import { PayoffChart } from "./PayoffChart";
 import { useWallet } from "@/features/wallet/WalletProvider";
 import type { SignedOptionsQuoteDto } from "@/lib/api-client";
 import { executeOptionsQuote } from "@/lib/options-transactions";
+import { OnchainTransactionModal, type OnchainTransactionPhase } from "@/features/transactions/OnchainTransactionModal";
 
 const SERIES_STATE: Readonly<Record<string, string>> = {
   "0": "Active",
@@ -20,7 +21,7 @@ const SERIES_STATE: Readonly<Record<string, string>> = {
   "5": "Archived",
 };
 
-export function OptionsChain({ underlying }: { readonly underlying?: string } = {}) {
+export function OptionsChain({ underlying, embedded = false }: { readonly underlying?: string; readonly embedded?: boolean } = {}) {
   const { address, provider, openConnect } = useWallet();
   const [series, setSeries] = useState<readonly OptionsSeriesDto[]>([]);
   const [selectedId, setSelectedId] = useState<string>();
@@ -33,6 +34,7 @@ export function OptionsChain({ underlying }: { readonly underlying?: string } = 
   const [quoting, setQuoting] = useState(false);
   const [side, setSide] = useState<"buy" | "sell-back">("buy");
   const [transactionStatus, setTransactionStatus] = useState<string>();
+  const [transactionModal, setTransactionModal] = useState<{ phase: OnchainTransactionPhase; stepIndex: number; hash?: string; error?: string; explorerUrl?: string }>();
   const [nowSeconds, setNowSeconds] = useState(() => Math.floor(Date.now() / 1_000));
 
   useEffect(() => {
@@ -94,6 +96,7 @@ export function OptionsChain({ underlying }: { readonly underlying?: string } = 
       setQuoteError("This quote expired. Request a new quote before submitting.");
       return;
     }
+    setTransactionModal({ phase: "pending", stepIndex: 0 });
     try {
       const config = await floatApi.getPublicConfig();
       if (!config.optionsMarketAddress) throw new Error("OPTIONS_NOT_ACTIVE");
@@ -103,13 +106,14 @@ export function OptionsChain({ underlying }: { readonly underlying?: string } = 
         market: config.optionsMarketAddress as `0x${string}`,
         usdg: config.usdgAddress as `0x${string}`,
         signed: quote,
-        onStatus: (status) => setTransactionStatus(status),
+        onStatus: (status) => setTransactionModal({ phase: "pending", stepIndex: status === "approval" ? 0 : status === "transaction" ? 1 : 2, explorerUrl: config.blockExplorerUrl }),
       });
-      setTransactionStatus(`Confirmed ${hash.slice(0, 10)}…${hash.slice(-6)}`);
+      setTransactionModal({ phase: "success", stepIndex: 2, hash, explorerUrl: config.blockExplorerUrl });
+      setTransactionStatus(undefined);
       setQuote(undefined);
     } catch {
       setTransactionStatus(undefined);
-      setQuoteError("The wallet transaction was rejected or failed simulation. No state was changed by the app.");
+      setTransactionModal({ phase: "failed", stepIndex: 0, error: "The wallet transaction was rejected or failed simulation. No state was changed by the app." });
     }
   };
 
@@ -126,7 +130,7 @@ export function OptionsChain({ underlying }: { readonly underlying?: string } = 
   }
   if (series.length === 0) {
     return (
-      <div className="container">
+      <div className={embedded ? undefined : "container"}>
         <EmptyState
           title="No finalized option series yet"
           description="The chain will populate automatically after an authorized series is created and finalized by the indexer."
@@ -136,7 +140,7 @@ export function OptionsChain({ underlying }: { readonly underlying?: string } = 
   }
 
   return (
-    <Reveal className={`container ${styles.layout}`}>
+    <Reveal className={`${embedded ? styles.embedded : "container"} ${styles.layout}`}>
       <section className={styles.chain} aria-labelledby="options-chain-title">
         <div className={styles.sectionHeader}>
           <div>
@@ -233,10 +237,21 @@ export function OptionsChain({ underlying }: { readonly underlying?: string } = 
         >
           {quoting ? "Requesting quote…" : address ? "Request live quote" : "Connect wallet to quote"}
         </button>
-        <button type="button" className={styles.quoteButton} disabled={!quote || remainingQuoteSeconds === 0 || Boolean(transactionStatus)} onClick={submitQuote}>
+        <button type="button" className={`${styles.quoteButton} ${side === "buy" ? styles.buyAction : styles.sellAction}`} disabled={!quote || remainingQuoteSeconds === 0 || Boolean(transactionStatus)} onClick={submitQuote}>
           {quote ? `${side === "buy" ? "Buy" : "Sell back"} with this quote` : "Request a quote before submitting"}
         </button>
         <p className={styles.disclosure}>Signed premium includes the pricing spread shown above. The deployed market currently has no separate protocol trading fee. Buyers can lose the full premium.</p>
+        <OnchainTransactionModal
+          open={Boolean(transactionModal)}
+          phase={transactionModal?.phase ?? "pending"}
+          title={side === "buy" ? "Buy option" : "Sell option back"}
+          steps={side === "buy" ? ["Approve exact USDG premium", "Confirm option purchase", "Wait for onchain confirmation"] : ["Confirm option sale", "Submit signed quote", "Wait for onchain confirmation"]}
+          stepIndex={transactionModal?.stepIndex ?? 0}
+          hash={transactionModal?.hash}
+          explorerUrl={transactionModal?.explorerUrl}
+          error={transactionModal?.error}
+          onClose={() => setTransactionModal(undefined)}
+        />
       </aside>
     </Reveal>
   );

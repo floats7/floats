@@ -5,24 +5,28 @@ import { useEffect, useMemo, useState } from "react";
 import { RangeChart } from "@/components/charts/RangeChart";
 import { AssetLogo } from "@/components/ui/AssetLogo";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useIndexState } from "@/features/index-state/IndexStateProvider";
 import { OptionsChain } from "@/features/options/OptionsChain";
 import { OptionsVaultPanel } from "@/features/options/OptionsVaultPanel";
+import { OptionsPortfolio } from "@/features/options/OptionsPortfolio";
 import { TradePanel } from "@/features/trade/TradePanel";
 import { formatPercent, formatUsd } from "@/lib/format";
 import { decimalUnitsToNumber } from "@/lib/units";
 import { floatApi, type MarketHistoryPointDto } from "@/lib/api-client";
-import { buildNavSeries, resolveSharePriceUsd18 } from "@/lib/nav-history";
+import { resolveSharePriceUsd18 } from "@/lib/nav-history";
 import type { MarketProductId } from "./types";
 import { useMarkets } from "./useMarkets";
 import { buildMarketSeries } from "./market-history";
+import { MarketPublicInfo } from "./MarketPublicInfo";
+import { SpotTradePanel } from "./SpotTradePanel";
 import styles from "./markets.module.css";
 
 export function MarketDetailView({ assetId }: { readonly assetId: string }) {
   const { markets, loading, error, refresh } = useMarkets();
-  const { data: indexState, navHistory } = useIndexState();
+  const { data: indexState } = useIndexState();
   const normalizedAssetId = assetId.toLowerCase();
   const market = normalizedAssetId === "index"
     ? markets.find((candidate) => candidate.kind === "index")
@@ -39,11 +43,6 @@ export function MarketDetailView({ assetId }: { readonly assetId: string }) {
 
   useEffect(() => {
     if (!market) return;
-    if (market.kind === "index") {
-      setHistory([]);
-      setHistoryLoading(false);
-      return;
-    }
     const controller = new AbortController();
     setHistoryLoading(true);
     floatApi.getMarketHistory(market.id, 500, controller.signal)
@@ -61,35 +60,41 @@ export function MarketDetailView({ assetId }: { readonly assetId: string }) {
   if (error) return <PageHeader eyebrow="Market" title="Market unavailable" description="Finalized market state could not be loaded." aside={<button type="button" onClick={refresh}>Try again</button>} />;
   if (!market) return <PageHeader eyebrow="Market" title="Asset not found" description="This asset is not present in the canonical market registry." />;
 
-  const marketSeries = market.kind === "index"
-    ? buildNavSeries(navHistory)
-    : buildMarketSeries(history);
+  const marketSeries = buildMarketSeries(history);
   const priceUsd18 = market.kind === "index"
     ? (indexState ? resolveSharePriceUsd18(indexState) : null) ?? market.priceUsd18
     : market.priceUsd18;
   return (
     <>
+      <nav className={`container ${styles.topBack}`} aria-label="Markets navigation">
+        <Link href="/markets"><Icon name="arrow-left" />Back to Markets</Link>
+      </nav>
       <PageHeader
         eyebrow="Market detail"
-        title={market.symbol}
+        title={<span className={styles.assetTitle}><AssetLogo name={market.name} symbol={market.symbol} src={market.kind === "index" ? "/brand/floats-logo.png" : market.logoUrl ?? undefined} size="lg" /><span>{market.symbol}</span></span>}
         description={market.name}
-        aside={<div className={styles.headerIdentity}><AssetLogo name={market.name} symbol={market.symbol} src={market.kind === "index" ? "/brand/floats-logo.png" : market.logoUrl ?? undefined} size="lg" /><StatusChip tone={market.status === "active" ? "solid" : "outline"}>{market.status}</StatusChip></div>}
+        aside={<StatusChip tone={market.status === "active" ? "solid" : "outline"}>{market.status}</StatusChip>}
       />
-      <div className={`container ${styles.detailGrid}`}>
+      <section className={`container ${styles.marketOverview}`} aria-label="Market overview">
+        <dl className={styles.overviewFacts}>
+          <div className={styles.contractFact}><dt>Contract</dt><dd className="tabular">{market.address}</dd></div>
+          <div><dt>Index weight</dt><dd>{market.targetWeightBps === null ? "Index asset" : formatPercent(market.targetWeightBps / 100, 2)}</dd></div>
+          <div><dt>Asset type</dt><dd>{market.kind === "index" ? "Index" : "Constituent"}</dd></div>
+          <div><dt>Oracle / NAV</dt><dd>{market.oracleHealth ?? "Unavailable"}</dd></div>
+          <div><dt>Active option series</dt><dd className="tabular">{market.activeOptionSeries}</dd></div>
+          <div><dt>Token decimals</dt><dd className="tabular">{market.decimals}</dd></div>
+          <div><dt>Available products</dt><dd>{enabled.map((candidate) => candidate.label).join(", ") || "None"}</dd></div>
+        </dl>
+      </section>
+      <main className={`container ${styles.detailStack}`}>
         <section className={styles.chartPanel} aria-labelledby="market-chart-title">
           <div className={styles.sectionTitle}><div><p className="eyebrow">Market data</p><h2 id="market-chart-title">{market.chartKind === "nav" ? "NAV history" : "Price history"}</h2></div><strong>{priceUsd18 ? formatUsd(decimalUnitsToNumber(priceUsd18, 18)) : "Unavailable"}</strong></div>
           {marketSeries.ALL.length >= 2 ? <RangeChart seriesByRange={marketSeries} /> : (
             <EmptyState title="Historical chart is not available yet" description="The chart will appear after this asset has at least two canonical finalized observations." />
           )}
           {historyLoading && <p role="status">Loading canonical price history…</p>}
-          <dl className={styles.marketFacts}>
-            <div><dt>Contract</dt><dd>{market.address}</dd></div>
-            <div><dt>Index weight</dt><dd>{market.targetWeightBps === null ? "Index asset" : formatPercent(market.targetWeightBps / 100, 2)}</dd></div>
-            <div><dt>Oracle</dt><dd>{market.oracleHealth ?? "Unavailable"}</dd></div>
-            <div><dt>Active option series</dt><dd>{market.activeOptionSeries}</dd></div>
-          </dl>
         </section>
-        <aside className={styles.transactionPanel} aria-labelledby="market-transaction-title">
+        <section className={styles.transactionPanel} aria-labelledby="market-transaction-title">
           <p className="eyebrow">Transaction panel</p>
           <h2 id="market-transaction-title">Available products</h2>
           <div className={styles.productTabs} role="tablist" aria-label="Market products">
@@ -98,14 +103,15 @@ export function MarketDetailView({ assetId }: { readonly assetId: string }) {
             ))}
           </div>
           {market.products.filter((candidate) => !candidate.enabled).map((candidate) => <p key={candidate.id} className={styles.disabledReason}>{candidate.label}: {candidate.disabledReason}</p>)}
-        </aside>
-      </div>
-      <section className={styles.productContent} aria-live="polite">
-        {product === "mint-redeem" && <TradePanel />}
-        {product === "options" && <OptionsChain underlying={market.address} />}
-        {product === "liquidity" && <OptionsVaultPanel />}
-      </section>
-      <nav className={`container ${styles.back}`} aria-label="Markets navigation"><Link href="/markets">Back to all markets</Link></nav>
+          <div className={styles.transactionContent} aria-live="polite">
+            {product === "mint-redeem" && <TradePanel />}
+            {product === "options" && <><OptionsChain underlying={market.address} embedded /><OptionsPortfolio embedded /></>}
+            {product === "liquidity" && <><OptionsVaultPanel embedded /><OptionsPortfolio embedded /></>}
+            {product === "spot" && <SpotTradePanel market={market} />}
+          </div>
+        </section>
+      </main>
+      <MarketPublicInfo kind={market.kind} symbol={market.symbol} spotEnabled={market.products.some((candidate) => candidate.id === "spot" && candidate.enabled)} />
     </>
   );
 }

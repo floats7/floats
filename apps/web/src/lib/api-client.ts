@@ -49,6 +49,14 @@ export interface PublicConfigDto {
   readonly optionsMarketAddress: string | null;
   readonly optionsVaultAddress: string | null;
   readonly optionTokenAddress: string | null;
+  readonly spotRoutes: readonly SpotRouteDto[];
+}
+
+export interface SpotRouteDto {
+  readonly tokenAddress: string;
+  readonly routerAddress: string;
+  readonly quoterAddress: string;
+  readonly fee: number;
 }
 
 export interface IndexHoldingDto {

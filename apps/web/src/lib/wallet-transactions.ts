@@ -14,6 +14,7 @@ export interface TradeReceipt {
   readonly hash: string;
   readonly date: string;
   readonly outcome: TradeOutcome;
+  readonly explorerUrl?: string;
 }
 
 export interface TradeStep {

@@ -31,7 +31,7 @@ export function useMarkets(): MarketState {
       setCandidates(nextCandidates);
       const histories = await Promise.all(nextMarkets.map(async (market) => {
         try {
-          return [market.id, await floatApi.getMarketHistory(market.id, 48, controller.signal)] as const;
+          return [market.id, await floatApi.getMarketHistory(market.id, 500, controller.signal)] as const;
         } catch (reason: unknown) {
           if (reason instanceof DOMException && reason.name === "AbortError") throw reason;
           return [market.id, []] as const;

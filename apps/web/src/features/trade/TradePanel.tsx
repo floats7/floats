@@ -16,6 +16,7 @@ import { DURATION, EASE_OUT } from "@/lib/motion";
 import { parseAmount, type Direction, type TradeMode } from "@/lib/quote";
 import { maxAmount, validateTrade, type TradeRequest } from "@/lib/trade";
 import { parseUnits, unitsToNumber } from "@/lib/units";
+import { retailTradeAction, settlementDescription } from "@/lib/trade-copy";
 import { CashPreview, InKindPreview } from "./QuotePreview";
 import { TradeModal } from "./TradeModal";
 import { useTradeFlow } from "./useTradeFlow";
@@ -53,8 +54,8 @@ export function TradePanel() {
     ? oracleStatus === null
       ? "Checking market and oracle availability."
       : oracleStatus === "off-hours"
-        ? "Cash mint and redeem are unavailable outside regular US market hours. Use in-kind redemption to exit."
-        : "Cash mint and redeem are paused because at least one oracle is unhealthy. Use in-kind redemption to exit."
+        ? "Cash buying and selling are unavailable outside regular US market hours. Sell with in-kind settlement to exit."
+        : "Cash buying and selling are paused because at least one oracle is unhealthy. Sell with in-kind settlement to exit."
     : mode === "In-kind" && !feeRates.data
       ? feeRates.error ? "Live fee configuration is unavailable. Try again before submitting." : "Reading live fee configuration."
       : null;
@@ -97,7 +98,7 @@ export function TradePanel() {
         noValidate
       >
         <div className={styles.toggles}>
-          <Tabs label="Direction" options={DIRECTIONS} value={direction} onChange={setDirection} />
+          <Tabs label="Action" options={DIRECTIONS} value={direction} onChange={setDirection} optionLabel={retailTradeAction} />
           <Tabs label="Settlement" options={MODES} value={mode} onChange={setMode} />
         </div>
 
@@ -108,7 +109,7 @@ export function TradePanel() {
           <span>
             {oracleStatus === "live"
               ? "Cash settlement is available and quotes are read from the deployed vault."
-              : "In-kind redemption remains available without relying on a live price."}
+              : "In-kind selling remains available without relying on a live price."}
           </span>
         </div>
 
@@ -169,11 +170,11 @@ export function TradePanel() {
           </motion.div>
         </AnimatePresence>
 
-        <Button type="submit" loading={status === "loading"} disabled={Boolean(address) && (request === null || Boolean(error))}>
-          {address ? `Review ${direction.toLowerCase()}` : "Connect wallet"}
+        <Button className={direction === "Mint" ? styles.buyAction : styles.sellAction} type="submit" loading={status === "loading"} disabled={Boolean(address) && (request === null || Boolean(error))}>
+          {address ? `Review ${retailTradeAction(direction).toLowerCase()}` : "Connect wallet"}
         </Button>
         <p className={styles.note}>
-          Transactions settle onchain on Robinhood Chain. Cash quotes include the protocol fee and disclose the keeper rebalance slippage cap. In-kind redemption has no swap slippage.
+          {retailTradeAction(direction)} settles as {settlementDescription(direction, mode).toLowerCase()} on Robinhood Chain. Cash quotes include the protocol fee and keeper rebalance slippage cap. In-kind selling has no swap slippage.
         </p>
       </form>
 

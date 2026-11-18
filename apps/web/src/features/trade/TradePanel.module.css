@@ -100,3 +100,6 @@
   color: var(--text-muted);
   font-size: var(--text-sm);
 }
+
+.buyAction:not(:disabled) { border-color: var(--positive); background: var(--positive); color: var(--text-on-paper); }
+.sellAction:not(:disabled) { border-color: var(--negative); background: var(--negative); color: var(--text-on-paper); }

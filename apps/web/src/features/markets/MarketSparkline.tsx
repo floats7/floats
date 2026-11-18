@@ -1,5 +1,7 @@
 import type { MarketHistoryPointDto } from "@/lib/api-client";
-import { decimalUnitsToNumber } from "@/lib/units";
+import { Delta } from "@/components/ui/Delta";
+import { changeOver } from "@/data/series";
+import { buildMarketSeries } from "./market-history";
 import styles from "./markets.module.css";
 
 interface MarketSparklineProps {
@@ -22,16 +24,18 @@ function buildPath(values: readonly number[]): string {
 }
 
 export function MarketSparkline({ history = [], label }: MarketSparklineProps) {
-  const points = history.slice(-48);
-  const values = points.map((point) => decimalUnitsToNumber(point.valueUsd18, 18));
+  const canonicalMonth = buildMarketSeries(history)["1M"];
+  const canonicalDay = buildMarketSeries(history)["1D"];
+  const values = canonicalMonth.map((point) => point.value);
   const hasSeries = values.length >= 2;
+  const hasDailyChange = canonicalDay.length >= 2;
   const rising = hasSeries && (values.at(-1) ?? 0) >= (values[0] ?? 0);
 
   return (
     <div className={styles.sparkline} data-direction={rising ? "up" : "down"}>
       <div className={styles.sparklineHeader}>
         <span>Market preview</span>
-        <span>{hasSeries ? `${points.length} observations` : "Awaiting price history"}</span>
+        <span className={styles.dailyTrend}>{hasDailyChange ? <><Delta value={changeOver(canonicalDay)} /><span>24 hours</span></> : "Awaiting 24-hour trend"}</span>
       </div>
       <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="none" role="img" aria-label={`${label} market preview`}>
         <path className={styles.sparklineBaseline} d={`M0,${HEIGHT / 2} L${WIDTH},${HEIGHT / 2}`} />

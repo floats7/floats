@@ -29,6 +29,16 @@
   color: var(--text-on-paper);
 }
 
+.tab[data-selected="true"][data-option="buy"],
+.tab[data-selected="true"][data-option="mint"] {
+  color: var(--text-on-paper);
+}
+
+.tab[data-selected="true"][data-option="sell"],
+.tab[data-selected="true"][data-option="redeem"] {
+  color: var(--text-on-paper);
+}
+
 .tab:not([data-selected="true"]):hover {
   color: var(--text-strong);
 }
@@ -38,6 +48,16 @@
   inset: 0;
   border-radius: inherit;
   background: var(--text-strong);
+}
+
+.tab[data-option="buy"] .indicator,
+.tab[data-option="mint"] .indicator {
+  background: var(--positive);
+}
+
+.tab[data-option="sell"] .indicator,
+.tab[data-option="redeem"] .indicator {
+  background: var(--negative);
 }
 
 .text {
