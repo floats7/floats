@@ -1,0 +1,91 @@
+.panel {
+  margin-bottom: var(--space-9);
+  border: 1px solid var(--line-base);
+  padding: var(--space-6);
+  background: var(--surface-raised);
+}
+
+.heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: var(--space-5);
+}
+
+.heading h2 {
+  margin-top: var(--space-3);
+  font-size: var(--text-2xl);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-top: var(--space-6);
+  border-top: 1px solid var(--line-base);
+  border-left: 1px solid var(--line-base);
+}
+
+.metrics div {
+  min-width: 0;
+  padding: var(--space-5);
+  border-right: 1px solid var(--line-base);
+  border-bottom: 1px solid var(--line-base);
+}
+
+.metrics dt,
+.actions p {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.metrics dd {
+  margin-top: var(--space-3);
+  color: var(--text-strong);
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  margin-top: var(--space-5);
+}
+
+.actions button {
+  flex: 0 0 auto;
+  border: 1px solid var(--line-base);
+  padding: var(--space-3) var(--space-5);
+  background: var(--surface-plate);
+  color: var(--text-muted);
+}
+
+.actions input,
+.actions select {
+  min-width: 10rem;
+  border: 1px solid var(--line-base);
+  padding: var(--space-3);
+  background: var(--surface-plate);
+  color: var(--text-strong);
+}
+
+@media (max-width: 72rem) {
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 40rem) {
+  .panel {
+    padding: var(--space-5);
+  }
+
+  .heading,
+  .actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .metrics {
+    grid-template-columns: 1fr;
+  }
+}

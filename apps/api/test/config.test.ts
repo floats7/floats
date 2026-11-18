@@ -27,6 +27,9 @@ test("public configuration excludes all Supabase values", () => {
     vaultAddress: validEnvironment.FLOATS_VAULT_ADDRESS,
     usdgAddress: validEnvironment.USDG_ADDRESS,
     walletConnectProjectId: validEnvironment.WALLETS_CONNECT_PROJECT_ID,
+    optionsMarketAddress: null,
+    optionsVaultAddress: null,
+    optionTokenAddress: null,
   });
   assert.equal("supabaseUrl" in publicConfig, false);
   assert.equal("supabaseSecretKey" in publicConfig, false);

@@ -35,7 +35,7 @@ export function Telemetry() {
             Every limit that protects the index is a published parameter. Prices pause cash flows when stale, changes wait out a timelock, and trades revert past the slippage limit.
           </p>
           <div className={styles.actions}>
-            <LinkButton href="/trade">Mint fIPO</LinkButton>
+            <LinkButton href="/markets/index">Explore markets</LinkButton>
             <LinkButton href="/methodology" variant="outline">
               Read the rules
             </LinkButton>

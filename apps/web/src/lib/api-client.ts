@@ -36,6 +36,9 @@ export interface PublicConfigDto {
   readonly vaultAddress: string;
   readonly usdgAddress: string;
   readonly walletConnectProjectId: string;
+  readonly optionsMarketAddress: string | null;
+  readonly optionsVaultAddress: string | null;
+  readonly optionTokenAddress: string | null;
 }
 
 export interface IndexHoldingDto {
@@ -116,11 +119,120 @@ export interface WalletTransactionDto {
   readonly finalizedAt: string | null;
 }
 
+export interface OptionsSeriesDto {
+  readonly seriesId: string;
+  readonly underlying: string;
+  readonly underlyingSymbol: string | null;
+  readonly underlyingUid: string;
+  readonly priceSource: string;
+  readonly kind: string;
+  readonly strikeUsd18: string;
+  readonly capUsd18: string;
+  readonly expiry: string;
+  readonly contractSize18: string;
+  readonly corporateActionPolicyVersion: string;
+  readonly state: string;
+  readonly settlementPriceUsd18: string | null;
+  readonly payoffPerUnitUsd18: string | null;
+  readonly totalClaimable6: string | null;
+  readonly manualSettlement: boolean | null;
+  readonly createdAt: string;
+}
+
+export interface OptionsVaultStateDto {
+  readonly blockNumber: string;
+  readonly totalAssets6: string;
+  readonly reservedCollateral6: string;
+  readonly claimableCollateral6: string;
+  readonly payableWithdrawalAssets6: string;
+  readonly totalSupply18: string;
+  readonly utilizationBps: number;
+  readonly operationsPaused: boolean;
+}
+
+export interface SignedOptionsQuoteDto {
+  readonly quote: {
+    readonly seriesId: string;
+    readonly side: number;
+    readonly buyer: string;
+    readonly size18: string;
+    readonly premiumPerUnit6: string;
+    readonly signedSpotUsd18: string;
+    readonly nonce: string;
+    readonly issuedAt: number;
+    readonly validUntil: number;
+  };
+  readonly signature: string;
+  readonly fairValueUsd: number;
+  readonly volatility: number;
+  readonly ivSource: string;
+  readonly spreadBps: number;
+  readonly utilizationBps: number;
+}
+
+export interface OptionsPortfolioDto {
+  readonly walletAddress: string;
+  readonly positions: readonly {
+    readonly seriesId: string;
+    readonly underlying: string;
+    readonly underlyingSymbol: string | null;
+    readonly size18: string;
+    readonly netCashFlow6: string;
+    readonly updatedAt: string;
+  }[];
+  readonly withdrawals: readonly {
+    readonly requestId: string;
+    readonly state: string;
+    readonly receiverAddress: string;
+    readonly shares: string;
+    readonly assets6: string | null;
+    readonly unlockAt: string;
+    readonly updatedAt: string;
+  }[];
+}
+
+export interface MarketProductDto {
+  readonly id: "mint-redeem" | "options" | "liquidity" | "spot";
+  readonly label: string;
+  readonly enabled: boolean;
+  readonly disabledReason?: string;
+}
+
+export interface MarketAssetDto {
+  readonly id: string;
+  readonly kind: "index" | "constituent";
+  readonly address: string;
+  readonly uid: string | null;
+  readonly symbol: string;
+  readonly name: string;
+  readonly decimals: number;
+  readonly status: "active" | "removed" | "unavailable";
+  readonly priceUsd18: string | null;
+  readonly targetWeightBps: number | null;
+  readonly oracleHealth: string | null;
+  readonly products: readonly MarketProductDto[];
+  readonly activeOptionSeries: number;
+  readonly chartKind: "nav" | "price";
+}
+
+export interface MarketHistoryPointDto {
+  readonly blockNumber: number;
+  readonly valueUsd18: string;
+  readonly observedAt: string;
+}
+
 export class FloatsApiClient {
   public constructor(private readonly basePath = resolveApiBaseUrl()) {}
 
   public getPublicConfig(signal?: AbortSignal): Promise<PublicConfigDto> {
     return this.get<PublicConfigDto>("/config", signal);
+  }
+
+  public requestOptionsQuote(
+    input: { seriesId: string; buyer: string; side: "buy" | "sell-back"; size18: string },
+    signal?: AbortSignal,
+  ): Promise<SignedOptionsQuoteDto> {
+    return this.post<SignedOptionsQuoteDto>("/options/quote", input, signal);
   }
 
   public getFeeRates(signal?: AbortSignal): Promise<FeeRatesDto> {
@@ -147,6 +259,62 @@ export class FloatsApiClient {
       throw new Error("NAV history limit must be between 2 and 1000");
     }
     return this.get<readonly NavHistoryPointDto[]>(`/nav-history?limit=${limit}`, signal);
+  }
+
+  public getOptionsSeries(signal?: AbortSignal): Promise<readonly OptionsSeriesDto[]> {
+    return this.get<readonly OptionsSeriesDto[]>("/options/series", signal);
+  }
+
+  public getMarkets(signal?: AbortSignal): Promise<readonly MarketAssetDto[]> {
+    return this.get<readonly MarketAssetDto[]>("/markets", signal);
+  }
+
+  public getMarket(assetId: string, signal?: AbortSignal): Promise<MarketAssetDto> {
+    return this.get<MarketAssetDto>(`/markets/${marketAssetId(assetId)}`, signal);
+  }
+
+  public getMarketHistory(
+    assetId: string,
+    limit = 500,
+    signal?: AbortSignal,
+  ): Promise<readonly MarketHistoryPointDto[]> {
+    if (!Number.isSafeInteger(limit) || limit < 2 || limit > 1000) {
+      throw new Error("Market history limit must be between 2 and 1000");
+    }
+    return this.get<readonly MarketHistoryPointDto[]>(
+      `/markets/${marketAssetId(assetId)}/history?limit=${limit}`,
+      signal,
+    );
+  }
+
+  public getOptionsVaultState(signal?: AbortSignal): Promise<OptionsVaultStateDto | null> {
+    return this.get<OptionsVaultStateDto | null>("/options/vault", signal);
+  }
+
+  public getOptionsPortfolioChallenge(
+    address: string,
+    signal?: AbortSignal,
+  ): Promise<WalletChallengeDto> {
+    if (!/^0x[0-9a-fA-F]{40}$/.test(address)) throw new Error("Wallet address is invalid");
+    return this.get<WalletChallengeDto>(
+      `/options/portfolio?address=${encodeURIComponent(address)}`,
+      signal,
+    );
+  }
+
+  public getOptionsPortfolio(
+    message: string,
+    signature: string,
+    signal?: AbortSignal,
+  ): Promise<OptionsPortfolioDto> {
+    if (!message || !/^0x[0-9a-fA-F]{130}$/.test(signature)) {
+      throw new Error("Wallet proof is invalid");
+    }
+    return this.post<OptionsPortfolioDto>(
+      "/options/portfolio",
+      { message, signature },
+      signal,
+    );
   }
 
   public quoteCash(
@@ -208,6 +376,12 @@ function resolveApiBaseUrl(): string {
   const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
   if (!configured) return "/api";
   return `${configured.replace(/\/+$/, "")}/api`;
+}
+
+function marketAssetId(value: string): string {
+  if (value.toLowerCase() === "index") return "index";
+  if (!/^0x[0-9a-fA-F]{40}$/.test(value)) throw new Error("Market asset ID is invalid");
+  return value.toLowerCase();
 }
 
 export const floatApi = new FloatsApiClient();

@@ -43,7 +43,7 @@ export function ExposureCard({ item }: { item: Constituent }) {
         {status === "ready" && position.shares === 0 && (
           <>
             <p className={styles.copy}>You do not hold fIPO yet. Mint to gain exposure to every constituent at once.</p>
-            <LinkButton href="/trade">Mint fIPO</LinkButton>
+            <LinkButton href="/markets/index">Open index market</LinkButton>
           </>
         )}
       </div>

@@ -15,11 +15,17 @@ export interface PublicConfig {
   readonly vaultAddress: string;
   readonly usdgAddress: string;
   readonly walletConnectProjectId: string;
+  readonly optionsMarketAddress: string | null;
+  readonly optionsVaultAddress: string | null;
+  readonly optionTokenAddress: string | null;
 }
 
 export interface PublicProtocolAddresses {
   readonly vaultAddress: string;
   readonly usdgAddress: string;
+  readonly optionsMarketAddress?: string;
+  readonly optionsVaultAddress?: string;
+  readonly optionTokenAddress?: string;
 }
 
 function requireValue(environment: NodeJS.ProcessEnv, key: string): string {
@@ -74,5 +80,8 @@ export function createPublicConfig(
     vaultAddress: addresses.vaultAddress,
     usdgAddress: addresses.usdgAddress,
     walletConnectProjectId,
+    optionsMarketAddress: addresses.optionsMarketAddress ?? null,
+    optionsVaultAddress: addresses.optionsVaultAddress ?? null,
+    optionTokenAddress: addresses.optionTokenAddress ?? null,
   };
 }

@@ -1,4 +1,4 @@
-import type { Alert, AlertSink, JobName, TransactionRequest } from "./types.ts";
+import type { Alert, AlertSink, Hex, JobName, TransactionRequest } from "./types.ts";
 import { TransactionCoordinator } from "./transaction-coordinator.ts";
 
 export interface KeeperJob<TInput> {
@@ -29,6 +29,49 @@ export class RebalanceJob extends TransactionJob<{
   request: TransactionRequest;
 }> {
   readonly name = "rebalance" as const;
+}
+
+abstract class OptionsSeriesJob<TInput extends { seriesId: Hex; request: TransactionRequest }>
+  implements KeeperJob<TInput>
+{
+  abstract readonly name: "options-series" | "options-series-close" | "options-settlement";
+  constructor(protected readonly coordinator: TransactionCoordinator) {}
+
+  async run(input: TInput): Promise<void> {
+    await this.coordinator.execute(this.name, input.seriesId, input.request);
+  }
+}
+
+export class OptionsSeriesCreationJob extends OptionsSeriesJob<{
+  seriesId: Hex;
+  request: TransactionRequest;
+}> {
+  readonly name = "options-series" as const;
+}
+
+export class OptionsSettlementJob extends OptionsSeriesJob<{
+  seriesId: Hex;
+  request: TransactionRequest;
+}> {
+  readonly name = "options-settlement" as const;
+}
+
+export class OptionsSeriesCloseJob extends OptionsSeriesJob<{
+  seriesId: Hex;
+  request: TransactionRequest;
+}> {
+  readonly name = "options-series-close" as const;
+}
+
+export class OptionsWithdrawalEpochJob
+  implements KeeperJob<{ epochId: bigint; request: TransactionRequest }>
+{
+  readonly name = "options-withdrawal-epoch" as const;
+  constructor(private readonly coordinator: TransactionCoordinator) {}
+
+  async run(input: { epochId: bigint; request: TransactionRequest }): Promise<void> {
+    await this.coordinator.execute(this.name, input.epochId.toString(), input.request);
+  }
 }
 
 export class DriftJob implements KeeperJob<{

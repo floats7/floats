@@ -77,11 +77,11 @@ export function readCookie(cookieHeader: string | null, name: string): string | 
 }
 
 function formatChallenge(fields: ChallengeFields): string {
-  return `${fields.domain} wants you to sign in with your Ethereum account:\n${fields.address}\n\nAuthorize read-only access to your Floats transaction history.\n\nURI: ${fields.origin}\nVersion: 1\nChain ID: ${fields.chainId}\nNonce: ${fields.nonce}\nIssued At: ${fields.issuedAt}\nExpiration Time: ${fields.expirationTime}`;
+  return `${fields.domain} wants you to sign in with your Ethereum account:\n${fields.address}\n\nAuthorize read-only access to your Floats account data.\n\nURI: ${fields.origin}\nVersion: 1\nChain ID: ${fields.chainId}\nNonce: ${fields.nonce}\nIssued At: ${fields.issuedAt}\nExpiration Time: ${fields.expirationTime}`;
 }
 
 function parseChallenge(message: string): ChallengeFields | null {
-  const match = /^(\S+) wants you to sign in with your Ethereum account:\n(0x[0-9a-f]{40})\n\nAuthorize read-only access to your Floats transaction history\.\n\nURI: (https?:\/\/\S+)\nVersion: 1\nChain ID: ([1-9][0-9]*)\nNonce: ([a-f0-9]{32})\nIssued At: (\S+)\nExpiration Time: (\S+)$/.exec(message);
+  const match = /^(\S+) wants you to sign in with your Ethereum account:\n(0x[0-9a-f]{40})\n\nAuthorize read-only access to your Floats account data\.\n\nURI: (https?:\/\/\S+)\nVersion: 1\nChain ID: ([1-9][0-9]*)\nNonce: ([a-f0-9]{32})\nIssued At: (\S+)\nExpiration Time: (\S+)$/.exec(message);
   if (!match) return null;
   const chainId = Number(match[4]);
   if (!Number.isSafeInteger(chainId)) return null;

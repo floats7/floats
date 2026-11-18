@@ -5,8 +5,7 @@ export interface NavLink {
 
 export const NAV_LINKS: readonly NavLink[] = [
   { href: "/", label: "Index" },
-  { href: "/holdings", label: "Holdings" },
-  { href: "/trade", label: "Mint & Redeem" },
+  { href: "/markets", label: "Markets" },
   { href: "/pipeline", label: "Pipeline" },
   { href: "/methodology", label: "Methodology" },
   { href: "/portfolio", label: "Portfolio" },

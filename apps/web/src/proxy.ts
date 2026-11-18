@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { RESTRICTED_COUNTRIES } from "@/lib/constants";
 
 const COUNTRY_HEADERS = ["cf-ipcountry", "x-vercel-ip-country", "cloudfront-viewer-country"] as const;
-const RESTRICTED_PAGES = new Set(["/trade", "/portfolio"]);
+const RESTRICTED_PAGES = new Set(["/trade", "/portfolio", "/options"]);
 
 /** Blocks transactional surfaces while leaving public methodology and risk information readable. */
 export function proxy(request: NextRequest) {
@@ -15,7 +15,10 @@ export function proxy(request: NextRequest) {
         { status: 451, headers: { "cache-control": "private, no-store" } },
       );
     }
-    if (RESTRICTED_PAGES.has(request.nextUrl.pathname)) {
+    if (
+      RESTRICTED_PAGES.has(request.nextUrl.pathname)
+        || request.nextUrl.pathname.startsWith("/markets/")
+    ) {
       return NextResponse.rewrite(new URL("/restricted", request.url), {
         headers: { "cache-control": "private, no-store" },
       });

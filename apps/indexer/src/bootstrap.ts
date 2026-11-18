@@ -80,6 +80,14 @@ export function createProtocolIndexer(environment: NodeJS.ProcessEnv): ProtocolI
 export function loadIndexerRuntimeConfig(environment: NodeJS.ProcessEnv): IndexerRuntimeConfig {
   const vaultAddress = requireAddress(environment, "FLOATS_VAULT_ADDRESS");
   const registryAddress = requireAddress(environment, "INDEX_REGISTRY_ADDRESS");
+  const issuerMonitorAddresses = optionalAddresses(environment, "ISSUER_MONITOR_ADDRESSES");
+  const optionsAddresses = optionalAddressGroup(environment, [
+    "OPTIONS_SERIES_REGISTRY_ADDRESS",
+    "OPTIONS_MARKET_ADDRESS",
+    "OPTIONS_SETTLEMENT_ENGINE_ADDRESS",
+    "OPTIONS_VAULT_ADDRESS",
+    "OPTIONS_RISK_MANAGER_ADDRESS",
+  ]);
   return {
     rpcUrl: requireHttpsUrl(environment, "RPC_INDEXER"),
     addresses: [
@@ -87,6 +95,8 @@ export function loadIndexerRuntimeConfig(environment: NodeJS.ProcessEnv): Indexe
       registryAddress,
       requireAddress(environment, "FEE_MODULE_ADDRESS"),
       requireAddress(environment, "REBALANCER_ADDRESS"),
+      ...issuerMonitorAddresses,
+      ...optionsAddresses,
     ],
     vaultAddress,
     registryAddress,
@@ -96,6 +106,30 @@ export function loadIndexerRuntimeConfig(environment: NodeJS.ProcessEnv): Indexe
     batchSize: requireInteger(environment, "INDEXER_BATCH_SIZE"),
     reorgReplayDepth: requireInteger(environment, "INDEXER_REORG_REPLAY_DEPTH"),
   };
+}
+
+function optionalAddressGroup(
+  environment: NodeJS.ProcessEnv,
+  keys: readonly string[],
+): readonly Address[] {
+  const configured = keys.filter((key) => environment[key]?.trim());
+  if (configured.length === 0) return [];
+  if (configured.length !== keys.length) {
+    throw new Error(`Optional address group must configure all of: ${keys.join(", ")}`);
+  }
+  return keys.map((key) => requireAddress(environment, key));
+}
+
+function optionalAddresses(environment: NodeJS.ProcessEnv, key: string): readonly Address[] {
+  const value = environment[key]?.trim();
+  if (!value) return [];
+  return value.split(",").map((item, index) => {
+    const address = item.trim();
+    if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
+      throw new Error(`${key} entry ${index + 1} must be an EVM address`);
+    }
+    return address.toLowerCase() as Address;
+  });
 }
 
 function requireValue(environment: NodeJS.ProcessEnv, key: string): string {

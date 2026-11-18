@@ -95,17 +95,17 @@ export class SupabaseKeeperState implements KeeperStateStore {
       status: row.status as JobStatus,
       attemptCount: row.attempt_count as number,
       payload: row.payload as T,
-      ...(row.transaction_hash === undefined
+      ...(row.transaction_hash == null
         ? {}
         : { transactionHash: row.transaction_hash as `0x${string}` }),
-      ...(row.transaction_nonce === undefined
+      ...(row.transaction_nonce == null
         ? {}
         : { transactionNonce: BigInt(row.transaction_nonce as string) }),
-      ...(row.last_error === undefined ? {} : { lastError: row.last_error as string }),
-      ...(row.next_attempt_at === undefined
+      ...(row.last_error == null ? {} : { lastError: row.last_error as string }),
+      ...(row.next_attempt_at == null
         ? {}
         : { nextAttemptAt: new Date(row.next_attempt_at as string) }),
-      ...(row.updated_at === undefined ? {} : { updatedAt: new Date(row.updated_at as string) }),
+      ...(row.updated_at == null ? {} : { updatedAt: new Date(row.updated_at as string) }),
     };
   }
 }

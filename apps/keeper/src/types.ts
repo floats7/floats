@@ -1,6 +1,15 @@
 export type Hex = `0x${string}`;
 
-export type JobName = "entry-exit" | "drift" | "rebalance" | "oracle-health" | "alert";
+export type JobName =
+  | "entry-exit"
+  | "drift"
+  | "rebalance"
+  | "oracle-health"
+  | "alert"
+  | "options-series"
+  | "options-series-close"
+  | "options-settlement"
+  | "options-withdrawal-epoch";
 
 export type JobStatus =
   | "ready"

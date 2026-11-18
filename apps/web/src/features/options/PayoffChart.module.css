@@ -1,0 +1,34 @@
+.figure {
+  margin-block: var(--space-5);
+  border: 1px solid var(--line-soft);
+  background: var(--surface-void);
+}
+
+.figure svg {
+  width: 100%;
+  height: auto;
+}
+
+.axis,
+.marker {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+
+.marker {
+  stroke-dasharray: 3 4;
+}
+
+.payoff {
+  fill: none;
+  stroke: var(--text-strong);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.figure figcaption {
+  padding: var(--space-3);
+  border-top: 1px solid var(--line-soft);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}

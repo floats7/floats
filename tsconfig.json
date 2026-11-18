@@ -13,5 +13,13 @@
     "target": "ES2022",
     "types": ["node"]
   },
-  "include": ["apps/api/**/*.ts", "apps/indexer/**/*.ts", "apps/keeper/**/*.ts", "scripts/**/*.ts"]
+  "include": [
+    ".railway/**/*.ts",
+    "apps/api/**/*.ts",
+    "apps/indexer/**/*.ts",
+    "apps/keeper/**/*.ts",
+    "apps/pricer/**/*.ts",
+    "apps/signer/**/*.ts",
+    "scripts/**/*.ts"
+  ]
 }

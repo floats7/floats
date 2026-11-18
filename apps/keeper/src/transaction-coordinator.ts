@@ -29,11 +29,15 @@ export class TransactionCoordinator {
     request: TransactionRequest,
   ): Promise<TransactionReceipt | undefined> {
     const existing = await this.state.get<TransactionRequest>(jobName, idempotencyKey);
-    const claimed = existing ?? (await this.state.claim(jobName, idempotencyKey, request));
-    if (!claimed || claimed.status === "confirmed" || claimed.status === "broadcast" || claimed.status === "abandoned") {
+    if (
+      existing?.status === "confirmed" ||
+      existing?.status === "broadcast" ||
+      existing?.status === "abandoned"
+    ) {
       return undefined;
     }
-    if (claimed.nextAttemptAt && claimed.nextAttemptAt.getTime() > Date.now()) return undefined;
+    const claimed = await this.state.claim(jobName, idempotencyKey, request);
+    if (!claimed) return undefined;
 
     const attempt = claimed.attemptCount + 1;
     try {

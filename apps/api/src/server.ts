@@ -5,8 +5,16 @@ import {
   getAssets,
   getFeeRates,
   getLatestIndexState,
+  getMarket,
+  getMarketHistory,
+  getMarkets,
   getNavHistory,
   getOperationalActions,
+  getOptionsActivity,
+  getOptionsSeries,
+  getOptionsVaultState,
+  postOptionsPortfolio,
+  postOptionsQuote,
   getPublicConfig,
   getRegistryChanges,
   getWalletChallenge,
@@ -47,8 +55,8 @@ const server = createServer(async (incoming, outgoing) => {
 
 function sensitiveEndpointLimit(request: Request): number | null {
   const pathname = new URL(request.url).pathname;
-  if (pathname === "/api/wallet-history") return 10;
-  if (pathname === "/api/quote" && request.method === "POST") return 60;
+  if (pathname === "/api/wallet-history" || pathname === "/api/options/portfolio") return 10;
+  if ((pathname === "/api/quote" || pathname === "/api/options/quote") && request.method === "POST") return 60;
   return null;
 }
 
@@ -90,10 +98,25 @@ async function route(request: Request, url: URL): Promise<Response> {
   if (request.method === "GET" && endpoint === "config") return getPublicConfig(context);
   if (request.method === "GET" && endpoint === "fee-rates") return getFeeRates(context);
   if (request.method === "GET" && endpoint === "assets") return getAssets(context, request.signal);
+  if (request.method === "GET" && endpoint === "markets") return getMarkets(context, request.signal);
+  const marketHistoryMatch = endpoint.match(/^markets\/(index|0x[0-9a-fA-F]{40})\/history$/);
+  if (request.method === "GET" && marketHistoryMatch?.[1]) {
+    return getMarketHistory(context, marketHistoryMatch[1], url, request.signal);
+  }
+  const marketMatch = endpoint.match(/^markets\/(index|0x[0-9a-fA-F]{40})$/);
+  if (request.method === "GET" && marketMatch?.[1]) {
+    return getMarket(context, marketMatch[1], request.signal);
+  }
   if (request.method === "GET" && endpoint === "index-state") return getLatestIndexState(context, request.signal);
   if (request.method === "GET" && endpoint === "nav-history") return getNavHistory(context, url, request.signal);
   if (request.method === "GET" && endpoint === "registry-changes") return getRegistryChanges(context, url, request.signal);
   if (request.method === "GET" && endpoint === "operations") return getOperationalActions(context, url, request.signal);
+  if (request.method === "GET" && endpoint === "options/series") return getOptionsSeries(context, request.signal);
+  if (request.method === "GET" && endpoint === "options/activity") return getOptionsActivity(context, url, request.signal);
+  if (request.method === "GET" && endpoint === "options/vault") return getOptionsVaultState(context);
+  if (request.method === "GET" && endpoint === "options/portfolio") return getWalletChallenge(context, request);
+  if (request.method === "POST" && endpoint === "options/portfolio") return postOptionsPortfolio(context, request);
+  if (request.method === "POST" && endpoint === "options/quote") return postOptionsQuote(context, request);
   if (request.method === "POST" && endpoint === "quote") return postVaultQuote(context, request);
   if (request.method === "GET" && endpoint === "wallet-history") return getWalletChallenge(context, request);
   if (request.method === "POST" && endpoint === "wallet-history") return postWalletHistory(context, request);

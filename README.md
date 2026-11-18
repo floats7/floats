@@ -191,6 +191,16 @@ Floats maintains strict separation between:
 
 Runtime configuration belongs in private `.env.testnet` and `.env.mainnet` files. Committed `.example` files define the configuration schema without containing credentials.
 
+The Railway stacks run concurrently and are deployed independently:
+
+| Runtime | Web | API |
+|---|---|---|
+| Mainnet | `https://floats.trade` | `https://api.floats.trade` |
+| Testnet | `https://testnet.floats.trade` | `https://api-testnet.floats.trade` |
+
+Web, API, indexer, database, RPC, and credentials are isolated per network.
+Indexer and keeper processes are private services without public domains.
+
 ## Product surfaces
 
 The Floats application is designed around four user needs:

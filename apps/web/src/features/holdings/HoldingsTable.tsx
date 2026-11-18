@@ -98,7 +98,7 @@ export function HoldingsTable() {
             {rows.map((item) => (
               <motion.tr key={item.tokenAddress} layout transition={SPRING.soft}>
                 <th scope="row" className={styles.company}>
-                  <Link href={`/holdings/${encodeURIComponent(item.symbol)}`} className={styles.rowLink}>
+                  <Link href={`/markets/${encodeURIComponent(item.tokenAddress.toLowerCase())}`} className={styles.rowLink}>
                     <span className={styles.ticker}>{item.symbol}</span>
                     <span className={styles.name}>{item.tokenAddress.slice(0, 6)}…{item.tokenAddress.slice(-4)}</span>
                   </Link>

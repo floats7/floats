@@ -72,6 +72,57 @@ export type UserTransactionReadModel = Pick<
   | "finalized_at"
 >;
 
+export interface OptionsSeriesReadModel {
+  readonly series_id: string;
+  readonly underlying: string;
+  readonly underlying_symbol: string | null;
+  readonly underlying_uid: string;
+  readonly price_source: string;
+  readonly kind: string;
+  readonly strike_usd_18: string;
+  readonly cap_usd_18: string;
+  readonly expiry: string;
+  readonly contract_size_18: string;
+  readonly corporate_action_policy_version: string;
+  readonly state: string;
+  readonly settlement_price_usd_18: string | null;
+  readonly payoff_per_unit_usd_18: string | null;
+  readonly total_claimable_6: string | null;
+  readonly manual: boolean | null;
+  readonly created_at: string;
+}
+
+export interface OptionsActivityReadModel {
+  readonly transaction_hash: string;
+  readonly log_index: number;
+  readonly block_number: number;
+  readonly series_id: string;
+  readonly wallet_address: string;
+  readonly event_name: "OptionBought" | "OptionSoldBack" | "OptionClaimed";
+  readonly size_18: string;
+  readonly cash_amount_6: string;
+  readonly observed_at: string;
+}
+
+export interface OptionsPositionReadModel {
+  readonly series_id: string;
+  readonly underlying: string;
+  readonly underlying_symbol: string | null;
+  readonly size_18: string;
+  readonly net_cash_flow_6: string;
+  readonly updated_at: string;
+}
+
+export interface OptionsWithdrawalReadModel {
+  readonly request_id: string;
+  readonly state: string;
+  readonly receiver_address: string;
+  readonly shares: string;
+  readonly assets_6: string | null;
+  readonly unlock_at: string;
+  readonly updated_at: string;
+}
+
 export interface ReadModelScope {
   readonly environment: AppEnvironment;
   readonly chainId: number;
@@ -149,6 +200,28 @@ export class ReadModelRepository {
     return this.client.select<readonly HoldingReadModel[]>("api_holding_snapshots", query, signal);
   }
 
+  public listHoldingHistory(
+    vaultAddress: string,
+    tokenAddress: string,
+    limit = 500,
+    signal?: AbortSignal,
+  ): Promise<readonly HoldingReadModel[]> {
+    if (!/^0x[0-9a-fA-F]{40}$/.test(vaultAddress)) throw new Error("Invalid vault address");
+    if (!/^0x[0-9a-fA-F]{40}$/.test(tokenAddress)) throw new Error("Invalid token address");
+    if (!Number.isSafeInteger(limit) || limit < 2 || limit > 1000) {
+      throw new Error("Holding history limit must be an integer between 2 and 1000");
+    }
+    const query = this.scopedQuery(
+      "token_address,block_number,raw_balance,ui_multiplier_18,normalized_price_usd_18,value_usd_18,oracle_health,oracle_updated_at,observed_at",
+    );
+    query.set("vault_address", `eq.${vaultAddress.toLowerCase()}`);
+    query.set("token_address", `eq.${tokenAddress.toLowerCase()}`);
+    query.set("canonical", "eq.true");
+    query.set("order", "block_number.desc");
+    query.set("limit", limit.toString());
+    return this.client.select<readonly HoldingReadModel[]>("api_holding_snapshots", query, signal);
+  }
+
   public listRegistryChanges(limit = 50, signal?: AbortSignal): Promise<readonly RegistryChangeReadModel[]> {
     const query = this.scopedQuery(
       "transaction_hash,log_index,block_number,change_kind,configuration_hash,registry_version,token_address,payload,observed_at",
@@ -188,6 +261,53 @@ export class ReadModelRepository {
     query.set("order", "submitted_at.desc");
     query.set("limit", boundedLimit(limit));
     return this.client.select<readonly UserTransactionReadModel[]>("api_user_transactions", query, signal);
+  }
+
+  public listOptionsSeries(signal?: AbortSignal): Promise<readonly OptionsSeriesReadModel[]> {
+    const query = this.scopedQuery(
+      "series_id,underlying,underlying_symbol,underlying_uid,price_source,kind,strike_usd_18,cap_usd_18,expiry,contract_size_18,corporate_action_policy_version,state,settlement_price_usd_18,payoff_per_unit_usd_18,total_claimable_6,manual,created_at",
+    );
+    query.set("order", "expiry.asc,strike_usd_18.asc");
+    query.set("limit", "500");
+    return this.client.select<readonly OptionsSeriesReadModel[]>("api_options_series", query, signal);
+  }
+
+  public listOptionsActivity(
+    limit = 50,
+    signal?: AbortSignal,
+  ): Promise<readonly OptionsActivityReadModel[]> {
+    const query = this.scopedQuery(
+      "transaction_hash,log_index,block_number,series_id,wallet_address,event_name,size_18,cash_amount_6,observed_at",
+    );
+    query.set("order", "block_number.desc,log_index.desc");
+    query.set("limit", boundedLimit(limit));
+    return this.client.select<readonly OptionsActivityReadModel[]>("api_options_activity", query, signal);
+  }
+
+  public listOptionsPositions(
+    walletAddress: string,
+    signal?: AbortSignal,
+  ): Promise<readonly OptionsPositionReadModel[]> {
+    requireWalletAddress(walletAddress);
+    const query = this.scopedQuery("series_id,underlying,underlying_symbol,size_18,net_cash_flow_6,updated_at");
+    query.set("wallet_address", `eq.${walletAddress.toLowerCase()}`);
+    query.set("order", "updated_at.desc");
+    query.set("limit", "100");
+    return this.client.select<readonly OptionsPositionReadModel[]>("api_options_positions", query, signal);
+  }
+
+  public listOptionsWithdrawals(
+    walletAddress: string,
+    signal?: AbortSignal,
+  ): Promise<readonly OptionsWithdrawalReadModel[]> {
+    requireWalletAddress(walletAddress);
+    const query = this.scopedQuery(
+      "request_id,state,receiver_address,shares,assets_6,unlock_at,updated_at",
+    );
+    query.set("owner_address", `eq.${walletAddress.toLowerCase()}`);
+    query.set("order", "updated_at.desc");
+    query.set("limit", "100");
+    return this.client.select<readonly OptionsWithdrawalReadModel[]>("api_options_withdrawals", query, signal);
   }
 
   public async issueWalletChallenge(
@@ -252,4 +372,8 @@ function boundedLimit(limit: number): string {
     throw new Error("Read-model limit must be an integer between 1 and 100");
   }
   return limit.toString();
+}
+
+function requireWalletAddress(walletAddress: string): void {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(walletAddress)) throw new Error("Invalid wallet address");
 }

@@ -53,7 +53,7 @@ export function TransactionTable() {
         <EmptyState
           title="No transactions yet"
           description="No finalized Floats mints or redemptions were indexed for this wallet."
-          action={<LinkButton href="/trade">Mint fIPO</LinkButton>}
+          action={<LinkButton href="/markets/index">Explore index market</LinkButton>}
         />
       ) : (
         <Reveal delay={0.08} className={styles.scroller}>

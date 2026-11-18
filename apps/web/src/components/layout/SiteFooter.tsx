@@ -5,7 +5,7 @@ import { DISCLAIMER, NAV_LINKS } from "@/lib/constants";
 import styles from "./SiteFooter.module.css";
 
 const COLUMNS = [
-  { title: "Products", paths: ["/holdings", "/trade", "/portfolio"] },
+  { title: "Products", paths: ["/markets", "/portfolio"] },
   { title: "Protocol", paths: ["/", "/pipeline", "/methodology"] },
 ] as const;
 
@@ -18,8 +18,8 @@ export function SiteFooter() {
           Ready to hold <br />
           the next wave
         </h2>
-        <LinkButton href="/trade" variant="dark">
-          Mint fIPO
+        <LinkButton href="/markets/index" variant="dark">
+          Explore markets
         </LinkButton>
       </div>
 
