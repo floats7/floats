@@ -10,6 +10,7 @@ const GLYPHS = {
   "chevron-right": <path d="m6 3 5 5-5 5" />,
   menu: <path d="M2 5h12M2 11h12" />,
   check: <path d="m3 8.5 3.2 3.2L13 4.8" />,
+  copy: <><rect x="5" y="5" width="8" height="8" rx="1" /><path d="M11 5V3H3v8h2" /></>,
   close: <path d="m3 3 10 10M13 3 3 13" />,
   info: <path d="M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12Zm0-7v4m0-6v.01" />,
   dot: <circle cx="8" cy="8" r="1.6" fill="currentColor" stroke="none" />,

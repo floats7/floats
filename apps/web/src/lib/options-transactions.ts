@@ -1,4 +1,4 @@
-import { encodeFunctionData, parseAbi } from "viem";
+import { decodeErrorResult, encodeFunctionData, parseAbi } from "viem";
 
 import type { SignedOptionsQuoteDto } from "./api-client";
 import type { Eip1193Provider } from "./eip1193";
@@ -13,6 +13,11 @@ const vaultAbi = parseAbi([
   "function requestWithdrawal(uint256 shares,address receiver,uint48 unlockAt) returns (uint256 requestId)",
   "function claimWithdrawal(uint256 requestId)",
   "function cancelWithdrawal(uint256 requestId)",
+  "error InvalidAddress()",
+  "error InvalidAmount()",
+  "error InvalidUnlockTime()",
+  "error OperationsPaused()",
+  "error ERC20InsufficientBalance(address sender,uint256 balance,uint256 needed)",
 ]);
 const claimAbi = parseAbi(["function claim(bytes32 seriesId,uint256 size18) returns (uint256 payout6)"]);
 
@@ -86,6 +91,43 @@ export async function requestOptionsWithdrawal(input: {
   input.onStatus?.("confirming");
   await waitForReceipt(input.provider, hash);
   return hash;
+}
+
+export function describeOptionsVaultError(error: unknown): string {
+  const data = findRevertData(error);
+  if (data) {
+    try {
+      const decoded = decodeErrorResult({ abi: vaultAbi, data });
+      if (decoded.errorName === "ERC20InsufficientBalance") return "The requested amount exceeds your Options Vault LP share balance.";
+      if (decoded.errorName === "OperationsPaused") return "Options Vault operations are currently paused.";
+      if (decoded.errorName === "InvalidUnlockTime") return "The withdrawal unlock time is invalid. Refresh the page and try again.";
+      if (decoded.errorName === "InvalidAmount") return "Enter an LP share amount greater than zero.";
+      if (decoded.errorName === "InvalidAddress") return "The connected wallet address is invalid for this request.";
+    } catch {
+      // Some wallet providers omit the contract error ABI payload.
+    }
+  }
+  if (error instanceof Error && /insufficient funds/i.test(error.message)) return "The wallet does not have enough ETH to pay network gas.";
+  if (error instanceof Error && /user rejected|denied transaction|4001/i.test(error.message)) return "The transaction was rejected in the wallet.";
+  return "The withdrawal request failed simulation. Check your LP share balance and active network, then try again.";
+}
+
+function findRevertData(error: unknown): `0x${string}` | undefined {
+  const seen = new Set<unknown>();
+  let current: unknown = error;
+  for (let depth = 0; depth < 8 && current && !seen.has(current); depth += 1) {
+    seen.add(current);
+    if (typeof current === "string") {
+      const match = current.match(/0x[0-9a-fA-F]{8,}/);
+      if (match) return match[0] as `0x${string}`;
+      return undefined;
+    }
+    if (typeof current !== "object") return undefined;
+    const record = current as Record<string, unknown>;
+    if (typeof record.data === "string" && /^0x[0-9a-fA-F]{8,}$/.test(record.data)) return record.data as `0x${string}`;
+    current = record.data ?? record.cause ?? record.error ?? record.originalError;
+  }
+  return undefined;
 }
 
 export async function claimOptionsPosition(input: {

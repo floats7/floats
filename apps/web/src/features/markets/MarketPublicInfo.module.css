@@ -3,6 +3,7 @@
   gap: var(--space-6);
   padding-block: var(--space-4) var(--space-9);
 }
+.embedded { padding-block: 0; }
 
 .heading,
 .activityHeader {

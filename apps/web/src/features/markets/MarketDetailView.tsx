@@ -35,6 +35,8 @@ export function MarketDetailView({ assetId }: { readonly assetId: string }) {
   const [product, setProduct] = useState<MarketProductId>();
   const [history, setHistory] = useState<readonly MarketHistoryPointDto[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [selectedOptionsSeriesId, setSelectedOptionsSeriesId] = useState<string>();
+  const [informationTab, setInformationTab] = useState<"series" | "positions" | "activity">("activity");
 
   useEffect(() => {
     if (!enabled.length) return setProduct(undefined);
@@ -86,14 +88,29 @@ export function MarketDetailView({ assetId }: { readonly assetId: string }) {
           <div><dt>Available products</dt><dd>{enabled.map((candidate) => candidate.label).join(", ") || "None"}</dd></div>
         </dl>
       </section>
-      <main className={`container ${styles.detailStack}`}>
-        <section className={styles.chartPanel} aria-labelledby="market-chart-title">
-          <div className={styles.sectionTitle}><div><p className="eyebrow">Market data</p><h2 id="market-chart-title">{market.chartKind === "nav" ? "NAV history" : "Price history"}</h2></div><strong>{priceUsd18 ? formatUsd(decimalUnitsToNumber(priceUsd18, 18)) : "Unavailable"}</strong></div>
-          {marketSeries.ALL.length >= 2 ? <RangeChart seriesByRange={marketSeries} /> : (
-            <EmptyState title="Historical chart is not available yet" description="The chart will appear after this asset has at least two canonical finalized observations." />
-          )}
-          {historyLoading && <p role="status">Loading canonical price history…</p>}
-        </section>
+      <main className={`container ${styles.detailGrid}`}>
+        <div className={styles.marketColumn}>
+          <section className={styles.chartPanel} aria-labelledby="market-chart-title">
+            <div className={styles.sectionTitle}><div><p className="eyebrow">Market data</p><h2 id="market-chart-title">{market.chartKind === "nav" ? "NAV history" : "Price history"}</h2></div><strong>{priceUsd18 ? formatUsd(decimalUnitsToNumber(priceUsd18, 18)) : "Unavailable"}</strong></div>
+            {marketSeries.ALL.length >= 2 ? <RangeChart seriesByRange={marketSeries} /> : (
+              <EmptyState title="Historical chart is not available yet" description="The chart will appear after this asset has at least two canonical finalized observations." />
+            )}
+            {historyLoading && <p role="status">Loading canonical price history…</p>}
+          </section>
+          <section className={styles.informationPanel} aria-labelledby="market-information-title">
+            <div className={styles.informationHeader}>
+              <div><p className="eyebrow">Market records</p><h2 id="market-information-title">Market information</h2></div>
+              <div className={styles.informationTabs} role="tablist" aria-label="Market information">
+                <button type="button" role="tab" aria-selected={informationTab === "series"} onClick={() => setInformationTab("series")}>Canonical Series</button>
+                <button type="button" role="tab" aria-selected={informationTab === "positions"} onClick={() => setInformationTab("positions")}>My Positions</button>
+                <button type="button" role="tab" aria-selected={informationTab === "activity"} onClick={() => setInformationTab("activity")}>Public Activity</button>
+              </div>
+            </div>
+            <div role="tabpanel" hidden={informationTab !== "series"}><OptionsChain underlying={market.address} embedded view="chain" selectedSeriesId={selectedOptionsSeriesId} onSelectedSeriesChange={setSelectedOptionsSeriesId} /></div>
+            <div role="tabpanel" hidden={informationTab !== "positions"}><OptionsPortfolio embedded /></div>
+            <div role="tabpanel" hidden={informationTab !== "activity"}><MarketPublicInfo embedded kind={market.kind} symbol={market.symbol} spotEnabled={market.products.some((candidate) => candidate.id === "spot" && candidate.enabled)} /></div>
+          </section>
+        </div>
         <section className={styles.transactionPanel} aria-labelledby="market-transaction-title">
           <p className="eyebrow">Transaction panel</p>
           <h2 id="market-transaction-title">Available products</h2>
@@ -105,13 +122,12 @@ export function MarketDetailView({ assetId }: { readonly assetId: string }) {
           {market.products.filter((candidate) => !candidate.enabled).map((candidate) => <p key={candidate.id} className={styles.disabledReason}>{candidate.label}: {candidate.disabledReason}</p>)}
           <div className={styles.transactionContent} aria-live="polite">
             {product === "mint-redeem" && <TradePanel />}
-            {product === "options" && <><OptionsChain underlying={market.address} embedded /><OptionsPortfolio embedded /></>}
-            {product === "liquidity" && <><OptionsVaultPanel embedded /><OptionsPortfolio embedded /></>}
+            {product === "options" && <OptionsChain underlying={market.address} embedded view="ticket" selectedSeriesId={selectedOptionsSeriesId} onSelectedSeriesChange={setSelectedOptionsSeriesId} />}
+            {product === "liquidity" && <OptionsVaultPanel embedded />}
             {product === "spot" && <SpotTradePanel market={market} />}
           </div>
         </section>
       </main>
-      <MarketPublicInfo kind={market.kind} symbol={market.symbol} spotEnabled={market.products.some((candidate) => candidate.id === "spot" && candidate.enabled)} />
     </>
   );
 }

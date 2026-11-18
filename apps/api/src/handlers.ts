@@ -119,6 +119,62 @@ export async function postOptionsPortfolio(context: ApiContext, request: Request
   }
 }
 
+export async function postWalletData(context: ApiContext, request: Request): Promise<Response> {
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return invalidRequest("INVALID_JSON");
+  }
+  if (!isWalletHistoryRequest(body)) return invalidRequest("INVALID_SIGNATURE_REQUEST");
+  try {
+    const wallet = await authenticateWallet(context, request, body);
+    if (!wallet) return unauthorized();
+    const [transactions, positions, withdrawals] = await Promise.all([
+      context.readModels.listUserTransactions(wallet, 100, request.signal),
+      context.readModels.listOptionsPositions(wallet, request.signal),
+      context.readModels.listOptionsWithdrawals(wallet, request.signal),
+    ]);
+    const response = json({ data: {
+      walletAddress: wallet,
+      transactions: transactions.map(mapWalletTransaction),
+      optionsPortfolio: {
+        walletAddress: wallet,
+        positions: positions.map((item) => ({ seriesId: item.series_id, underlying: item.underlying, underlyingSymbol: item.underlying_symbol, size18: item.size_18, netCashFlow6: item.net_cash_flow_6, updatedAt: item.updated_at })),
+        withdrawals: withdrawals.map((item) => ({ requestId: item.request_id, state: item.state, receiverAddress: item.receiver_address, shares: item.shares, assets6: item.assets_6, unlockAt: item.unlock_at, updatedAt: item.updated_at })),
+      },
+    } }, 200, NO_STORE);
+    clearWalletNonce(response);
+    return response;
+  } catch {
+    return internalError();
+  }
+}
+
+export async function getPublicActivity(context: ApiContext, requestUrl: URL, signal?: AbortSignal): Promise<Response> {
+  const limit = parseLimit(requestUrl);
+  if (limit === undefined) return invalidRequest("INVALID_LIMIT");
+  try {
+    const [vault, options, withdrawals] = await Promise.all([
+      context.readModels.listPublicUserTransactions(limit, signal),
+      context.readModels.listOptionsActivity(limit, signal),
+      context.readModels.listOptionsWithdrawalActivity(limit, signal),
+    ]);
+    const activity = [
+      ...vault.map((item) => ({ transactionHash: item.transaction_hash, blockNumber: item.block_number, walletAddress: item.wallet_address, action: item.action, assetAmount: item.asset_amount, shareAmount: item.share_amount, observedAt: item.finalized_at ?? item.submitted_at })),
+      ...options.map((item) => ({ transactionHash: item.transaction_hash, blockNumber: item.block_number, walletAddress: item.wallet_address, action: item.event_name, assetAmount: item.cash_amount_6, shareAmount: item.size_18, observedAt: item.observed_at })),
+      ...withdrawals.filter((item) => item.owner_address || item.receiver_address).map((item) => ({ transactionHash: item.transaction_hash, blockNumber: item.block_number, walletAddress: item.owner_address ?? item.receiver_address ?? "", action: item.event_name, assetAmount: item.assets_6, shareAmount: item.shares, observedAt: item.observed_at })),
+    ].sort((left, right) => Date.parse(right.observedAt) - Date.parse(left.observedAt)).slice(0, limit);
+    return json({ data: activity }, 200, PUBLIC_CACHE);
+  } catch {
+    return internalError();
+  }
+}
+
+function mapWalletTransaction(transaction: Awaited<ReturnType<ApiContext["readModels"]["listUserTransactions"]>>[number]) {
+  return { transactionHash: transaction.transaction_hash, action: transaction.action, status: transaction.status, blockNumber: transaction.block_number, assetAmount: transaction.asset_amount, shareAmount: transaction.share_amount, failureCode: transaction.failure_code, submittedAt: transaction.submitted_at, finalizedAt: transaction.finalized_at };
+}
+
 export async function getAssets(context: ApiContext, signal?: AbortSignal): Promise<Response> {
   try {
     const assets = await context.readModels.listActiveAssets(signal);

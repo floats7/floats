@@ -11,10 +11,11 @@ interface TabsProps<T extends string> {
   value: T;
   onChange: (value: T) => void;
   optionLabel?: (value: T) => string;
+  fullWidth?: boolean;
 }
 
 /** Segmented control. A shared indicator glides between the options. */
-export function Tabs<T extends string>({ label, options, value, onChange, optionLabel = String }: TabsProps<T>) {
+export function Tabs<T extends string>({ label, options, value, onChange, optionLabel = String, fullWidth = false }: TabsProps<T>) {
   const groupId = useId();
 
   const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
@@ -26,7 +27,7 @@ export function Tabs<T extends string>({ label, options, value, onChange, option
 
   return (
     <LayoutGroup id={groupId}>
-      <div className={styles.tabs} role="radiogroup" aria-label={label}>
+      <div className={styles.tabs} data-fill={fullWidth} role="radiogroup" aria-label={label}>
         {options.map((option, index) => {
           const selected = option === value;
           return (

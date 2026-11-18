@@ -1,37 +1,24 @@
 "use client";
 
-import { useState } from "react";
 import { Reveal } from "@/components/ui/Reveal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
-import { useWallet } from "@/features/wallet/WalletProvider";
-import { floatApi, type WalletTransactionDto } from "@/lib/api-client";
+import { usePortfolio } from "./PortfolioProvider";
 import { formatDate } from "@/lib/format";
 import { formatUnits } from "@/lib/units";
 import styles from "./TransactionTable.module.css";
 
 export function TransactionTable() {
-  const { address, provider } = useWallet();
+  const { walletData, walletDataStatus, verifyWalletData } = usePortfolio();
   const { notify } = useToast();
-  const [transactions, setTransactions] = useState<readonly WalletTransactionDto[] | null>(null);
-  const [loading, setLoading] = useState(false);
+  const transactions = walletData?.transactions;
 
   const loadHistory = async () => {
-    if (!address || !provider) return;
-    setLoading(true);
     try {
-      const challenge = await floatApi.getWalletChallenge(address);
-      const signature = await provider.request<unknown>({
-        method: "personal_sign",
-        params: [challenge.message, address],
-      });
-      if (typeof signature !== "string") throw new Error("Invalid wallet signature");
-      setTransactions(await floatApi.getWalletHistory(challenge.message, signature));
+      await verifyWalletData();
     } catch {
-      notify("Transaction history authorization failed", "error");
-    } finally {
-      setLoading(false);
+      notify("Wallet data verification failed", "error");
     }
   };
 
@@ -43,11 +30,11 @@ export function TransactionTable() {
         </h2>
       </Reveal>
 
-      {transactions === null ? (
+      {transactions === undefined ? (
         <EmptyState
-          title="Authorize transaction history"
-          description="Sign a read-only message to prove wallet ownership. This does not submit a transaction or grant token permissions."
-          action={<Button onClick={loadHistory} loading={loading}>Authorize wallet</Button>}
+          title="Verify wallet data"
+          description="Your wallet is connected. One read-only signature unlocks private history and positions for this wallet session; it cannot submit transactions or spend tokens."
+          action={<Button onClick={loadHistory} loading={walletDataStatus === "loading"}>Verify wallet data</Button>}
         />
       ) : transactions.length === 0 ? (
         <EmptyState

@@ -1,16 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Reveal } from "@/components/ui/Reveal";
 import { useToast } from "@/components/ui/Toast";
 import { useWallet } from "@/features/wallet/WalletProvider";
 import { floatApi, type OptionsPortfolioDto } from "@/lib/api-client";
+import { usePortfolio } from "@/features/portfolio/PortfolioProvider";
 import { formatUnits } from "@/lib/units";
 import styles from "./OptionsPortfolio.module.css";
 import { cancelOptionsWithdrawal, claimOptionsPosition, claimOptionsWithdrawal } from "@/lib/options-transactions";
 import { OnchainTransactionModal, type OnchainTransactionPhase } from "@/features/transactions/OnchainTransactionModal";
+import { Tabs } from "@/components/ui/Tabs";
+
+const PORTFOLIO_TABS = ["positions", "withdrawals"] as const;
+type PortfolioTab = typeof PORTFOLIO_TABS[number];
 
 interface PortfolioTransactionState {
   readonly phase: OnchainTransactionPhase;
@@ -24,27 +29,16 @@ interface PortfolioTransactionState {
 export function OptionsPortfolio({ embedded = false }: { readonly embedded?: boolean }) {
   const { address, provider, openConnect } = useWallet();
   const { notify } = useToast();
-  const [portfolio, setPortfolio] = useState<OptionsPortfolioDto>();
-  const [loading, setLoading] = useState(false);
+  const { walletData, walletDataStatus, verifyWalletData } = usePortfolio();
+  const portfolio = walletData?.optionsPortfolio;
   const [transaction, setTransaction] = useState<PortfolioTransactionState>();
-
-  useEffect(() => setPortfolio(undefined), [address]);
+  const [activeTab, setActiveTab] = useState<PortfolioTab>("positions");
 
   const authorize = async () => {
-    if (!address || !provider) return;
-    setLoading(true);
     try {
-      const challenge = await floatApi.getOptionsPortfolioChallenge(address);
-      const signature = await provider.request<unknown>({
-        method: "personal_sign",
-        params: [challenge.message, address],
-      });
-      if (typeof signature !== "string") throw new Error("Invalid wallet signature");
-      setPortfolio(await floatApi.getOptionsPortfolio(challenge.message, signature));
+      await verifyWalletData();
     } catch {
-      notify("Options portfolio authorization failed", "error");
-    } finally {
-      setLoading(false);
+      notify("Wallet data verification failed", "error");
     }
   };
 
@@ -62,14 +56,25 @@ export function OptionsPortfolio({ embedded = false }: { readonly embedded?: boo
         />
       ) : portfolio === undefined ? (
         <EmptyState
-          title="Authorize read-only portfolio access"
-          description="Sign a one-time message. This does not send a transaction or approve token spending."
-          action={<Button onClick={authorize} loading={loading}>Authorize wallet</Button>}
+          title="Verify wallet data"
+          description="Your wallet is connected. One read-only signature unlocks private history and positions for this wallet session."
+          action={<Button onClick={authorize} loading={walletDataStatus === "loading"}>Verify wallet data</Button>}
         />
       ) : (
-        <div className={styles.grids}>
-          <PortfolioTable portfolio={portfolio} provider={provider} account={address} notify={notify} setTransaction={setTransaction} />
-          <WithdrawalTable portfolio={portfolio} provider={provider} account={address} notify={notify} setTransaction={setTransaction} />
+        <div className={styles.tableCard}>
+          <Tabs
+            fullWidth
+            label="Option portfolio records"
+            options={PORTFOLIO_TABS}
+            value={activeTab}
+            onChange={setActiveTab}
+            optionLabel={(tab) => tab === "positions"
+              ? `Open positions · ${portfolio.positions.length}`
+              : `LP withdrawals · ${portfolio.withdrawals.length}`}
+          />
+          {activeTab === "positions"
+            ? <PortfolioTable portfolio={portfolio} provider={provider} account={address} notify={notify} setTransaction={setTransaction} />
+            : <WithdrawalTable portfolio={portfolio} provider={provider} account={address} notify={notify} setTransaction={setTransaction} />}
         </div>
       )}
       <OnchainTransactionModal open={Boolean(transaction)} phase={transaction?.phase ?? "pending"} title={transaction?.title ?? "Portfolio transaction"} steps={["Confirm transaction in wallet", "Wait for onchain confirmation"]} stepIndex={transaction?.stepIndex ?? 0} hash={transaction?.hash} explorerUrl={transaction?.explorerUrl} error={transaction?.error} onClose={() => setTransaction(undefined)} />
@@ -99,8 +104,7 @@ function PortfolioTable({ portfolio, provider, account, notify, setTransaction }
     }
   };
   return (
-    <section aria-labelledby="option-positions-title">
-      <h3 id="option-positions-title">Open positions</h3>
+    <div className={styles.tabPanel} role="tabpanel" aria-label="Open option positions">
       {portfolio.positions.length === 0 ? <p>No open option positions.</p> : (
         <div className={styles.scroller} role="region" aria-label="Open option positions" tabIndex={0}>
           <table>
@@ -116,7 +120,7 @@ function PortfolioTable({ portfolio, provider, account, notify, setTransaction }
           </table>
         </div>
       )}
-    </section>
+    </div>
   );
 }
 
@@ -156,8 +160,7 @@ function WithdrawalTable({ portfolio, provider, account, notify, setTransaction 
     }
   };
   return (
-    <section aria-labelledby="option-withdrawals-title">
-      <h3 id="option-withdrawals-title">LP withdrawals</h3>
+    <div className={styles.tabPanel} role="tabpanel" aria-label="LP withdrawals">
       {portfolio.withdrawals.length === 0 ? <p>No withdrawal requests.</p> : (
         <div className={styles.scroller} role="region" aria-label="LP withdrawal requests" tabIndex={0}>
           <table>
@@ -177,7 +180,7 @@ function WithdrawalTable({ portfolio, provider, account, notify, setTransaction 
           </table>
         </div>
       )}
-    </section>
+    </div>
   );
 }
 

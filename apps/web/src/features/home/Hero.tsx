@@ -4,8 +4,13 @@ import { HoldingsTicker } from "./HoldingsTicker";
 import { ShootingStars } from "./ShootingStars";
 import { HeroStage } from "./HeroStage";
 import styles from "./Hero.module.css";
+import { ContractAddressBadge } from "./ContractAddressBadge";
 
 export function Hero() {
+  const configuredAddress = process.env.FLOATS_CONTRACT_ADDRESS?.trim();
+  const contractAddress = configuredAddress && /^0x[0-9a-fA-F]{40}$/.test(configuredAddress)
+    ? configuredAddress as `0x${string}`
+    : undefined;
   return (
     <section className={styles.hero} aria-labelledby="hero-title" data-hud-index="001" data-hud-title="Floats" data-hud-meta="Onchain IPO index">
       <ShootingStars />
@@ -13,6 +18,7 @@ export function Hero() {
       <HeroStage />
 
       <div className={styles.copy}>
+        {contractAddress && <ContractAddressBadge address={contractAddress} />}
         <MaskedHeading
           id="hero-title"
           className={styles.title}

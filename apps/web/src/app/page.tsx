@@ -6,6 +6,8 @@ import { Narrative } from "@/features/home/narrative/Narrative";
 import { SectionHud } from "@/features/home/SectionHud";
 import { Telemetry } from "@/features/home/Telemetry";
 
+export const dynamic = "force-dynamic";
+
 export default function HomePage() {
   return (
     <>

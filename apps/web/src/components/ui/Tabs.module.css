@@ -6,6 +6,8 @@
   border-radius: var(--radius-pill);
   background: var(--surface-base);
 }
+.tabs[data-fill="true"] { display: flex; width: 100%; }
+.tabs[data-fill="true"] .tab { flex: 1 1 0; min-width: 0; padding-inline: var(--space-2); }
 
 .tab {
   position: relative;

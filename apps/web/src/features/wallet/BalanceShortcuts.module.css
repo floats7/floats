@@ -1,0 +1,4 @@
+.shortcuts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; }
+.shortcuts button { min-height: 2rem; border: 1px solid var(--line-base); background: var(--surface-base); color: var(--text-muted); font-family: var(--font-mono); font-size: var(--text-xs); }
+.shortcuts button:hover:not(:disabled) { border-color: var(--line-strong); color: var(--text-strong); }
+.shortcuts button:disabled { opacity: .4; }

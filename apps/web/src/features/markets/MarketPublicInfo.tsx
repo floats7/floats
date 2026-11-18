@@ -3,17 +3,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { StatusChip } from "@/components/ui/StatusChip";
-import { floatApi, type OperationalActionDto } from "@/lib/api-client";
+import { floatApi, type PublicActivityDto } from "@/lib/api-client";
+import { formatUnits } from "@/lib/units";
 import styles from "./MarketPublicInfo.module.css";
 
 interface MarketPublicInfoProps {
   readonly kind: "index" | "constituent";
   readonly symbol: string;
   readonly spotEnabled?: boolean;
+  readonly embedded?: boolean;
 }
 
-export function MarketPublicInfo({ kind, symbol, spotEnabled = false }: MarketPublicInfoProps) {
-  const [actions, setActions] = useState<readonly OperationalActionDto[]>([]);
+export function MarketPublicInfo({ kind, symbol, spotEnabled = false, embedded = false }: MarketPublicInfoProps) {
+  const [actions, setActions] = useState<readonly PublicActivityDto[]>([]);
   const [explorerUrl, setExplorerUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -25,7 +27,7 @@ export function MarketPublicInfo({ kind, symbol, spotEnabled = false }: MarketPu
     setLoading(true);
     setError(false);
     Promise.all([
-      floatApi.getOperationalActions("vault", 10, controller.signal),
+      floatApi.getPublicActivity(25, controller.signal),
       floatApi.getPublicConfig(controller.signal),
     ]).then(([nextActions, config]) => {
       if (!controller.signal.aborted) {
@@ -41,7 +43,7 @@ export function MarketPublicInfo({ kind, symbol, spotEnabled = false }: MarketPu
   }, [attempt]);
 
   return (
-    <section className={`container ${styles.section}`} aria-labelledby="public-market-data-title">
+    <section className={`${embedded ? styles.embedded : "container"} ${styles.section}`} aria-labelledby="public-market-data-title">
       <div className={styles.heading}>
         <div>
           <p className="eyebrow">Public market data</p>
@@ -71,24 +73,24 @@ export function MarketPublicInfo({ kind, symbol, spotEnabled = false }: MarketPu
       <div className={styles.activityHeader}>
         <div>
           <p className="eyebrow">Recent activity</p>
-          <h3>Confirmed vault events</h3>
+          <h3>Onchain trades and positions</h3>
         </div>
-        <p>Public protocol events only. Wallet-specific history remains private to the connected wallet.</p>
+        <p>Confirmed Buy, Sell, Options and liquidity activity from public onchain events.</p>
       </div>
 
       {loading && <p className={styles.state} role="status">Loading finalized activity…</p>}
       {!loading && error && <p className={styles.state} role="alert">Activity is temporarily unavailable. <button type="button" onClick={retry}>Try again</button></p>}
-      {!loading && !error && actions.length === 0 && <p className={styles.state}>No indexed vault activity yet.</p>}
+      {!loading && !error && actions.length === 0 && <p className={styles.state}>No indexed user activity yet.</p>}
       {!loading && !error && actions.length > 0 && (
         <ul className={styles.activityList}>
           {actions.map((action) => (
-            <li key={`${action.transaction_hash}:${action.log_index}`}>
+            <li key={`${action.transactionHash}:${action.action}`}>
               <div>
-                <strong>{humanize(action.action)}</strong>
-                <span>{formatTimestamp(action.observed_at)}</span>
+                <strong>{activityLabel(action.action)}</strong>
+                <span>{shortAddress(action.walletAddress)} · {formatTimestamp(action.observedAt)}</span>
               </div>
-              <span className="tabular">Block {action.block_number.toLocaleString("en-US")}</span>
-              <a href={`${explorerUrl}/tx/${action.transaction_hash}`} target="_blank" rel="noreferrer">
+              <span className="tabular">{activityAmount(action)}</span>
+              <a href={`${explorerUrl}/tx/${action.transactionHash}`} target="_blank" rel="noreferrer">
                 Explorer <Icon name="external-link" size={13} />
               </a>
             </li>
@@ -103,8 +105,19 @@ function MarketFact({ title, value, detail }: { readonly title: string; readonly
   return <article><span>{title}</span><strong>{value}</strong><p>{detail}</p></article>;
 }
 
-function humanize(value: string): string {
-  return value.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replaceAll("_", " ");
+function activityLabel(value: string): string {
+  const labels: Record<string, string> = { cash_mint: "Deposit / Buy fIPO", cash_redeem: "Sell fIPO", in_kind_redeem: "Sell fIPO in-kind", OptionBought: "Buy option", OptionSoldBack: "Sell option", OptionClaimed: "Claim option", WithdrawalRequested: "Request Earn withdrawal", WithdrawalCancelled: "Cancel Earn withdrawal", WithdrawalFinalized: "Finalize Earn withdrawal", WithdrawalClaimed: "Claim Earn withdrawal" };
+  return labels[value] ?? value.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replaceAll("_", " ");
+}
+
+function activityAmount(action: PublicActivityDto): string {
+  if (action.assetAmount) return `${formatUnits(action.assetAmount, 6, 4)} USDG`;
+  if (action.shareAmount) return `${formatUnits(action.shareAmount, 18, 4)} units`;
+  return action.blockNumber === null ? "Confirmed" : `Block ${action.blockNumber.toLocaleString("en-US")}`;
+}
+
+function shortAddress(value: string): string {
+  return `${value.slice(0, 6)}…${value.slice(-4)}`;
 }
 
 function formatTimestamp(value: string): string {

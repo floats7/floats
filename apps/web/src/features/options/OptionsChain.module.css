@@ -13,6 +13,10 @@
 .embedded .ticket {
   order: -1;
   position: static;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .chain,
@@ -122,9 +126,16 @@
   padding: var(--space-4);
   background: var(--surface-plate);
   color: var(--text-muted);
+  cursor: pointer;
+  font-weight: 700;
+  transition: border-color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out), opacity var(--duration-fast) var(--ease-out);
 }
+.quoteRequest[data-side="buy"] { border-color: var(--positive); background: color-mix(in srgb, var(--positive) 16%, var(--surface-plate)); color: var(--positive); }
+.quoteRequest[data-side="sell-back"] { border-color: var(--negative); background: color-mix(in srgb, var(--negative) 16%, var(--surface-plate)); color: var(--negative); }
+.quoteRequest:hover:not(:disabled) { background: var(--text-strong); color: var(--surface-base); }
 .buyAction:not(:disabled) { border-color: var(--positive); background: var(--positive); color: var(--text-on-paper); }
 .sellAction:not(:disabled) { border-color: var(--negative); background: var(--negative); color: var(--text-on-paper); }
+.quoteButton:disabled { cursor: not-allowed; opacity: .42; }
 
 .sizeField {
   display: grid;

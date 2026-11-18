@@ -1,0 +1,6 @@
+.badge { display: flex; align-items: center; gap: var(--space-3); max-width: min(100%, 52rem); min-height: 3rem; margin-bottom: var(--space-5); padding: var(--space-2) var(--space-3); border: 1px solid var(--line-strong); background: rgb(7 7 8 / .72); color: var(--text-strong); cursor: pointer; backdrop-filter: blur(16px); transition: border-color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out); }
+.badge:hover { border-color: var(--positive); background: rgb(14 14 16 / .9); }
+.label { flex: 0 0 auto; padding: var(--space-2); background: var(--text-strong); color: var(--text-on-paper); font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.address { min-width: 0; overflow-wrap: anywhere; font-size: var(--text-sm); text-align: left; }
+.action { display: inline-flex; align-items: center; gap: var(--space-2); flex: 0 0 auto; color: var(--positive); font-family: var(--font-mono); font-size: var(--text-xs); text-transform: uppercase; }
+@media (max-width: 48rem) { .badge { align-items: stretch; flex-direction: column; width: 100%; } .label, .action { align-self: center; } .address { text-align: center; } }

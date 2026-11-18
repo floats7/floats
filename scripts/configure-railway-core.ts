@@ -17,6 +17,7 @@ const webOrigin = railwayEnvironment === "mainnet" ? "https://floats.trade" : "h
 const serviceVariables: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   "floats-web": compact({
     APP_ENV: railwayEnvironment,
+    FLOATS_CONTRACT_ADDRESS: optional("FLOATS_CONTRACT_ADDRESS"),
     NEXT_PUBLIC_API_URL: apiOrigin,
     NODE_ENV: "production",
   }),

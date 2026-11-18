@@ -9,8 +9,7 @@
 }
 
 .toggles {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: var(--space-3);
 }
 
@@ -103,3 +102,6 @@
 
 .buyAction:not(:disabled) { border-color: var(--positive); background: var(--positive); color: var(--text-on-paper); }
 .sellAction:not(:disabled) { border-color: var(--negative); background: var(--negative); color: var(--text-on-paper); }
+.shortcuts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; margin-top: .5rem; }
+.shortcuts button { min-height: 2rem; border: 1px solid var(--line-base); background: var(--surface-base); color: var(--text-muted); font-family: var(--font-mono); font-size: var(--text-xs); }
+.shortcuts button:hover { border-color: var(--line-strong); color: var(--text-strong); }

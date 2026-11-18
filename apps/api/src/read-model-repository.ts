@@ -70,6 +70,7 @@ export type UserTransactionReadModel = Pick<
   | "failure_code"
   | "submitted_at"
   | "finalized_at"
+  | "wallet_address"
 >;
 
 export interface OptionsSeriesReadModel {
@@ -121,6 +122,18 @@ export interface OptionsWithdrawalReadModel {
   readonly assets_6: string | null;
   readonly unlock_at: string;
   readonly updated_at: string;
+}
+
+export interface OptionsWithdrawalActivityReadModel {
+  readonly transaction_hash: string;
+  readonly log_index: number;
+  readonly block_number: number;
+  readonly event_name: string;
+  readonly owner_address: string | null;
+  readonly receiver_address: string | null;
+  readonly shares: string | null;
+  readonly assets_6: string | null;
+  readonly observed_at: string;
 }
 
 export interface ReadModelScope {
@@ -291,6 +304,20 @@ export class ReadModelRepository {
     return this.client.select<readonly UserTransactionReadModel[]>("api_user_transactions", query, signal);
   }
 
+  public listPublicUserTransactions(
+    limit = 50,
+    signal?: AbortSignal,
+  ): Promise<readonly UserTransactionReadModel[]> {
+    const query = this.scopedQuery(
+      "transaction_hash,wallet_address,action,status,block_number,asset_amount,share_amount,failure_code,submitted_at,finalized_at",
+    );
+    query.set("canonical", "eq.true");
+    query.set("status", "eq.confirmed");
+    query.set("order", "submitted_at.desc");
+    query.set("limit", boundedLimit(limit));
+    return this.client.select<readonly UserTransactionReadModel[]>("api_user_transactions", query, signal);
+  }
+
   public listOptionsSeries(signal?: AbortSignal): Promise<readonly OptionsSeriesReadModel[]> {
     const query = this.scopedQuery(
       "series_id,underlying,underlying_symbol,underlying_uid,price_source,kind,strike_usd_18,cap_usd_18,expiry,contract_size_18,corporate_action_policy_version,state,settlement_price_usd_18,payoff_per_unit_usd_18,total_claimable_6,manual,created_at",
@@ -336,6 +363,14 @@ export class ReadModelRepository {
     query.set("order", "updated_at.desc");
     query.set("limit", "100");
     return this.client.select<readonly OptionsWithdrawalReadModel[]>("api_options_withdrawals", query, signal);
+  }
+
+  public listOptionsWithdrawalActivity(limit = 50, signal?: AbortSignal): Promise<readonly OptionsWithdrawalActivityReadModel[]> {
+    const query = this.scopedQuery("transaction_hash,log_index,block_number,event_name,owner_address,receiver_address,shares,assets_6,observed_at");
+    query.set("canonical", "eq.true");
+    query.set("order", "block_number.desc,log_index.desc");
+    query.set("limit", boundedLimit(limit));
+    return this.client.select<readonly OptionsWithdrawalActivityReadModel[]>("options_withdrawal_events", query, signal);
   }
 
   public async issueWalletChallenge(

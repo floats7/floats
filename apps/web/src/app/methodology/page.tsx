@@ -4,6 +4,7 @@ import { ChangeLog } from "@/features/methodology/ChangeLog";
 import { FeeTable } from "@/features/methodology/FeeTable";
 import { ProtocolStatus } from "@/features/methodology/ProtocolStatus";
 import { RulesList } from "@/features/methodology/RulesList";
+import { ContractRegistry } from "@/features/methodology/ContractRegistry";
 
 export const metadata: Metadata = { title: "Methodology & Changes" };
 
@@ -18,6 +19,7 @@ export default function MethodologyPage() {
       <RulesList />
       <FeeTable />
       <ProtocolStatus />
+      <ContractRegistry />
       <ChangeLog />
     </>
   );

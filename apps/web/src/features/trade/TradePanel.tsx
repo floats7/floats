@@ -86,6 +86,10 @@ export function TradePanel() {
   };
 
   const fillMax = () => setRaw(String(Math.floor(maxAmount(direction, mode, limits) * 100) / 100));
+  const fillPercentage = (percentage: number) => {
+    const value = maxAmount(direction, mode, limits) * percentage / 100;
+    setRaw(String(Math.floor(value * 1_000_000) / 1_000_000));
+  };
 
   return (
     <>
@@ -98,8 +102,8 @@ export function TradePanel() {
         noValidate
       >
         <div className={styles.toggles}>
-          <Tabs label="Action" options={DIRECTIONS} value={direction} onChange={setDirection} optionLabel={retailTradeAction} />
-          <Tabs label="Settlement" options={MODES} value={mode} onChange={setMode} />
+          <Tabs fullWidth label="Action" options={DIRECTIONS} value={direction} onChange={setDirection} optionLabel={retailTradeAction} />
+          <Tabs fullWidth label="Settlement" options={MODES} value={mode} onChange={setMode} />
         </div>
 
         <div className={styles.availability} role="status">
@@ -136,6 +140,11 @@ export function TradePanel() {
             onChange={(event) => setRaw(event.target.value)}
             onBlur={() => setTouched(true)}
           />
+          {connected && (
+            <div className={styles.shortcuts} aria-label="Balance shortcuts">
+              {[25, 50, 100].map((percentage) => <button key={percentage} type="button" onClick={() => fillPercentage(percentage)}>{percentage}%</button>)}
+            </div>
+          )}
           <p id={errorId} className={styles.error} role="alert">
             {error}
           </p>

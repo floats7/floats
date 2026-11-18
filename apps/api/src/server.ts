@@ -12,6 +12,7 @@ import {
   getNavHistory,
   getOperationalActions,
   getOptionsActivity,
+  getPublicActivity,
   getOptionsSeries,
   getOptionsVaultState,
   postOptionsPortfolio,
@@ -22,6 +23,7 @@ import {
   internalError,
   postVaultQuote,
   postWalletHistory,
+  postWalletData,
 } from "./handlers.ts";
 
 const port = readPort(process.env.PORT);
@@ -56,7 +58,7 @@ const server = createServer(async (incoming, outgoing) => {
 
 function sensitiveEndpointLimit(request: Request): number | null {
   const pathname = new URL(request.url).pathname;
-  if (pathname === "/api/wallet-history" || pathname === "/api/options/portfolio") return 10;
+  if (pathname === "/api/wallet-history" || pathname === "/api/options/portfolio" || pathname === "/api/wallet-data") return 10;
   if ((pathname === "/api/quote" || pathname === "/api/options/quote") && request.method === "POST") return 60;
   return null;
 }
@@ -115,6 +117,7 @@ async function route(request: Request, url: URL): Promise<Response> {
   if (request.method === "GET" && endpoint === "operations") return getOperationalActions(context, url, request.signal);
   if (request.method === "GET" && endpoint === "options/series") return getOptionsSeries(context, request.signal);
   if (request.method === "GET" && endpoint === "options/activity") return getOptionsActivity(context, url, request.signal);
+  if (request.method === "GET" && endpoint === "activity") return getPublicActivity(context, url, request.signal);
   if (request.method === "GET" && endpoint === "options/vault") return getOptionsVaultState(context);
   if (request.method === "GET" && endpoint === "options/portfolio") return getWalletChallenge(context, request);
   if (request.method === "POST" && endpoint === "options/portfolio") return postOptionsPortfolio(context, request);
@@ -122,6 +125,8 @@ async function route(request: Request, url: URL): Promise<Response> {
   if (request.method === "POST" && endpoint === "quote") return postVaultQuote(context, request);
   if (request.method === "GET" && endpoint === "wallet-history") return getWalletChallenge(context, request);
   if (request.method === "POST" && endpoint === "wallet-history") return postWalletHistory(context, request);
+  if (request.method === "GET" && endpoint === "wallet-data") return getWalletChallenge(context, request);
+  if (request.method === "POST" && endpoint === "wallet-data") return postWalletData(context, request);
   return new Response(null, { status: 404 });
 }
 

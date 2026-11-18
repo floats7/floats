@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Reveal } from "@/components/ui/Reveal";
 import { StatusChip } from "@/components/ui/StatusChip";
-import { floatApi, type OptionsSeriesDto } from "@/lib/api-client";
+import { ApiClientError, floatApi, type OptionsSeriesDto } from "@/lib/api-client";
 import styles from "./OptionsChain.module.css";
 import { PayoffChart } from "./PayoffChart";
 import { useWallet } from "@/features/wallet/WalletProvider";
 import type { SignedOptionsQuoteDto } from "@/lib/api-client";
 import { executeOptionsQuote } from "@/lib/options-transactions";
 import { OnchainTransactionModal, type OnchainTransactionPhase } from "@/features/transactions/OnchainTransactionModal";
+import { usePortfolio } from "@/features/portfolio/PortfolioProvider";
+import { BalanceShortcuts } from "@/features/wallet/BalanceShortcuts";
 
 const SERIES_STATE: Readonly<Record<string, string>> = {
   "0": "Active",
@@ -21,10 +23,19 @@ const SERIES_STATE: Readonly<Record<string, string>> = {
   "5": "Archived",
 };
 
-export function OptionsChain({ underlying, embedded = false }: { readonly underlying?: string; readonly embedded?: boolean } = {}) {
+interface OptionsChainProps {
+  readonly underlying?: string;
+  readonly embedded?: boolean;
+  readonly view?: "full" | "chain" | "ticket";
+  readonly selectedSeriesId?: string;
+  readonly onSelectedSeriesChange?: (seriesId: string) => void;
+}
+
+export function OptionsChain({ underlying, embedded = false, view = "full", selectedSeriesId, onSelectedSeriesChange }: OptionsChainProps = {}) {
   const { address, provider, openConnect } = useWallet();
+  const { walletData } = usePortfolio();
   const [series, setSeries] = useState<readonly OptionsSeriesDto[]>([]);
-  const [selectedId, setSelectedId] = useState<string>();
+  const [internalSelectedId, setInternalSelectedId] = useState<string>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reload, setReload] = useState(0);
@@ -36,6 +47,13 @@ export function OptionsChain({ underlying, embedded = false }: { readonly underl
   const [transactionStatus, setTransactionStatus] = useState<string>();
   const [transactionModal, setTransactionModal] = useState<{ phase: OnchainTransactionPhase; stepIndex: number; hash?: string; error?: string; explorerUrl?: string }>();
   const [nowSeconds, setNowSeconds] = useState(() => Math.floor(Date.now() / 1_000));
+  const selectedIdRef = useRef<string | undefined>(undefined);
+  const selectionCallbackRef = useRef(onSelectedSeriesChange);
+
+  useEffect(() => {
+    selectedIdRef.current = selectedSeriesId ?? internalSelectedId;
+    selectionCallbackRef.current = onSelectedSeriesChange;
+  }, [selectedSeriesId, internalSelectedId, onSelectedSeriesChange]);
 
   useEffect(() => {
     if (!quote) return;
@@ -52,9 +70,12 @@ export function OptionsChain({ underlying, embedded = false }: { readonly underl
         ? result.filter((item) => item.underlying.toLowerCase() === underlying.toLowerCase())
         : result;
       setSeries(filtered);
-      setSelectedId((current) => current && filtered.some((item) => item.seriesId === current)
+      const current = selectedIdRef.current;
+      const next = current && filtered.some((item) => item.seriesId === current)
         ? current
-        : filtered.find((item) => item.state === "0")?.seriesId);
+        : filtered.find((item) => item.state === "0")?.seriesId;
+      setInternalSelectedId(next);
+      if (next && next !== selectedIdRef.current) selectionCallbackRef.current?.(next);
     }).catch((reason: unknown) => {
       if (!(reason instanceof DOMException && reason.name === "AbortError")) setError(true);
     }).finally(() => setLoading(false));
@@ -62,9 +83,18 @@ export function OptionsChain({ underlying, embedded = false }: { readonly underl
   }, [reload, underlying]);
 
   const active = useMemo(() => series.filter((item) => item.state === "0"), [series]);
+  const selectedId = selectedSeriesId ?? internalSelectedId;
   const selected = series.find((item) => item.seriesId === selectedId);
+  const selectedPosition = walletData?.optionsPortfolio.positions.find((position) => position.seriesId.toLowerCase() === selected?.seriesId.toLowerCase());
+  const selectSeries = (seriesId: string) => {
+    setInternalSelectedId(seriesId);
+    onSelectedSeriesChange?.(seriesId);
+    setQuote(undefined);
+    setQuoteError(undefined);
+  };
   const quoteMetrics = selected && quote ? deriveQuoteMetrics(selected, quote) : undefined;
   const remainingQuoteSeconds = quote ? Math.max(0, quote.quote.validUntil - nowSeconds) : 0;
+  const quoteActive = Boolean(quote) && remainingQuoteSeconds > 0;
 
   const requestQuote = async () => {
     if (!selected || !address) return;
@@ -83,8 +113,8 @@ export function OptionsChain({ underlying, embedded = false }: { readonly underl
         side,
         size18,
       }));
-    } catch {
-      setQuoteError("Live quote is not available yet. The Options services may not be activated on this network.");
+    } catch (reason) {
+      setQuoteError(quoteErrorMessage(reason));
     } finally {
       setQuoting(false);
     }
@@ -141,7 +171,7 @@ export function OptionsChain({ underlying, embedded = false }: { readonly underl
 
   return (
     <Reveal className={`${embedded ? styles.embedded : "container"} ${styles.layout}`}>
-      <section className={styles.chain} aria-labelledby="options-chain-title">
+      {view !== "ticket" && <section className={styles.chain} aria-labelledby="options-chain-title">
         <div className={styles.sectionHeader}>
           <div>
             <p className="eyebrow">Canonical series</p>
@@ -167,7 +197,7 @@ export function OptionsChain({ underlying, embedded = false }: { readonly underl
                 <tr key={item.seriesId} data-selected={item.seriesId === selectedId}>
                   <td>{underlyingLabel(item.underlyingSymbol, item.underlying)}</td>
                   <td>
-                    <button type="button" className={styles.selectRow} onClick={() => setSelectedId(item.seriesId)}>
+                    <button type="button" className={styles.selectRow} onClick={() => selectSeries(item.seriesId)}>
                       {formatExpiry(item.expiry)}
                     </button>
                   </td>
@@ -181,9 +211,9 @@ export function OptionsChain({ underlying, embedded = false }: { readonly underl
             </tbody>
           </table>
         </div>
-      </section>
+      </section>}
 
-      <aside className={styles.ticket} aria-labelledby="trade-ticket-title">
+      {view !== "chain" && <aside className={styles.ticket} aria-labelledby="trade-ticket-title">
         <p className="eyebrow">Trade ticket</p>
         <h2 id="trade-ticket-title">Selected series</h2>
         {selected ? (
@@ -198,13 +228,21 @@ export function OptionsChain({ underlying, embedded = false }: { readonly underl
             <PayoffChart series={selected} />
             <label className={styles.sizeField}>
               <span>Contract size</span>
-              <input value={size} inputMode="decimal" onChange={(event) => setSize(event.target.value)} />
+              <input value={size} inputMode="decimal" onChange={(event) => {
+                setSize(event.target.value);
+                setQuote(undefined);
+                setQuoteError(undefined);
+              }} />
             </label>
+            {side === "sell-back" && selectedPosition && (
+              <BalanceShortcuts balance={BigInt(selectedPosition.size18)} decimals={18} onSelect={(value) => { setSize(value); setQuote(undefined); setQuoteError(undefined); }} />
+            )}
             <label className={styles.sizeField}>
               <span>Action</span>
               <select value={side} onChange={(event) => {
                 setSide(event.target.value as "buy" | "sell-back");
                 setQuote(undefined);
+                setQuoteError(undefined);
               }}>
                 <option value="buy">Buy</option>
                 <option value="sell-back">Sell back</option>
@@ -231,11 +269,18 @@ export function OptionsChain({ underlying, embedded = false }: { readonly underl
         ) : <p>Select an active series from the chain.</p>}
         <button
           type="button"
-          className={styles.quoteButton}
-          disabled={!selected || quoting}
+          className={`${styles.quoteButton} ${styles.quoteRequest}`}
+          data-side={side}
+          disabled={!selected || quoting || quoteActive}
           onClick={address ? requestQuote : openConnect}
         >
-          {quoting ? "Requesting quote…" : address ? "Request live quote" : "Connect wallet to quote"}
+          {quoting
+            ? "Requesting quote…"
+            : quoteActive
+              ? `Quote active · ${remainingQuoteSeconds}s`
+              : address
+                ? quote && remainingQuoteSeconds === 0 ? "Request new quote" : "Request live quote"
+                : "Connect wallet to quote"}
         </button>
         <button type="button" className={`${styles.quoteButton} ${side === "buy" ? styles.buyAction : styles.sellAction}`} disabled={!quote || remainingQuoteSeconds === 0 || Boolean(transactionStatus)} onClick={submitQuote}>
           {quote ? `${side === "buy" ? "Buy" : "Sell back"} with this quote` : "Request a quote before submitting"}
@@ -252,7 +297,7 @@ export function OptionsChain({ underlying, embedded = false }: { readonly underl
           error={transactionModal?.error}
           onClose={() => setTransactionModal(undefined)}
         />
-      </aside>
+      </aside>}
     </Reveal>
   );
 }
@@ -262,6 +307,15 @@ function parseUnits18(value: string): string | undefined {
   const [whole = "0", fraction = ""] = value.split(".");
   const result = BigInt(whole) * 10n ** 18n + BigInt(fraction.padEnd(18, "0") || "0");
   return result > 0n && result <= (1n << 256n) - 1n ? result.toString() : undefined;
+}
+
+function quoteErrorMessage(reason: unknown): string {
+  if (reason instanceof ApiClientError) {
+    if (reason.code === "OPTIONS_NOT_ACTIVE") return "Options quoting is not active on the currently running API deployment.";
+    if (reason.code === "QUOTE_UNAVAILABLE") return "The live pricing service could not produce a quote. Try again shortly.";
+    if (reason.code === "RATE_LIMITED") return "Too many quote requests. Wait briefly, then try again.";
+  }
+  return "The live quote request failed. Check the active network and try again.";
 }
 
 function formatUsdg6(value: string): string {

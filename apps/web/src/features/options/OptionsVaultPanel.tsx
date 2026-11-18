@@ -6,8 +6,10 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { floatApi, type OptionsVaultStateDto } from "@/lib/api-client";
 import styles from "./OptionsVaultPanel.module.css";
 import { useWallet } from "@/features/wallet/WalletProvider";
-import { depositOptionsLiquidity, requestOptionsWithdrawal } from "@/lib/options-transactions";
+import { depositOptionsLiquidity, describeOptionsVaultError, requestOptionsWithdrawal } from "@/lib/options-transactions";
 import { OnchainTransactionModal, type OnchainTransactionPhase } from "@/features/transactions/OnchainTransactionModal";
+import { useTokenBalance } from "@/features/wallet/useTokenBalance";
+import { BalanceShortcuts } from "@/features/wallet/BalanceShortcuts";
 
 export function OptionsVaultPanel({ embedded = false }: { readonly embedded?: boolean }) {
   const { address, provider, openConnect } = useWallet();
@@ -17,29 +19,40 @@ export function OptionsVaultPanel({ embedded = false }: { readonly embedded?: bo
   const [action, setAction] = useState<"deposit" | "withdraw">("deposit");
   const [transactionStatus, setTransactionStatus] = useState<string>();
   const [transactionModal, setTransactionModal] = useState<{ phase: OnchainTransactionPhase; stepIndex: number; hash?: string; error?: string; explorerUrl?: string }>();
+  const [config, setConfig] = useState<Awaited<ReturnType<typeof floatApi.getPublicConfig>>>();
+  const inputBalance = useTokenBalance(action === "deposit" ? config?.usdgAddress : config?.optionsVaultAddress ?? undefined);
 
   const submit = async () => {
     if (!address || !provider) return openConnect();
     const units = parseAmount(amount, action === "deposit" ? 6 : 18);
     if (!units) return setTransactionStatus("Enter a positive valid amount.");
+    if (inputBalance !== undefined && units > inputBalance) {
+      return setTransactionStatus(action === "deposit"
+        ? "The amount exceeds your USDG balance."
+        : "The amount exceeds your Options Vault LP share balance.");
+    }
     setTransactionModal({ phase: "pending", stepIndex: 0 });
     try {
       setTransactionStatus(undefined);
-      const config = await floatApi.getPublicConfig();
-      if (!config.optionsVaultAddress) throw new Error("OPTIONS_NOT_ACTIVE");
+      const liveConfig = config ?? await floatApi.getPublicConfig();
+      if (!liveConfig.optionsVaultAddress) throw new Error("OPTIONS_NOT_ACTIVE");
       const hash = action === "deposit"
-        ? await depositOptionsLiquidity({ provider, account: address, vault: config.optionsVaultAddress as `0x${string}`, usdg: config.usdgAddress as `0x${string}`, assets6: units, onStatus: (next) => setTransactionModal({ phase: "pending", stepIndex: next === "approval" ? 0 : next === "transaction" ? 1 : 2, explorerUrl: config.blockExplorerUrl }) })
-        : await requestOptionsWithdrawal({ provider, account: address, vault: config.optionsVaultAddress as `0x${string}`, shares18: units, unlockAt: Math.floor(Date.now() / 1_000) + 7 * 86_400, onStatus: (next) => setTransactionModal({ phase: "pending", stepIndex: next === "transaction" ? 0 : 1, explorerUrl: config.blockExplorerUrl }) });
-      setTransactionModal({ phase: "success", stepIndex: action === "deposit" ? 2 : 1, hash, explorerUrl: config.blockExplorerUrl });
-    } catch {
-      setTransactionModal({ phase: "failed", stepIndex: 0, error: "The transaction was rejected or failed simulation. No state was changed by the app." });
+        ? await depositOptionsLiquidity({ provider, account: address, vault: liveConfig.optionsVaultAddress as `0x${string}`, usdg: liveConfig.usdgAddress as `0x${string}`, assets6: units, onStatus: (next) => setTransactionModal({ phase: "pending", stepIndex: next === "approval" ? 0 : next === "transaction" ? 1 : 2, explorerUrl: liveConfig.blockExplorerUrl }) })
+        : await requestOptionsWithdrawal({ provider, account: address, vault: liveConfig.optionsVaultAddress as `0x${string}`, shares18: units, unlockAt: Math.floor(Date.now() / 1_000) + 7 * 86_400, onStatus: (next) => setTransactionModal({ phase: "pending", stepIndex: next === "transaction" ? 0 : 1, explorerUrl: liveConfig.blockExplorerUrl }) });
+      setTransactionModal({ phase: "success", stepIndex: action === "deposit" ? 2 : 1, hash, explorerUrl: liveConfig.blockExplorerUrl });
+    } catch (reason) {
+      const message = action === "withdraw"
+        ? describeOptionsVaultError(reason)
+        : "The deposit was rejected or failed simulation. No state was changed by the app.";
+      setTransactionStatus(message);
+      setTransactionModal({ phase: "failed", stepIndex: 0, error: message });
     }
   };
 
   useEffect(() => {
     const controller = new AbortController();
-    floatApi.getOptionsVaultState(controller.signal)
-      .then(setState)
+    Promise.all([floatApi.getOptionsVaultState(controller.signal), floatApi.getPublicConfig(controller.signal)])
+      .then(([nextState, nextConfig]) => { setState(nextState); setConfig(nextConfig); })
       .catch((reason: unknown) => {
         if (!(reason instanceof DOMException && reason.name === "AbortError")) setError(true);
       });
@@ -73,7 +86,11 @@ export function OptionsVaultPanel({ embedded = false }: { readonly embedded?: bo
               <option value="deposit">Deposit USDG</option>
               <option value="withdraw">Request withdrawal</option>
             </select>
-            <input value={amount} inputMode="decimal" aria-label={action === "deposit" ? "USDG amount" : "LP share amount"} onChange={(event) => setAmount(event.target.value)} />
+            <label className={styles.amountField}>
+              <span>{action === "deposit" ? "USDG amount" : "LP share amount"}</span>
+              <input value={amount} inputMode="decimal" aria-label={action === "deposit" ? "USDG amount" : "LP share amount"} onChange={(event) => { setAmount(event.target.value); setTransactionStatus(undefined); }} />
+            </label>
+            <BalanceShortcuts balance={inputBalance} decimals={action === "deposit" ? 6 : 18} onSelect={setAmount} />
             <button type="button" className={action === "deposit" ? styles.depositAction : styles.withdrawAction} onClick={submit} disabled={state.operationsPaused}>{address ? "Review in wallet" : "Connect wallet"}</button>
             <p>Withdrawals use future-dated requests so option liabilities remain fully covered.</p>
             {transactionStatus && <p role="status">{transactionStatus}</p>}

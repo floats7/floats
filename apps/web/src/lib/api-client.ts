@@ -209,6 +209,22 @@ export interface OptionsPortfolioDto {
   }[];
 }
 
+export interface WalletDataDto {
+  readonly walletAddress: string;
+  readonly transactions: readonly WalletTransactionDto[];
+  readonly optionsPortfolio: OptionsPortfolioDto;
+}
+
+export interface PublicActivityDto {
+  readonly transactionHash: string;
+  readonly blockNumber: number | null;
+  readonly walletAddress: string;
+  readonly action: string;
+  readonly assetAmount: string | null;
+  readonly shareAmount: string | null;
+  readonly observedAt: string;
+}
+
 export interface MarketProductDto {
   readonly id: "mint-redeem" | "options" | "liquidity" | "spot";
   readonly label: string;
@@ -353,6 +369,20 @@ export class FloatsApiClient {
 
   public getOptionsVaultState(signal?: AbortSignal): Promise<OptionsVaultStateDto | null> {
     return this.get<OptionsVaultStateDto | null>("/options/vault", signal);
+  }
+
+  public getPublicActivity(limit = 25, signal?: AbortSignal): Promise<readonly PublicActivityDto[]> {
+    return this.get<readonly PublicActivityDto[]>(`/activity?limit=${limit}`, signal);
+  }
+
+  public getWalletDataChallenge(address: string, signal?: AbortSignal): Promise<WalletChallengeDto> {
+    if (!/^0x[0-9a-fA-F]{40}$/.test(address)) throw new Error("Wallet address is invalid");
+    return this.get<WalletChallengeDto>(`/wallet-data?address=${encodeURIComponent(address)}`, signal);
+  }
+
+  public getWalletData(message: string, signature: string, signal?: AbortSignal): Promise<WalletDataDto> {
+    if (!message || !/^0x[0-9a-fA-F]{130}$/.test(signature)) throw new Error("Wallet proof is invalid");
+    return this.post<WalletDataDto>("/wallet-data", { message, signature }, signal);
   }
 
   public getOptionsPortfolioChallenge(

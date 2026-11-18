@@ -7,6 +7,8 @@ import { executeSpot, quoteSpot, type SpotQuote } from "@/lib/spot-transactions"
 import { formatUnits } from "@/lib/units";
 import { OnchainTransactionModal, type OnchainTransactionPhase } from "@/features/transactions/OnchainTransactionModal";
 import styles from "./SpotTradePanel.module.css";
+import { useTokenBalance } from "@/features/wallet/useTokenBalance";
+import { BalanceShortcuts } from "@/features/wallet/BalanceShortcuts";
 
 const SLIPPAGE_BPS = 100;
 
@@ -26,6 +28,7 @@ export function SpotTradePanel({ market }: { readonly market: MarketAssetDto }) 
   const outputDecimals = side === "buy" ? market.decimals : 6;
   const inputSymbol = side === "buy" ? "USDG" : market.symbol;
   const outputSymbol = side === "buy" ? market.symbol : "USDG";
+  const inputBalance = useTokenBalance(side === "buy" ? config?.usdgAddress : market.address);
 
   const requestQuote = async () => {
     if (!provider || !route || !config) return address ? undefined : openConnect();
@@ -71,6 +74,7 @@ export function SpotTradePanel({ market }: { readonly market: MarketAssetDto }) 
         <button type="button" role="tab" data-side="sell" aria-selected={side === "sell"} onClick={() => { setSide("sell"); setQuote(undefined); }}>Sell</button>
       </div>
       <label><span>Pay with {inputSymbol}</span><input value={amount} inputMode="decimal" onChange={(event) => { setAmount(event.target.value); setQuote(undefined); }} /></label>
+      <BalanceShortcuts balance={inputBalance} decimals={inputDecimals} onSelect={(value) => { setAmount(value); setQuote(undefined); }} />
       {quote && <dl className={styles.quote}><div><dt>Estimated output</dt><dd>{formatUnits(quote.amountOut.toString(), outputDecimals, 6)} {outputSymbol}</dd></div><div><dt>Minimum received</dt><dd>{formatUnits(quote.minimumOut.toString(), outputDecimals, 6)} {outputSymbol}</dd></div><div><dt>Slippage limit</dt><dd>1.00%</dd></div><div><dt>Venue</dt><dd>Uniswap V3</dd></div></dl>}
       {status && <p role="status">{status}</p>}
       {!quote ? <button type="button" disabled={busy} onClick={address ? requestQuote : openConnect}>{busy ? "Requesting quote…" : address ? "Review quote" : "Connect wallet"}</button> : <button type="button" className={side === "buy" ? styles.buyAction : styles.sellAction} disabled={busy} onClick={submit}>{busy ? "Processing…" : `${side === "buy" ? "Buy" : "Sell"} ${market.symbol}`}</button>}

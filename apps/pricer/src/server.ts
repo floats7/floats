@@ -11,6 +11,7 @@ import { PostgresQuoteNonceSource } from "./postgres-nonce.ts";
 import { RailwayQuoteSigner } from "./railway-quote-signer.ts";
 import { PrivateQuoteRuntime, type RuntimeQuoteRequest } from "./runtime.ts";
 import { PricerService } from "./service.ts";
+import { VolatilityPolicyRefresher } from "./volatility-policy-refresher.ts";
 
 const config = loadConfig(process.env);
 const database = new Pool({
@@ -37,6 +38,10 @@ const runtime = new PrivateQuoteRuntime(
     expectedSigner: config.signerAddress,
   }),
 );
+const volatilityRefresher = new VolatilityPolicyRefresher(database, config.environment, config.chainId, config.volatilityPolicyPollIntervalMs);
+volatilityRefresher.start();
+process.once("SIGTERM", () => volatilityRefresher.stop());
+process.once("SIGINT", () => volatilityRefresher.stop());
 
 createServer(async (request, response) => {
   try {
@@ -113,5 +118,12 @@ function loadConfig(env: NodeJS.ProcessEnv) {
     signerUrl: required("OPTIONS_QUOTE_SIGNER_URL"),
     signerToken: required("OPTIONS_QUOTE_SIGNER_AUTH_TOKEN"),
     riskFreeRate: Number(env.OPTIONS_RISK_FREE_RATE ?? "0.05"),
+    volatilityPolicyPollIntervalMs: positiveInteger(env.OPTIONS_VOLATILITY_POLICY_POLL_INTERVAL_MS, 300_000),
   } as const;
+}
+
+function positiveInteger(raw: string | undefined, fallback: number): number {
+  const value = raw ? Number(raw) : fallback;
+  if (!Number.isSafeInteger(value) || value < 60_000) throw new Error("OPTIONS_VOLATILITY_POLICY_POLL_INTERVAL_MS is invalid");
+  return value;
 }
