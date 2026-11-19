@@ -56,6 +56,21 @@ contract CrossChainV1Test {
         require(!token.bridgePaused(), "governance did not unpause");
     }
 
+    function testPauseBlocksOutboundButAllowsVerifiedInbound() public {
+        token.setRateLimit(REMOTE_EID, false, 10 ether, 1 hours);
+        token.setRateLimit(REMOTE_EID, true, 10 ether, 1 hours);
+        token.mint(address(this), 1 ether);
+        guardian.pause(token);
+
+        try token.debit(address(this), 1 ether, REMOTE_EID) {
+            revert("paused outbound debit succeeded");
+        } catch (bytes memory reason) {
+            _assertSelector(reason, CrossChainControls.BridgePaused.selector);
+        }
+        token.credit(address(this), 1 ether, REMOTE_EID);
+        require(token.balanceOf(address(this)) == 2 ether, "inbound credit blocked");
+    }
+
     function testOutboundAndInboundLimitsAreIndependent() public {
         token.setRateLimit(REMOTE_EID, false, 100 ether, 1 hours);
         token.setRateLimit(REMOTE_EID, true, 40 ether, 1 hours);
@@ -78,6 +93,17 @@ contract CrossChainV1Test {
         vm.warp(block.timestamp + 1 hours);
         token.debit(address(this), 10 ether, REMOTE_EID);
         require(token.balanceOf(address(this)) == 0, "second window debit failed");
+    }
+
+    function testRateLimitRefillsContinuously() public {
+        token.setRateLimit(REMOTE_EID, false, 100 ether, 100 seconds);
+        token.mint(address(this), 150 ether);
+        token.debit(address(this), 100 ether, REMOTE_EID);
+
+        vm.warp(block.timestamp + 25 seconds);
+        (, uint256 available) = token.rateLimit(REMOTE_EID, false);
+        require(available == 25 ether, "continuous refill");
+        token.debit(address(this), 25 ether, REMOTE_EID);
     }
 
     function testQuoteAndSendUseNormalizedAmountAndNativeFee() public {
@@ -137,6 +163,13 @@ contract CrossChainV1Test {
         (bool success, bytes memory reason) = _tryDeliver(_snapshot(1, block.timestamp), 3);
         require(!success, "out-of-order snapshot accepted");
         _assertSelector(reason, NavMirror.OutOfOrderSequence.selector);
+    }
+
+    function testMirrorRejectsNewSequenceWithOldTimestamp() public {
+        _deliver(_snapshot(1, block.timestamp), 1);
+        (bool success, bytes memory reason) = _tryDeliver(_snapshot(2, block.timestamp - 1), 2);
+        require(!success, "old timestamp accepted");
+        _assertSelector(reason, NavMirror.OutOfOrderTimestamp.selector);
     }
 
     function testMirrorRejectsMalformedMessage() public {

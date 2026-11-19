@@ -9,6 +9,7 @@ import { useWallet } from "@/features/wallet/WalletProvider";
 import { floatApi, type OptionsPortfolioDto } from "@/lib/api-client";
 import { usePortfolio } from "@/features/portfolio/PortfolioProvider";
 import { formatUnits } from "@/lib/units";
+import { OPTIONS_VAULT_SHARE_DECIMALS } from "@/lib/options-constants";
 import styles from "./OptionsPortfolio.module.css";
 import { cancelOptionsWithdrawal, claimOptionsPosition, claimOptionsWithdrawal } from "@/lib/options-transactions";
 import { OnchainTransactionModal, type OnchainTransactionPhase } from "@/features/transactions/OnchainTransactionModal";
@@ -169,7 +170,7 @@ function WithdrawalTable({ portfolio, provider, account, notify, setTransaction 
               <tr key={withdrawal.requestId}>
                 <td className="tabular">{withdrawal.requestId}</td>
                 <td>{withdrawal.state.replace(/^Withdrawal/, "")}</td>
-                <td className="tabular">{formatUnits(withdrawal.shares, 18, 4)}</td>
+                <td className="tabular">{formatUnits(withdrawal.shares, OPTIONS_VAULT_SHARE_DECIMALS, 4)}</td>
                 <td>
                   {withdrawal.state === "WithdrawalFinalized" && <Button onClick={() => claim(withdrawal.requestId)}>Claim</Button>}
                   {withdrawal.state === "WithdrawalRequested" && <Button onClick={() => cancel(withdrawal.requestId)}>Cancel</Button>}

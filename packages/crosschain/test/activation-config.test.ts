@@ -5,8 +5,22 @@ import { parseCrossChainActivationConfig } from "../src/index.ts";
 const address = (digit: string) => `0x${digit.repeat(40)}`;
 const valid = {
   environment: "testnet",
-  hub: { eid: 40_001, fipo: address("1"), floats: address("2"), nav: address("3") },
-  spoke: { eid: 43_002, fipo: address("4"), floats: address("5"), nav: address("6") },
+  hub: {
+    eid: 40_001,
+    fipo: address("1"),
+    floats: address("2"),
+    nav: address("3"),
+    governance: address("7"),
+    guardian: address("8"),
+  },
+  spoke: {
+    eid: 43_002,
+    fipo: address("4"),
+    floats: address("5"),
+    nav: address("6"),
+    governance: address("9"),
+    guardian: address("a"),
+  },
   fipo: {
     hubOutbound: "100000000000000000000",
     hubInbound: "100000000000000000000",
@@ -57,5 +71,15 @@ test("rejects duplicate contracts and unsafe capacities", () => {
       fipo: { ...valid.fipo, hubOutbound: "0" },
     }), "testnet"),
     /HUB_OUTBOUND_INVALID/,
+  );
+});
+
+test("rejects governance and guardian role collisions", () => {
+  assert.throws(
+    () => parseCrossChainActivationConfig(JSON.stringify({
+      ...valid,
+      spoke: { ...valid.spoke, guardian: valid.spoke.governance },
+    }), "testnet"),
+    /ROLE_COLLISION/,
   );
 });

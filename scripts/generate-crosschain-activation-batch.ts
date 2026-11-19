@@ -19,6 +19,15 @@ interface Operation {
   readonly data: Hex;
 }
 
+interface ExpectedContractState {
+  readonly chain: Operation["chain"];
+  readonly label: string;
+  readonly contract: Address;
+  readonly owner: Address;
+  readonly guardian?: Address;
+  readonly bridgePaused?: false;
+}
+
 function fail(message: string): never {
   throw new Error(`Cross-chain activation batch failed: ${message}`);
 }
@@ -123,4 +132,60 @@ const operations: readonly Operation[] = [
   ),
 ];
 
-console.log(JSON.stringify({ schemaVersion: 1, environment: config.environment, operations }, null, 2));
+const expectedState: readonly ExpectedContractState[] = [
+  {
+    chain: "hub",
+    label: "fIPO adapter",
+    contract: config.hub.fipo,
+    owner: config.hub.governance,
+    guardian: config.hub.guardian,
+    bridgePaused: false,
+  },
+  {
+    chain: "hub",
+    label: "FLOATS adapter",
+    contract: config.hub.floats,
+    owner: config.hub.governance,
+    guardian: config.hub.guardian,
+    bridgePaused: false,
+  },
+  {
+    chain: "hub",
+    label: "NAV publisher",
+    contract: config.hub.nav,
+    owner: config.hub.governance,
+  },
+  {
+    chain: "spoke",
+    label: "fIPO OFT",
+    contract: config.spoke.fipo,
+    owner: config.spoke.governance,
+    guardian: config.spoke.guardian,
+    bridgePaused: false,
+  },
+  {
+    chain: "spoke",
+    label: "FLOATS OFT",
+    contract: config.spoke.floats,
+    owner: config.spoke.governance,
+    guardian: config.spoke.guardian,
+    bridgePaused: false,
+  },
+  {
+    chain: "spoke",
+    label: "NAV mirror",
+    contract: config.spoke.nav,
+    owner: config.spoke.governance,
+  },
+];
+
+console.log(JSON.stringify({
+  schemaVersion: 2,
+  environment: config.environment,
+  roles: {
+    hub: { governance: config.hub.governance, guardian: config.hub.guardian },
+    spoke: { governance: config.spoke.governance, guardian: config.spoke.guardian },
+  },
+  operations,
+  expectedState,
+}, null, 2));

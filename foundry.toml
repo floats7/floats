@@ -11,12 +11,10 @@ evm_version = "cancun"
 remappings = [
     "@layerzerolabs/lz-evm-messagelib-v2/=node_modules/@layerzerolabs/lz-evm-messagelib-v2/",
     "@layerzerolabs/lz-evm-protocol-v2/=node_modules/@layerzerolabs/lz-evm-protocol-v2/",
-    "@layerzerolabs/lz-evm-v1-0.7/=node_modules/@layerzerolabs/lz-evm-v1-0.7/",
     "@layerzerolabs/oapp-evm/=node_modules/@layerzerolabs/oapp-evm/",
     "@layerzerolabs/oft-evm/=node_modules/@layerzerolabs/oft-evm/",
     "@openzeppelin/contracts-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/",
     "@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/",
-    "hardhat-deploy/=node_modules/hardhat-deploy/",
     "solidity-bytes-utils/=node_modules/solidity-bytes-utils/",
 ]
 

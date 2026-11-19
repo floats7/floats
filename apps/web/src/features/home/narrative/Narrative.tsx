@@ -68,7 +68,7 @@ export function Narrative() {
           </div>
 
           <div className={styles.foot}>
-            <p className={styles.scale}>Orbits not to scale</p>
+            <p className={styles.scale}>Market universe · not current fIPO weights</p>
             <AnimatePresence>
               {step.rule !== undefined && <RuleBar key="bar" activeRule={step.rule} ruleProgress={ruleProgress} onJump={jumpToRule} />}
             </AnimatePresence>

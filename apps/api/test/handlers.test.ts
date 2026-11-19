@@ -10,6 +10,7 @@ import {
   getLatestIndexState,
   getMarket,
   getMarketCandidates,
+  getMarketCandidateReadiness,
   getMarketHistory,
   getMarkets,
   getNavHistory,
@@ -244,13 +245,38 @@ test("market candidates expose lifecycle state without database internals", asyn
       eligible_from: "2026-11-25",
       source_url: "https://www.sec.gov/example",
       token_address: null,
+      asset_uid: null,
+      identity_approval_status: "unreviewed",
+      identity_approved_at: null,
+      official_token_name: null,
+      token_decimals: null,
+      current_multiplier: null,
+      pending_multiplier: null,
+      trading_capabilities: null,
+      official_metadata_observed_at: null,
+      trading_halted: null,
+      official_quote_generated_at: null,
       logo_url: null,
       token_live: false,
       oracle_ready: false,
+      official_feed_address: null,
+      oracle_healthy_since: null,
+      oracle_last_price_18: null,
+      oracle_last_failure: null,
       liquidity_ready: false,
+      dex_reference_price_18: null,
+      liquidity_observed_at: null,
       governance_approved: false,
+      spot_paused: false,
+      options_paused: false,
+      options_exposure_warning: false,
+      product_pause_reason: null,
+      product_control_updated_at: null,
       disabled_reason: "Official stock token pending",
       last_checked_at: null,
+      official_token_detected_at: null,
+      public_available_at: null,
+      publication_sla_seconds: null,
     }],
   }));
 
@@ -268,12 +294,106 @@ test("market candidates expose lifecycle state without database internals", asyn
     eligibleFrom: "2026-11-25",
     sourceUrl: "https://www.sec.gov/example",
     tokenAddress: null,
+    officialTokenName: null,
+    tokenDecimals: null,
+    currentMultiplier: null,
+    pendingMultiplier: null,
+    tradingCapabilities: { market: "unknown", extended: "unknown", overnight: "unknown" },
+    officialMetadataObservedAt: null,
+    tradingHalted: null,
+    officialQuoteGeneratedAt: null,
     logoUrl: null,
     checks: { tokenLive: false, priceFeed: false, liquidity: false },
+    oracle: { feedAddress: null, healthySince: null, lastPrice18: null, lastFailure: null },
+    liquidity: { dexReferencePrice18: null, observedAt: null },
     governanceApproved: false,
+    productControls: { spotPaused: false, optionsPaused: false, optionsExposureWarning: false, reason: null, updatedAt: null },
     disabledReason: "Official stock token pending",
     lastCheckedAt: null,
+    publication: { detectedAt: null, availableAt: null, slaSeconds: null, targetSeconds: 300, withinTarget: null },
   }]);
+});
+
+test("candidate readiness fails closed and reports independent T1-T4 blockers", async () => {
+  const token = `0x${"a".repeat(40)}`;
+  const candidate = {
+    candidate_id: "anthropic",
+    symbol: "ANT",
+    company_name: "Anthropic",
+    lifecycle_status: "liquidity_pending",
+    ipo_date: "2026-11-19",
+    expected_listing_date: "2026-11-19",
+    eligible_from: "2026-11-25",
+    source_url: "https://robinhood.com/us/en/support/articles/stock-token-assets/",
+    token_address: token,
+    asset_uid: `0x${"1".repeat(64)}`,
+    identity_approval_status: "approved",
+    identity_approved_at: "2026-11-19T14:00:00.000Z",
+    official_token_name: "Anthropic Stock Token",
+    token_decimals: 18,
+    current_multiplier: "1",
+    pending_multiplier: null,
+    trading_capabilities: null,
+    official_metadata_observed_at: "2026-11-19T13:59:00.000Z",
+    trading_halted: false,
+    official_quote_generated_at: "2026-11-19T14:01:00.000Z",
+    logo_url: null,
+    token_live: true,
+    oracle_ready: false,
+    official_feed_address: null,
+    oracle_healthy_since: null,
+    oracle_last_price_18: null,
+    oracle_last_failure: "FEED_STALE",
+    liquidity_ready: false,
+    dex_reference_price_18: null,
+    liquidity_observed_at: null,
+    governance_approved: false,
+    spot_paused: false,
+    options_paused: false,
+    options_exposure_warning: false,
+    product_pause_reason: null,
+    product_control_updated_at: null,
+    disabled_reason: "Waiting for liquidity",
+    last_checked_at: "2026-11-19T14:01:00.000Z",
+    official_token_detected_at: "2026-11-19T13:59:00.000Z",
+    public_available_at: "2026-11-19T14:00:00.000Z",
+    publication_sla_seconds: 60,
+  };
+  const apiContext = context({
+    listMarketCandidates: async () => [candidate],
+    listMarketCandidateSignoffs: async () => [{
+      id: 7,
+      candidate_id: "anthropic",
+      tier: "market",
+      decision: "approved",
+      governance_or_canary_reference: null,
+      signed_at: "2026-11-19T14:02:00.000Z",
+    }],
+  });
+  Object.assign(apiContext.publicConfig, { spotRoutes: [{
+    tokenAddress: token,
+    routerAddress: `0x${"b".repeat(40)}`,
+    quoterAddress: `0x${"c".repeat(40)}`,
+    fee: 500,
+  }] });
+
+  const response = await getMarketCandidateReadiness(apiContext, "anthropic");
+  assert.equal(response.status, 200);
+  const payload = await response.json() as { data: { tiers: Record<string, { ready: boolean; blockers: string[] }>; signoffs: Array<{ id: number; tier: string }> } };
+  assert.equal(payload.data.tiers.market?.ready, true);
+  assert.deepEqual(payload.data.tiers.spot?.blockers, ["liquidity_threshold"]);
+  assert.deepEqual(payload.data.tiers.options?.blockers, ["official_feed_healthy", "options_infrastructure"]);
+  assert.deepEqual(payload.data.tiers.index?.blockers, ["fifth_trading_day_reached", "governance_executed"]);
+  assert.deepEqual(payload.data.signoffs, [{
+    id: 7,
+    tier: "market",
+    decision: "approved",
+    governanceOrCanaryReference: null,
+    signedAt: "2026-11-19T14:02:00.000Z",
+  }]);
+
+  const missing = await getMarketCandidateReadiness(apiContext, "not-found");
+  assert.equal(missing.status, 404);
 });
 
 test("index state joins holdings at the exact NAV block", async () => {

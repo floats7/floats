@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import {
     OApp,
@@ -19,8 +20,11 @@ interface IFloatsVaultSnapshot is IERC20 {
 /// @title NavPublisher
 /// @notice Publishes an informational fIPO NAV snapshot from Robinhood Chain.
 contract NavPublisher is OApp {
+    using SafeCast for uint256;
+
     error InvalidAddress();
     error NotKeeper(address caller);
+    error SequenceExhausted();
     error ZeroSupply();
     error OwnershipRenunciationDisabled();
 
@@ -28,15 +32,15 @@ contract NavPublisher is OApp {
     event NavPublished(
         bytes32 indexed guid,
         uint32 indexed destinationEid,
-        uint256 indexed sequence,
+        uint64 indexed sequence,
         uint256 nav18,
-        uint256 publishedAt,
-        uint256 totalSupply18
+        uint256 canonicalTotalSupply,
+        uint48 observedAt
     );
 
     IFloatsVaultSnapshot public immutable vault;
     address public keeper;
-    uint256 public sequence;
+    uint64 public sequence;
 
     constructor(address vault_, address endpoint_, address delegate_, address keeper_)
         OApp(endpoint_, delegate_)
@@ -58,8 +62,9 @@ contract NavPublisher is OApp {
         uint256 supply = vault.totalSupply();
         if (supply == 0) revert ZeroSupply();
 
+        if (sequence == type(uint64).max) revert SequenceExhausted();
         current = NavMessage.Snapshot({
-            sequence: sequence + 1,
+            sequence: uint256(sequence) + 1,
             nav18: Math.mulDiv(vault.totalAssets(), 1e30, supply),
             publishedAt: block.timestamp,
             totalSupply18: supply
@@ -83,16 +88,18 @@ contract NavPublisher is OApp {
         if (refundAddress == address(0)) revert InvalidAddress();
 
         NavMessage.Snapshot memory current = snapshot();
-        sequence = current.sequence;
+        uint64 publishedSequence = current.sequence.toUint64();
+        uint48 observedAt = current.publishedAt.toUint48();
+        sequence = publishedSequence;
         MessagingFee memory fee = MessagingFee({ nativeFee: msg.value, lzTokenFee: 0 });
         receipt = _lzSend(destinationEid, NavMessage.encode(current), options, fee, refundAddress);
         emit NavPublished(
             receipt.guid,
             destinationEid,
-            current.sequence,
+            publishedSequence,
             current.nav18,
-            current.publishedAt,
-            current.totalSupply18
+            current.totalSupply18,
+            observedAt
         );
     }
 

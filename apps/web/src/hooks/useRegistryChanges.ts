@@ -44,7 +44,9 @@ function toRegistryChange(row: RegistryChangeDto, blockExplorerUrl: string): Reg
     ? "add"
     : row.change_kind === "constituent_removed"
       ? "remove"
-      : "weights";
+      : row.change_kind === "configuration_proposed" || row.change_kind === "configuration_cancelled"
+        ? "scheduled"
+        : "weights";
   const subject = shortAddress(row.token_address ?? row.configuration_hash);
   const version = row.registry_version === null ? "" : ` · version ${row.registry_version}`;
   return {
@@ -52,12 +54,30 @@ function toRegistryChange(row: RegistryChangeDto, blockExplorerUrl: string): Reg
     date: row.observed_at.slice(0, 10),
     kind,
     title: titleFor(row.change_kind, subject),
-    detail: `Confirmed onchain${version}.`,
+    detail: detailFor(row, version),
     transactionHash: row.transaction_hash,
     blockNumber: row.block_number,
     registryVersion: row.registry_version,
     explorerUrl: `${blockExplorerUrl.replace(/\/$/, "")}/tx/${row.transaction_hash}`,
   };
+}
+
+function detailFor(row: RegistryChangeDto, version: string): string {
+  if (row.change_kind === "configuration_proposed") {
+    const raw = row.payload.validAfter;
+    const timestamp = typeof raw === "string" || typeof raw === "number" ? Number(raw) : Number.NaN;
+    if (Number.isFinite(timestamp) && timestamp > 0) {
+      const date = new Intl.DateTimeFormat("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "America/New_York",
+      }).format(new Date(timestamp * 1_000));
+      return `Scheduled onchain. Execution cannot occur before ${date}.`;
+    }
+    return "Scheduled onchain with an enforced execution boundary.";
+  }
+  if (row.change_kind === "configuration_cancelled") return "The scheduled configuration was cancelled onchain.";
+  return `Confirmed onchain${version}.`;
 }
 
 function titleFor(kind: RegistryChangeDto["change_kind"], subject: string): string {

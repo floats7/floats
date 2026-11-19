@@ -15,7 +15,10 @@ export interface SpotQuote {
   readonly amountIn: bigint;
   readonly amountOut: bigint;
   readonly minimumOut: bigint;
+  readonly estimatedPriceImpactBps: number;
 }
+
+const MAX_PRICE_IMPACT_BPS = 300;
 
 export async function quoteSpot(input: {
   provider: Eip1193Provider;
@@ -25,18 +28,62 @@ export async function quoteSpot(input: {
   amountIn: bigint;
   slippageBps: number;
 }): Promise<SpotQuote> {
+  if (!Number.isSafeInteger(input.slippageBps) || input.slippageBps < 0 || input.slippageBps > 100) {
+    throw new Error("SLIPPAGE_LIMIT_EXCEEDED");
+  }
   const tokenIn = input.side === "buy" ? input.usdg : input.route.tokenAddress as `0x${string}`;
   const tokenOut = input.side === "buy" ? input.route.tokenAddress as `0x${string}` : input.usdg;
+  const probeAmountIn = input.amountIn > 100n ? input.amountIn / 100n : input.amountIn;
+  const [amountOut, probeAmountOut] = await Promise.all([
+    readRouteQuote(input.provider, input.route, tokenIn, tokenOut, input.amountIn),
+    readRouteQuote(input.provider, input.route, tokenIn, tokenOut, probeAmountIn),
+  ]);
+  if (amountOut <= 0n || probeAmountOut <= 0n) throw new Error("EMPTY_SPOT_QUOTE");
+  const estimatedPriceImpactBps = calculatePriceImpactBps(
+    input.amountIn,
+    amountOut,
+    probeAmountIn,
+    probeAmountOut,
+  );
+  if (estimatedPriceImpactBps > MAX_PRICE_IMPACT_BPS) throw new Error("PRICE_IMPACT_EXCEEDED");
+  return {
+    amountIn: input.amountIn,
+    amountOut,
+    minimumOut: amountOut * BigInt(10_000 - input.slippageBps) / 10_000n,
+    estimatedPriceImpactBps,
+  };
+}
+
+async function readRouteQuote(
+  provider: Eip1193Provider,
+  route: SpotRouteDto,
+  tokenIn: `0x${string}`,
+  tokenOut: `0x${string}`,
+  amountIn: bigint,
+): Promise<bigint> {
   const data = encodeFunctionData({
     abi: quoterAbi,
     functionName: "quoteExactInputSingle",
-    args: [{ tokenIn, tokenOut, amountIn: input.amountIn, fee: input.route.fee, sqrtPriceLimitX96: 0n }],
+    args: [{ tokenIn, tokenOut, amountIn, fee: route.fee, sqrtPriceLimitX96: 0n }],
   });
-  const result = await input.provider.request<unknown>({ method: "eth_call", params: [{ to: input.route.quoterAddress, data }, "latest"] });
+  const result = await provider.request<unknown>({ method: "eth_call", params: [{ to: route.quoterAddress, data }, "latest"] });
   if (typeof result !== "string" || !result.startsWith("0x")) throw new Error("INVALID_SPOT_QUOTE");
   const [amountOut] = decodeFunctionResult({ abi: quoterAbi, functionName: "quoteExactInputSingle", data: result as `0x${string}` });
-  if (amountOut <= 0n) throw new Error("EMPTY_SPOT_QUOTE");
-  return { amountIn: input.amountIn, amountOut, minimumOut: amountOut * BigInt(10_000 - input.slippageBps) / 10_000n };
+  return amountOut;
+}
+
+export function calculatePriceImpactBps(
+  amountIn: bigint,
+  amountOut: bigint,
+  probeAmountIn: bigint,
+  probeAmountOut: bigint,
+): number {
+  if (amountIn <= 0n || amountOut <= 0n || probeAmountIn <= 0n || probeAmountOut <= 0n) {
+    throw new Error("QUOTE_AMOUNT_INVALID");
+  }
+  const expectedOut = probeAmountOut * amountIn / probeAmountIn;
+  if (amountOut >= expectedOut) return 0;
+  return Number((expectedOut - amountOut) * 10_000n / expectedOut);
 }
 
 export async function executeSpot(input: {

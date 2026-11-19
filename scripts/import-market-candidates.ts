@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { fifthUsTradingDay } from "../packages/database/src/us-equity-calendar.ts";
 
 const [environmentPath, inputPath] = process.argv.slice(2);
 if (!environmentPath || !inputPath) {
@@ -56,7 +57,7 @@ function candidate(value: unknown) {
     return item;
   };
   const optional = (key: string, pattern?: RegExp) => row[key] == null ? null : text(key, pattern);
-  const statuses = new Set(["upcoming","listing_expected","listed","token_pending","token_live","oracle_pending","liquidity_pending","governance_pending","active","suspended","removed"]);
+  const statuses = new Set(["upcoming","listing_expected","listed","token_pending","detected","verification_pending","approval_pending","rejected","suspected_fake","token_live","oracle_pending","liquidity_pending","governance_pending","active","suspended","removed"]);
   const status = text("status");
   if (!statuses.has(status)) throw new Error("Invalid candidate status");
   const sourceUrl = optional("sourceUrl");
@@ -73,7 +74,9 @@ function candidate(value: unknown) {
   if ((oracleReady || liquidityReady || governanceApproved) && !tokenLive) throw new Error("Candidate readiness requires a live token");
   return { id: text("id", /^[a-z0-9-]+$/), symbol: text("symbol", /^[A-Z0-9.-]{1,16}$/), name: text("name"), status,
     ipoDate: optional("ipoDate", /^\d{4}-\d{2}-\d{2}$/), listingDate: optional("listingDate", /^\d{4}-\d{2}-\d{2}$/),
-    eligibleFrom: optional("eligibleFrom", /^\d{4}-\d{2}-\d{2}$/), sourceUrl, tokenAddress, logoUrl, tokenLive,
+    eligibleFrom: optional("eligibleFrom", /^\d{4}-\d{2}-\d{2}$/)
+      ?? (optional("listingDate", /^\d{4}-\d{2}-\d{2}$/) ? fifthUsTradingDay(text("listingDate")) : null),
+    sourceUrl, tokenAddress, logoUrl, tokenLive,
     oracleReady, liquidityReady, governanceApproved,
     disabledReason: optional("disabledReason") };
 

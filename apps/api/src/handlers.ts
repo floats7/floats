@@ -224,8 +224,8 @@ export async function postOptionsPortfolio(context: ApiContext, request: Request
         requestId: item.request_id,
         state: item.state,
         receiverAddress: item.receiver_address,
-        shares: item.shares,
-        assets6: item.assets_6,
+        shares: decimalString(item.shares),
+        assets6: nullableDecimalString(item.assets_6),
         unlockAt: item.unlock_at,
         updatedAt: item.updated_at,
       })),
@@ -259,7 +259,7 @@ export async function postWalletData(context: ApiContext, request: Request): Pro
       optionsPortfolio: {
         walletAddress: wallet,
         positions: positions.map((item) => ({ seriesId: item.series_id, underlying: item.underlying, underlyingSymbol: item.underlying_symbol, size18: item.size_18, netCashFlow6: item.net_cash_flow_6, updatedAt: item.updated_at })),
-        withdrawals: withdrawals.map((item) => ({ requestId: item.request_id, state: item.state, receiverAddress: item.receiver_address, shares: item.shares, assets6: item.assets_6, unlockAt: item.unlock_at, updatedAt: item.updated_at })),
+        withdrawals: withdrawals.map((item) => ({ requestId: item.request_id, state: item.state, receiverAddress: item.receiver_address, shares: decimalString(item.shares), assets6: nullableDecimalString(item.assets_6), unlockAt: item.unlock_at, updatedAt: item.updated_at })),
       },
     } }, 200, NO_STORE);
     clearWalletNonce(response);
@@ -281,7 +281,7 @@ export async function getPublicActivity(context: ApiContext, requestUrl: URL, si
     const activity = [
       ...vault.map((item) => ({ transactionHash: item.transaction_hash, blockNumber: item.block_number, walletAddress: item.wallet_address, action: item.action, assetAmount: item.asset_amount, shareAmount: item.share_amount, observedAt: item.finalized_at ?? item.submitted_at })),
       ...options.map((item) => ({ transactionHash: item.transaction_hash, blockNumber: item.block_number, walletAddress: item.wallet_address, action: item.event_name, assetAmount: item.cash_amount_6, shareAmount: item.size_18, observedAt: item.observed_at })),
-      ...withdrawals.filter((item) => item.owner_address || item.receiver_address).map((item) => ({ transactionHash: item.transaction_hash, blockNumber: item.block_number, walletAddress: item.owner_address ?? item.receiver_address ?? "", action: item.event_name, assetAmount: item.assets_6, shareAmount: item.shares, observedAt: item.observed_at })),
+      ...withdrawals.filter((item) => item.owner_address || item.receiver_address).map((item) => ({ transactionHash: item.transaction_hash, blockNumber: item.block_number, walletAddress: item.owner_address ?? item.receiver_address ?? "", action: item.event_name, assetAmount: nullableDecimalString(item.assets_6), shareAmount: decimalString(item.shares), observedAt: item.observed_at })),
     ].sort((left, right) => Date.parse(right.observedAt) - Date.parse(left.observedAt)).slice(0, limit);
     return json({ data: activity }, 200, PUBLIC_CACHE);
   } catch {
@@ -329,15 +329,133 @@ export async function getMarketCandidates(context: ApiContext, signal?: AbortSig
       eligibleFrom: item.eligible_from,
       sourceUrl: item.source_url,
       tokenAddress: item.token_address,
+      officialTokenName: item.official_token_name,
+      tokenDecimals: item.token_decimals,
+      currentMultiplier: item.current_multiplier,
+      pendingMultiplier: item.pending_multiplier,
+      tradingCapabilities: normalizeTradingCapabilities(item.trading_capabilities),
+      officialMetadataObservedAt: item.official_metadata_observed_at,
+      tradingHalted: item.trading_halted,
+      officialQuoteGeneratedAt: item.official_quote_generated_at,
       logoUrl: item.logo_url,
       checks: { tokenLive: item.token_live, priceFeed: item.oracle_ready, liquidity: item.liquidity_ready },
+      oracle: {
+        feedAddress: item.official_feed_address,
+        healthySince: item.oracle_healthy_since,
+        lastPrice18: item.oracle_last_price_18,
+        lastFailure: item.oracle_last_failure,
+      },
+      liquidity: {
+        dexReferencePrice18: item.dex_reference_price_18,
+        observedAt: item.liquidity_observed_at,
+      },
       governanceApproved: item.governance_approved,
+      productControls: {
+        spotPaused: item.spot_paused,
+        optionsPaused: item.options_paused,
+        optionsExposureWarning: item.options_exposure_warning,
+        reason: item.product_pause_reason,
+        updatedAt: item.product_control_updated_at,
+      },
       disabledReason: item.disabled_reason,
       lastCheckedAt: item.last_checked_at,
+      publication: {
+        detectedAt: item.official_token_detected_at,
+        availableAt: item.public_available_at,
+        slaSeconds: item.publication_sla_seconds,
+        targetSeconds: 300,
+        withinTarget: item.publication_sla_seconds === null ? null : item.publication_sla_seconds <= 300,
+      },
     })) }, 200, PUBLIC_CACHE);
   } catch {
     return internalError();
   }
+}
+
+export async function getMarketCandidateReadiness(
+  context: ApiContext,
+  candidateId: string,
+  signal?: AbortSignal,
+): Promise<Response> {
+  try {
+    const candidate = (await context.readModels.listMarketCandidates(signal))
+      .find((item) => item.candidate_id === candidateId);
+    if (!candidate) {
+      return json({ error: { code: "MARKET_CANDIDATE_NOT_FOUND" } }, 404, PUBLIC_CACHE);
+    }
+    const signoffs = await context.readModels.listMarketCandidateSignoffs(candidateId, signal);
+    return json({
+      data: {
+        ...buildMarketCandidateReadiness(context, candidate),
+        signoffs: signoffs.map((signoff) => ({
+          id: signoff.id,
+          tier: signoff.tier,
+          decision: signoff.decision,
+          governanceOrCanaryReference: signoff.governance_or_canary_reference,
+          signedAt: signoff.signed_at,
+        })),
+      },
+    }, 200, PUBLIC_CACHE);
+  } catch {
+    return internalError();
+  }
+}
+
+export function buildMarketCandidateReadiness(
+  context: Pick<ApiContext, "publicConfig">,
+  candidate: Awaited<ReturnType<ApiContext["readModels"]["listMarketCandidates"]>>[number],
+  now = new Date(),
+) {
+  const identityApproved = candidate.identity_approval_status === "approved";
+  const canonicalToken = identityApproved && candidate.token_live && candidate.token_address !== null;
+  const spotRoute = canonicalToken && context.publicConfig.spotRoutes.some(
+    (route) => route.tokenAddress.toLowerCase() === candidate.token_address?.toLowerCase(),
+  );
+  const optionsInfrastructure = context.publicConfig.optionsMarketAddress !== null
+    && context.publicConfig.optionsVaultAddress !== null;
+  const eligibleAt = candidate.eligible_from === null
+    ? null
+    : Date.parse(`${candidate.eligible_from}T00:00:00Z`);
+  const eligibilityReached = eligibleAt !== null && Number.isFinite(eligibleAt) && now.getTime() >= eligibleAt;
+
+  return {
+    candidateId: candidate.candidate_id,
+    symbol: candidate.symbol,
+    canonicalAddress: identityApproved ? candidate.token_address : null,
+    checkedAt: candidate.last_checked_at,
+    tiers: {
+      market: readinessTier([
+        ["canonical_identity_approved", identityApproved],
+        ["official_token_live", canonicalToken],
+      ]),
+      spot: readinessTier([
+        ["canonical_token", canonicalToken],
+        ["executable_route", spotRoute],
+        ["liquidity_threshold", candidate.liquidity_ready],
+        ["trading_not_halted", candidate.trading_halted === false],
+        ["operator_not_paused", !candidate.spot_paused],
+      ]),
+      options: readinessTier([
+        ["canonical_token", canonicalToken],
+        ["official_feed_healthy", candidate.oracle_ready],
+        ["options_infrastructure", optionsInfrastructure],
+        ["trading_not_halted", candidate.trading_halted === false],
+        ["operator_not_paused", !candidate.options_paused],
+        ["exposure_below_warning", !candidate.options_exposure_warning],
+      ], candidate.oracle_last_failure),
+      index: readinessTier([
+        ["canonical_token", canonicalToken],
+        ["fifth_trading_day_reached", eligibilityReached],
+        ["governance_executed", candidate.governance_approved],
+      ]),
+    },
+  };
+}
+
+function readinessTier(checks: ReadonlyArray<readonly [string, boolean]>, detail: string | null = null) {
+  const gates = Object.fromEntries(checks);
+  const blockers = checks.filter(([, passed]) => !passed).map(([name]) => name);
+  return { ready: blockers.length === 0, gates, blockers, detail };
 }
 
 export async function getMarkets(context: ApiContext, signal?: AbortSignal): Promise<Response> {
@@ -629,6 +747,22 @@ function parseLimit(url: URL): number | undefined {
   return parseBoundedLimit(url, 50, 1, 100);
 }
 
+function decimalString(value: unknown): string {
+  const normalized = typeof value === "bigint"
+    ? value.toString()
+    : typeof value === "number" && Number.isSafeInteger(value) && value >= 0
+      ? String(value)
+      : value;
+  if (typeof normalized !== "string" || !/^[0-9]+$/.test(normalized)) {
+    throw new Error("INVALID_DECIMAL_VALUE");
+  }
+  return normalized;
+}
+
+function nullableDecimalString(value: unknown): string | null {
+  return value === null || value === undefined ? null : decimalString(value);
+}
+
 function parseBoundedLimit(
   url: URL,
   fallback: number,
@@ -652,3 +786,4 @@ function json(body: unknown, status: number, cacheControl: string): Response {
     },
   });
 }
+import { normalizeTradingCapabilities } from "../../../packages/database/src/trading-capabilities.ts";

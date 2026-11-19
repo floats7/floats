@@ -12,9 +12,9 @@ import { formatDate } from "@/lib/format";
 import { DURATION, EASE_OUT } from "@/lib/motion";
 import styles from "./ChangeLog.module.css";
 
-type Filter = "All" | "Add" | "Remove" | "Weights";
+type Filter = "All" | "Add" | "Remove" | "Weights" | "Scheduled";
 
-const FILTERS: readonly Filter[] = ["All", "Add", "Remove", "Weights"];
+const FILTERS: readonly Filter[] = ["All", "Scheduled", "Add", "Remove", "Weights"];
 
 const matches = (filter: Filter, kind: ChangeKind) => filter === "All" || filter.toLowerCase() === kind;
 
@@ -30,7 +30,7 @@ export function ChangeLog() {
           <h2 id="changes-title" className={styles.title}>
             Changes
           </h2>
-          <p className={styles.sub}>Every confirmed registry change is indexed from Robinhood Chain and linked to its transaction evidence.</p>
+          <p className={styles.sub}>Every scheduled, executed, or cancelled registry change is indexed from Robinhood Chain and linked to its transaction evidence.</p>
         </div>
         <Tabs label="Filter changes" options={FILTERS} value={filter} onChange={setFilter} />
       </Reveal>

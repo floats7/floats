@@ -7,6 +7,8 @@ import type {
   RuntimePricingContext,
   RuntimeQuoteRequest,
 } from "./runtime.ts";
+import { addUsTradingDays, isUsTradingDay } from "../../../packages/database/src/us-equity-calendar.ts";
+import { normalizeTradingCapabilities } from "../../../packages/database/src/trading-capabilities.ts";
 
 const YEAR_SECONDS = 365 * 24 * 60 * 60;
 
@@ -31,7 +33,15 @@ interface SeriesRow extends QueryResultRow {
   readonly expiry: string;
   readonly contract_size_18: string;
   readonly state: string;
-  readonly eligible_from: string | null;
+  readonly listing_date: string | null;
+  readonly candidate_id: string | null;
+  readonly identity_approval_status: string | null;
+  readonly token_live: boolean | null;
+  readonly oracle_ready: boolean | null;
+  readonly trading_halted: boolean | null;
+  readonly trading_capabilities: unknown;
+  readonly options_paused: boolean | null;
+  readonly options_exposure_warning: boolean | null;
 }
 
 interface VolatilityRow extends QueryResultRow {
@@ -53,17 +63,22 @@ export class AuthoritativePricingContextSource implements PricingContextSource {
     const seriesResult = await this.database.query(
       `select series.underlying, series.price_source, series.kind, series.strike_usd_18,
               series.cap_usd_18, series.expiry, series.contract_size_18, series.state,
-              asset.eligible_from
+              candidate.expected_listing_date::text as listing_date,
+              candidate.candidate_id, candidate.identity_approval_status,
+              candidate.token_live, candidate.oracle_ready, candidate.trading_halted,
+              candidate.trading_capabilities, candidate.options_paused,
+              candidate.options_exposure_warning
          from public.api_options_series series
-         left join public.assets asset
-           on asset.environment = series.environment and asset.chain_id = series.chain_id
-          and lower(asset.token_address) = lower(series.underlying)
+         left join public.market_candidates candidate
+           on candidate.environment = series.environment and candidate.chain_id = series.chain_id
+          and lower(candidate.token_address) = lower(series.underlying)
         where series.environment = $1 and series.chain_id = $2 and series.series_id = $3
         limit 1`,
       [this.environment, this.chainId, request.seriesId.toLowerCase()],
     );
     const series = seriesResult.rows[0] as SeriesRow | undefined;
     if (!series || series.state !== "0") throw new Error("SERIES_NOT_ACTIVE");
+    enforceCandidateOptionsGate(series);
     const expiry = exactInteger(series.expiry, "expiry");
     if (expiry <= nowSeconds) throw new Error("SERIES_EXPIRED");
     const underlying = address(series.underlying, "underlying");
@@ -92,7 +107,8 @@ export class AuthoritativePricingContextSource implements PricingContextSource {
         observedAtSeconds: exactInteger(item.observed_at_seconds, "volatility timestamp"),
       } satisfies IvObservation;
     });
-    const eligibleFrom = series.eligible_from === null ? undefined : exactInteger(series.eligible_from, "eligible from");
+    const launchPeriod = isWithinLaunchTradingDays(series.listing_date, nowSeconds, 3);
+    const offHours = isUsMarketOffHours(nowSeconds);
     return {
       signedSpotUsd18: spot.priceUsd18,
       policyInput: {
@@ -107,8 +123,8 @@ export class AuthoritativePricingContextSource implements PricingContextSource {
         },
         ivObservations: observations,
         maximumIvAgeSeconds: 86_400,
-        ipoDay: eligibleFrom !== undefined && nowSeconds >= eligibleFrom && nowSeconds < eligibleFrom + 86_400,
-        offHours: isUsMarketOffHours(nowSeconds),
+        minimumVolatility: launchPeriod ? 1.2 : 0.4,
+        baseSpreadBps: launchPeriod ? 800 : offHours ? 1_000 : 500,
         oracleHealthy: true,
         utilizationBps,
         sectorPeerMultiplier: 1.25,
@@ -117,6 +133,25 @@ export class AuthoritativePricingContextSource implements PricingContextSource {
       },
     };
   }
+}
+
+function enforceCandidateOptionsGate(series: SeriesRow): void {
+  if (!series.candidate_id) return;
+  if (series.identity_approval_status !== "approved" || series.token_live !== true) throw new Error("CANDIDATE_IDENTITY_NOT_APPROVED");
+  if (series.trading_halted === true) throw new Error("OFFICIAL_TRADING_HALTED");
+  if (normalizeTradingCapabilities(series.trading_capabilities).market !== "tradable") throw new Error("OFFICIAL_TRADING_RESTRICTED");
+  if (series.oracle_ready !== true) throw new Error("CANDIDATE_ORACLE_NOT_READY");
+  if (series.options_paused === true) throw new Error("CANDIDATE_OPTIONS_PAUSED");
+  if (series.options_exposure_warning === true) throw new Error("OPTIONS_EXPOSURE_WARNING");
+}
+
+export function isWithinLaunchTradingDays(listingDate: string | null, nowSeconds: number, tradingDays: number): boolean {
+  if (!listingDate || !/^\d{4}-\d{2}-\d{2}$/.test(listingDate) || !isUsTradingDay(listingDate)) return false;
+  const currentDate = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date(nowSeconds * 1_000));
+  const lastLaunchDate = addUsTradingDays(listingDate, tradingDays - 1);
+  return currentDate >= listingDate && currentDate <= lastLaunchDate;
 }
 
 function address(value: string, label: string): Hex {

@@ -9,9 +9,14 @@ export function parseUnits(value: string, decimals: number): string | null {
   return BigInt(normalized || "0") > 0n ? normalized : null;
 }
 
-export function formatUnits(value: string, decimals: number, displayDecimals = 4): string {
-  if (!/^[0-9]+$/.test(value)) throw new Error("Invalid unit value");
-  const padded = value.padStart(decimals + 1, "0");
+export function formatUnits(value: string | number | bigint, decimals: number, displayDecimals = 4): string {
+  const normalized = typeof value === "bigint"
+    ? value.toString()
+    : typeof value === "number" && Number.isSafeInteger(value) && value >= 0
+      ? String(value)
+      : value;
+  if (typeof normalized !== "string" || !/^[0-9]+$/.test(normalized)) throw new Error("Invalid unit value");
+  const padded = normalized.padStart(decimals + 1, "0");
   const whole = decimals === 0 ? padded : padded.slice(0, -decimals);
   const fraction = decimals === 0
     ? ""

@@ -5,10 +5,11 @@ import { Icon } from "@/components/ui/Icon";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { floatApi, type PublicActivityDto } from "@/lib/api-client";
 import { formatUnits } from "@/lib/units";
+import { OPTIONS_VAULT_SHARE_DECIMALS } from "@/lib/options-constants";
 import styles from "./MarketPublicInfo.module.css";
 
 interface MarketPublicInfoProps {
-  readonly kind: "index" | "constituent";
+  readonly kind: "index" | "constituent" | "candidate";
   readonly symbol: string;
   readonly spotEnabled?: boolean;
   readonly embedded?: boolean;
@@ -112,7 +113,10 @@ function activityLabel(value: string): string {
 
 function activityAmount(action: PublicActivityDto): string {
   if (action.assetAmount) return `${formatUnits(action.assetAmount, 6, 4)} USDG`;
-  if (action.shareAmount) return `${formatUnits(action.shareAmount, 18, 4)} units`;
+  if (action.shareAmount) {
+    const decimals = action.action.startsWith("Withdrawal") ? OPTIONS_VAULT_SHARE_DECIMALS : 18;
+    return `${formatUnits(action.shareAmount, decimals, 4)} units`;
+  }
   return action.blockNumber === null ? "Confirmed" : `Block ${action.blockNumber.toLocaleString("en-US")}`;
 }
 

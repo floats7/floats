@@ -34,6 +34,7 @@ test("parses a complete fail-closed public cross-chain route", () => {
 });
 
 test("rejects colliding networks, invalid options, and credential-bearing public URLs", () => {
+  const credentialBearingUrl = ["https://user", "secret@example.com"].join(":");
   assert.throws(
     () => readCrossChainRoutes({ CROSSCHAIN_ROUTES_JSON: JSON.stringify([{ ...route, destinationChainId: 4663 }]) }),
     /different networks/,
@@ -43,7 +44,7 @@ test("rejects colliding networks, invalid options, and credential-bearing public
     /even-length hex/,
   );
   assert.throws(
-    () => readCrossChainRoutes({ CROSSCHAIN_ROUTES_JSON: JSON.stringify([{ ...route, sourceExplorerUrl: "https://user:secret@example.com" }]) }),
+    () => readCrossChainRoutes({ CROSSCHAIN_ROUTES_JSON: JSON.stringify([{ ...route, sourceExplorerUrl: credentialBearingUrl }]) }),
     /without credentials/,
   );
 });

@@ -10,6 +10,7 @@ import { depositOptionsLiquidity, describeOptionsVaultError, requestOptionsWithd
 import { OnchainTransactionModal, type OnchainTransactionPhase } from "@/features/transactions/OnchainTransactionModal";
 import { useTokenBalance } from "@/features/wallet/useTokenBalance";
 import { BalanceShortcuts } from "@/features/wallet/BalanceShortcuts";
+import { OPTIONS_VAULT_SHARE_DECIMALS } from "@/lib/options-constants";
 
 export function OptionsVaultPanel({ embedded = false }: { readonly embedded?: boolean }) {
   const { address, provider, openConnect } = useWallet();
@@ -24,7 +25,7 @@ export function OptionsVaultPanel({ embedded = false }: { readonly embedded?: bo
 
   const submit = async () => {
     if (!address || !provider) return openConnect();
-    const units = parseAmount(amount, action === "deposit" ? 6 : 18);
+    const units = parseAmount(amount, action === "deposit" ? 6 : OPTIONS_VAULT_SHARE_DECIMALS);
     if (!units) return setTransactionStatus("Enter a positive valid amount.");
     if (inputBalance !== undefined && units > inputBalance) {
       return setTransactionStatus(action === "deposit"
@@ -38,7 +39,7 @@ export function OptionsVaultPanel({ embedded = false }: { readonly embedded?: bo
       if (!liveConfig.optionsVaultAddress) throw new Error("OPTIONS_NOT_ACTIVE");
       const hash = action === "deposit"
         ? await depositOptionsLiquidity({ provider, account: address, vault: liveConfig.optionsVaultAddress as `0x${string}`, usdg: liveConfig.usdgAddress as `0x${string}`, assets6: units, onStatus: (next) => setTransactionModal({ phase: "pending", stepIndex: next === "approval" ? 0 : next === "transaction" ? 1 : 2, explorerUrl: liveConfig.blockExplorerUrl }) })
-        : await requestOptionsWithdrawal({ provider, account: address, vault: liveConfig.optionsVaultAddress as `0x${string}`, shares18: units, unlockAt: Math.floor(Date.now() / 1_000) + 7 * 86_400, onStatus: (next) => setTransactionModal({ phase: "pending", stepIndex: next === "transaction" ? 0 : 1, explorerUrl: liveConfig.blockExplorerUrl }) });
+        : await requestOptionsWithdrawal({ provider, account: address, vault: liveConfig.optionsVaultAddress as `0x${string}`, shares: units, unlockAt: Math.floor(Date.now() / 1_000) + 7 * 86_400, onStatus: (next) => setTransactionModal({ phase: "pending", stepIndex: next === "transaction" ? 0 : 1, explorerUrl: liveConfig.blockExplorerUrl }) });
       setTransactionModal({ phase: "success", stepIndex: action === "deposit" ? 2 : 1, hash, explorerUrl: liveConfig.blockExplorerUrl });
     } catch (reason) {
       const message = action === "withdraw"
@@ -90,7 +91,7 @@ export function OptionsVaultPanel({ embedded = false }: { readonly embedded?: bo
               <span>{action === "deposit" ? "USDG amount" : "LP share amount"}</span>
               <input value={amount} inputMode="decimal" aria-label={action === "deposit" ? "USDG amount" : "LP share amount"} onChange={(event) => { setAmount(event.target.value); setTransactionStatus(undefined); }} />
             </label>
-            <BalanceShortcuts balance={inputBalance} decimals={action === "deposit" ? 6 : 18} onSelect={setAmount} />
+            <BalanceShortcuts balance={inputBalance} decimals={action === "deposit" ? 6 : OPTIONS_VAULT_SHARE_DECIMALS} onSelect={setAmount} />
             <button type="button" className={action === "deposit" ? styles.depositAction : styles.withdrawAction} onClick={submit} disabled={state.operationsPaused}>{address ? "Review in wallet" : "Connect wallet"}</button>
             <p>Withdrawals use future-dated requests so option liabilities remain fully covered.</p>
             {transactionStatus && <p role="status">{transactionStatus}</p>}

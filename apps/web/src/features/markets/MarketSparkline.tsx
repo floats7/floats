@@ -24,8 +24,9 @@ function buildPath(values: readonly number[]): string {
 }
 
 export function MarketSparkline({ history = [], label }: MarketSparklineProps) {
-  const canonicalMonth = buildMarketSeries(history)["1M"];
-  const canonicalDay = buildMarketSeries(history)["1D"];
+  const series = buildMarketSeries(history);
+  const canonicalMonth = series["1M"];
+  const canonicalDay = series["1D"];
   const values = canonicalMonth.map((point) => point.value);
   const hasSeries = values.length >= 2;
   const hasDailyChange = canonicalDay.length >= 2;

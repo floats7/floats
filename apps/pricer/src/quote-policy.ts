@@ -20,8 +20,8 @@ export interface QuotePolicyInput {
   readonly ivObservations: readonly IvObservation[];
   readonly nowSeconds: number;
   readonly maximumIvAgeSeconds: number;
-  readonly ipoDay: boolean;
-  readonly offHours: boolean;
+  readonly minimumVolatility: number;
+  readonly baseSpreadBps: number;
   readonly oracleHealthy: boolean;
   readonly utilizationBps: number;
   readonly side: "buy" | "sell-back";
@@ -90,16 +90,14 @@ function resolveVolatility(input: QuotePolicyInput): {
   let volatility = selected.annualizedVolatility;
   if (selected.source === "sector-peer") volatility *= input.sectorPeerMultiplier;
   if (selected.source === "basket-realized") volatility += input.basketPremium;
-  const floor = input.ipoDay ? 0.6 : 0.4;
-  return { volatility: Math.max(volatility, floor), source: selected.source };
+  return { volatility: Math.max(volatility, input.minimumVolatility), source: selected.source };
 }
 
 function resolveSpreadBps(input: QuotePolicyInput): number {
-  const base = input.ipoDay || input.offHours ? 1_000 : 500;
   const widening = Math.round(
     input.utilizationWideningBpsAtMaximum * input.utilizationBps / BPS,
   );
-  return Math.min(base + widening, BPS - 1);
+  return Math.min(input.baseSpreadBps + widening, BPS - 1);
 }
 
 function validatePolicy(input: QuotePolicyInput): void {
@@ -108,6 +106,12 @@ function validatePolicy(input: QuotePolicyInput): void {
   }
   if (!Number.isSafeInteger(input.maximumIvAgeSeconds) || input.maximumIvAgeSeconds <= 0) {
     throw new Error("Invalid IV age");
+  }
+  if (!Number.isFinite(input.minimumVolatility) || input.minimumVolatility <= 0 || input.minimumVolatility > 10) {
+    throw new Error("Invalid minimum volatility");
+  }
+  if (!Number.isSafeInteger(input.baseSpreadBps) || input.baseSpreadBps < 0 || input.baseSpreadBps >= BPS) {
+    throw new Error("Invalid base spread");
   }
   if (
     !Number.isInteger(input.utilizationBps) ||

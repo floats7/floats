@@ -5,12 +5,13 @@ import { RegistryFeed } from "@/features/home/RegistryFeed";
 import { Narrative } from "@/features/home/narrative/Narrative";
 import { SectionHud } from "@/features/home/SectionHud";
 import { Telemetry } from "@/features/home/Telemetry";
+import { HomeMarketUniverseProvider } from "@/features/home/HomeMarketUniverse";
 
 export const dynamic = "force-dynamic";
 
 export default function HomePage() {
   return (
-    <>
+    <HomeMarketUniverseProvider>
       <SectionHud />
       <Hero />
       <Narrative />
@@ -18,6 +19,6 @@ export default function HomePage() {
       <Numbers />
       <RegistryFeed />
       <Telemetry />
-    </>
+    </HomeMarketUniverseProvider>
   );
 }

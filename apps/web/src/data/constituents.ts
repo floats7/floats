@@ -1,10 +1,8 @@
-import { addDays, addMonths } from "@/lib/dates";
+import { addMonths } from "@/lib/dates";
+import { fifthUsTradingDay } from "../../../../packages/database/src/us-equity-calendar.ts";
 import type { Constituent } from "./types";
 
 type Seed = Omit<Constituent, "entryDate">;
-
-/** Day-5 entry approximated as seven calendar days after listing. */
-const ENTRY_LAG_DAYS = 7;
 
 const SEEDS: readonly Seed[] = [
   { ticker: "CRWV", name: "CoreWeave", ipoDate: "2025-03-28", targetWeight: 12.5, actualWeight: 12.9, returnSinceEntry: 38.4, price: 142.18 },
@@ -19,7 +17,7 @@ const SEEDS: readonly Seed[] = [
 
 export const CONSTITUENTS: readonly Constituent[] = SEEDS.map((seed) => ({
   ...seed,
-  entryDate: addDays(seed.ipoDate, ENTRY_LAG_DAYS),
+  entryDate: fifthUsTradingDay(seed.ipoDate),
 }));
 
 export const EXIT_WINDOW_MONTHS = 24;

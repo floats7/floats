@@ -5,12 +5,26 @@ export interface MarketCandidateSyncConfig {
   readonly chainId: number;
   readonly registryUrl?: URL;
   readonly fetch?: typeof globalThis.fetch;
+  readonly onAlert?: (alert: MarketCandidateOperationalAlert) => Promise<void>;
+}
+
+export interface MarketCandidateOperationalAlert {
+  readonly severity: "critical";
+  readonly code: "OFFICIAL_TRADING_HALTED";
+  readonly candidateId: string;
+  readonly symbol: string;
+  readonly tokenAddress: string;
+  readonly observedAt: string;
 }
 
 interface CandidateRow {
   readonly candidate_id: string;
   readonly symbol: string;
   readonly lifecycle_status: string;
+  readonly detected_token_address?: string | null;
+  readonly identity_approval_status?: string;
+  readonly token_address?: string | null;
+  readonly trading_halted?: boolean | null;
 }
 
 export async function syncListedMarketCandidates(config: MarketCandidateSyncConfig): Promise<number> {
@@ -19,7 +33,7 @@ export async function syncListedMarketCandidates(config: MarketCandidateSyncConf
   const request = config.fetch ?? globalThis.fetch;
   const candidatesUrl = databaseEndpoint(config, "/rest/v1/market_candidates");
   candidatesUrl.search = new URLSearchParams({
-    select: "candidate_id,symbol,lifecycle_status",
+    select: "candidate_id,symbol,lifecycle_status,detected_token_address,identity_approval_status,token_address,trading_halted",
     environment: `eq.${config.environment}`,
     chain_id: `eq.${config.chainId}`,
     lifecycle_status: "eq.listing_expected",
@@ -62,8 +76,14 @@ export async function syncListedMarketCandidates(config: MarketCandidateSyncConf
 interface RegistryAsset {
   readonly id: string;
   readonly tokenSymbol: string;
+  readonly tokenName: string;
   readonly status: string;
   readonly isin: string | undefined;
+  readonly logoUrl: string | undefined;
+  readonly tokenDecimals: number | undefined;
+  readonly currentMultiplier: string | undefined;
+  readonly pendingMultiplier: string | undefined;
+  readonly tradingCapabilities: Readonly<Record<string, unknown>> | undefined;
   readonly deployments: readonly { readonly contractAddress: string; readonly chainId: number }[];
 }
 
@@ -82,7 +102,7 @@ export async function syncOfficialMarketCandidates(config: MarketCandidateSyncCo
 
   const candidatesUrl = databaseEndpoint(config, "/rest/v1/market_candidates");
   candidatesUrl.search = new URLSearchParams({
-    select: "candidate_id,symbol,lifecycle_status",
+    select: "candidate_id,symbol,lifecycle_status,detected_token_address,identity_approval_status,token_address,trading_halted",
     environment: `eq.${config.environment}`,
     chain_id: `eq.${config.chainId}`,
   }).toString();
@@ -98,26 +118,49 @@ export async function syncOfficialMarketCandidates(config: MarketCandidateSyncCo
     const asset = bySymbol.get(candidate.symbol.toUpperCase());
     const deployment = asset?.deployments.find((item) => item.chainId === config.chainId);
     if (!asset || !deployment || asset.status !== "ASSET_STATUS_ACTIVE") continue;
-    const nextStatus = tokenPrecedesOracle(candidate.lifecycle_status) ? "oracle_pending" : candidate.lifecycle_status;
+    if (candidate.identity_approval_status === "approved") {
+      if (candidate.token_address?.toLowerCase() !== deployment.contractAddress.toLowerCase()) continue;
+      await refreshApprovedCandidate(config, candidate, asset, deployment.contractAddress, request);
+      updated += 1;
+      continue;
+    }
+    if (!identityCanBeObserved(candidate.lifecycle_status)) continue;
+    const tokenAddress = deployment.contractAddress.toLowerCase();
+    if (candidate.lifecycle_status === "verification_pending"
+      && candidate.identity_approval_status === "pending"
+      && candidate.detected_token_address?.toLowerCase() === tokenAddress) continue;
+    const observedAt = new Date().toISOString();
+    const officialQuote = await readOfficialQuote(asset.tokenSymbol, request);
+    await recordIdentityObservation(config, candidate.candidate_id, tokenAddress, asset, observedAt, request);
     const updateUrl = databaseEndpoint(config, "/rest/v1/market_candidates");
     updateUrl.search = new URLSearchParams({
       environment: `eq.${config.environment}`,
       chain_id: `eq.${config.chainId}`,
       candidate_id: `eq.${candidate.candidate_id}`,
+      lifecycle_status: "in.(upcoming,listing_expected,listed,token_pending,detected,verification_pending)",
+      identity_approval_status: "in.(unreviewed,pending)",
     }).toString();
-    const now = new Date().toISOString();
     const updateResponse = await request(updateUrl, {
       method: "PATCH",
       headers: databaseHeaders(config, "return=minimal"),
       body: JSON.stringify({
-        token_address: deployment.contractAddress.toLowerCase(),
+        detected_token_address: tokenAddress,
         asset_uid: /^0x[0-9a-fA-F]{64}$/.test(asset.id) ? asset.id : null,
         isin: asset.isin ?? null,
-        token_live: true,
-        lifecycle_status: nextStatus,
-        ...(nextStatus === "oracle_pending" ? { disabled_reason: "Oracle verification pending" } : {}),
-        last_checked_at: now,
-        updated_at: now,
+        logo_url: asset.logoUrl ?? null,
+        official_token_name: asset.tokenName,
+        token_decimals: asset.tokenDecimals ?? null,
+        current_multiplier: asset.currentMultiplier ?? null,
+        pending_multiplier: asset.pendingMultiplier || null,
+        trading_capabilities: asset.tradingCapabilities ?? null,
+        official_metadata_observed_at: observedAt,
+        trading_halted: officialQuote?.isTradingHalt ?? null,
+        official_quote_generated_at: officialQuote?.generatedAt ?? null,
+        lifecycle_status: "verification_pending",
+        identity_approval_status: "pending",
+        disabled_reason: "Canonical identity verification pending",
+        last_checked_at: observedAt,
+        updated_at: observedAt,
       }),
       signal: AbortSignal.timeout(30_000),
     });
@@ -127,8 +170,117 @@ export async function syncOfficialMarketCandidates(config: MarketCandidateSyncCo
   return updated;
 }
 
-function tokenPrecedesOracle(status: string): boolean {
-  return ["upcoming", "listing_expected", "listed", "token_pending", "token_live"].includes(status);
+async function refreshApprovedCandidate(
+  config: MarketCandidateSyncConfig,
+  candidate: CandidateRow,
+  asset: RegistryAsset,
+  tokenAddress: string,
+  request: typeof globalThis.fetch,
+): Promise<void> {
+  const observedAt = new Date().toISOString();
+  const officialQuote = await readOfficialQuote(asset.tokenSymbol, request);
+  const updateUrl = databaseEndpoint(config, "/rest/v1/market_candidates");
+  updateUrl.search = new URLSearchParams({
+    environment: `eq.${config.environment}`,
+    chain_id: `eq.${config.chainId}`,
+    candidate_id: `eq.${candidate.candidate_id}`,
+    token_address: `eq.${tokenAddress.toLowerCase()}`,
+    identity_approval_status: "eq.approved",
+  }).toString();
+  const update = await request(updateUrl, {
+    method: "PATCH",
+    headers: databaseHeaders(config, "return=minimal"),
+    body: JSON.stringify({
+      official_token_name: asset.tokenName,
+      token_decimals: asset.tokenDecimals ?? null,
+      current_multiplier: asset.currentMultiplier ?? null,
+      pending_multiplier: asset.pendingMultiplier || null,
+      trading_capabilities: asset.tradingCapabilities ?? null,
+      official_metadata_observed_at: observedAt,
+      trading_halted: officialQuote?.isTradingHalt ?? candidate.trading_halted ?? null,
+      official_quote_generated_at: officialQuote?.generatedAt ?? null,
+      logo_url: asset.logoUrl ?? null,
+      last_checked_at: observedAt,
+      updated_at: observedAt,
+    }),
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!update.ok) throw new Error(`Approved candidate refresh failed with status ${update.status}`);
+  if (candidate.trading_halted !== true && officialQuote?.isTradingHalt === true) {
+    await config.onAlert?.({
+      severity: "critical",
+      code: "OFFICIAL_TRADING_HALTED",
+      candidateId: candidate.candidate_id,
+      symbol: candidate.symbol,
+      tokenAddress: tokenAddress.toLowerCase(),
+      observedAt,
+    });
+  }
+}
+
+async function readOfficialQuote(
+  symbol: string,
+  request: typeof globalThis.fetch,
+): Promise<{ readonly isTradingHalt: boolean; readonly generatedAt: string } | undefined> {
+  const url = new URL(`https://api.robinhood.com/rhj/prices/${encodeURIComponent(symbol)}`);
+  try {
+    const response = await request(url, { signal: AbortSignal.timeout(15_000) });
+    if (!response.ok) return undefined;
+    const payload = await response.json() as { quotes?: unknown };
+    if (!Array.isArray(payload.quotes)) return undefined;
+    const quote = payload.quotes.find((item) => item && typeof item === "object"
+      && (item as { tokenSymbol?: unknown }).tokenSymbol === symbol) as Record<string, unknown> | undefined;
+    if (!quote || typeof quote.isTradingHalt !== "boolean" || typeof quote.generatedAt !== "string"
+      || !Number.isFinite(Date.parse(quote.generatedAt))) return undefined;
+    return { isTradingHalt: quote.isTradingHalt, generatedAt: quote.generatedAt };
+  } catch {
+    return undefined;
+  }
+}
+
+function identityCanBeObserved(status: string): boolean {
+  return ["upcoming", "listing_expected", "listed", "token_pending", "detected", "verification_pending"].includes(status);
+}
+
+async function recordIdentityObservation(
+  config: MarketCandidateSyncConfig,
+  candidateId: string,
+  tokenAddress: string,
+  asset: RegistryAsset,
+  observedAt: string,
+  request: typeof globalThis.fetch,
+): Promise<void> {
+  const evidence = {
+    assetId: asset.id,
+    tokenSymbol: asset.tokenSymbol,
+    status: asset.status,
+    chainId: config.chainId,
+  };
+  const canonical = JSON.stringify(evidence);
+  const evidenceHash = `0x${Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical))))
+    .map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+  const observationsUrl = databaseEndpoint(config, "/rest/v1/market_candidate_identity_observations");
+  observationsUrl.search = new URLSearchParams({
+    on_conflict: "environment,chain_id,candidate_id,token_address,source_kind,evidence_hash",
+  }).toString();
+  const response = await request(observationsUrl, {
+    method: "POST",
+    headers: databaseHeaders(config, "resolution=ignore-duplicates,return=minimal"),
+    body: JSON.stringify({
+      environment: config.environment,
+      chain_id: config.chainId,
+      candidate_id: candidateId,
+      token_address: tokenAddress,
+      source_kind: "robinhood_asset_registry",
+      source_url: "https://api.robinhood.com/rhj/assets",
+      passed: true,
+      evidence,
+      evidence_hash: evidenceHash,
+      observed_at: observedAt,
+    }),
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!response.ok) throw new Error(`Candidate identity observation failed with status ${response.status}`);
 }
 
 async function hasPublicTrades(symbol: string, request: typeof globalThis.fetch): Promise<boolean> {
@@ -182,7 +334,29 @@ function parseAssets(value: unknown): RegistryAsset[] {
       return { chainId: deployment.chainId, contractAddress: deployment.contractAddress };
     });
     const optionalText = (key: string) => asset[key] == null ? undefined : text(key);
-    return { id: text("id"), tokenSymbol: text("tokenSymbol"), status: text("status"),
-      isin: optionalText("isin"), deployments };
+    const optionalPossiblyEmptyText = (key: string) => {
+      const item = asset[key];
+      if (item == null) return undefined;
+      if (typeof item !== "string") throw new Error(`RHJ asset ${key} is invalid`);
+      return item;
+    };
+    const optionalInteger = (key: string) => {
+      const item = asset[key];
+      if (item == null) return undefined;
+      if (typeof item !== "number" || !Number.isSafeInteger(item) || item < 0 || item > 36) {
+        throw new Error(`RHJ asset ${key} is invalid`);
+      }
+      return item;
+    };
+    const optionalObject = (key: string) => {
+      const item = asset[key];
+      if (item == null) return undefined;
+      if (typeof item !== "object" || Array.isArray(item)) throw new Error(`RHJ asset ${key} is invalid`);
+      return item as Readonly<Record<string, unknown>>;
+    };
+    return { id: text("id"), tokenSymbol: text("tokenSymbol"), tokenName: text("tokenName"), status: text("status"),
+      isin: optionalText("isin"), logoUrl: optionalText("logoUrl"), tokenDecimals: optionalInteger("tokenDecimals"),
+      currentMultiplier: optionalText("currentMultiplier"), pendingMultiplier: optionalPossiblyEmptyText("pendingMultiplier"),
+      tradingCapabilities: optionalObject("tradingCapabilities"), deployments };
   });
 }

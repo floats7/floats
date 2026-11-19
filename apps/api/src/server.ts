@@ -10,6 +10,7 @@ import {
   getLatestIndexState,
   getMarket,
   getMarketCandidates,
+  getMarketCandidateReadiness,
   getMarketCandidateHistory,
   getMarketHistory,
   getMarkets,
@@ -124,6 +125,10 @@ async function route(request: Request, url: URL): Promise<Response> {
   }
   if (request.method === "GET" && endpoint === "markets") return getMarkets(context, request.signal);
   if (request.method === "GET" && endpoint === "market-candidates") return getMarketCandidates(context, request.signal);
+  const candidateReadinessMatch = endpoint.match(/^market-candidates\/([a-z0-9-]{1,80})\/readiness$/);
+  if (request.method === "GET" && candidateReadinessMatch?.[1]) {
+    return getMarketCandidateReadiness(context, candidateReadinessMatch[1], request.signal);
+  }
   const candidateHistoryMatch = endpoint.match(/^market-candidates\/([a-z0-9-]{1,80})\/history$/);
   if (request.method === "GET" && candidateHistoryMatch?.[1]) {
     return getMarketCandidateHistory(context, candidateHistoryMatch[1], url, request.signal);

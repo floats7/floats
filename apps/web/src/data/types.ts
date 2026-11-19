@@ -15,7 +15,7 @@ export interface EligibilityChecks {
   liquidity: boolean;
 }
 
-export type ChangeKind = "add" | "remove" | "weights";
+export type ChangeKind = "add" | "remove" | "weights" | "scheduled";
 
 export interface RegistryChange {
   id: string;

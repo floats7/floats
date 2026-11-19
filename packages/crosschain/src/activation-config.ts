@@ -6,6 +6,8 @@ export interface ActivationContracts {
   readonly fipo: Address;
   readonly floats: Address;
   readonly nav: Address;
+  readonly governance: Address;
+  readonly guardian: Address;
 }
 
 export interface TokenRateLimits {
@@ -51,6 +53,9 @@ export function parseCrossChainActivationConfig(
   if (new Set(addresses).size !== addresses.length) {
     throw new Error("CROSSCHAIN_ACTIVATION_CONTRACT_DUPLICATE");
   }
+  if (hub.governance === hub.guardian || spoke.governance === spoke.guardian) {
+    throw new Error("CROSSCHAIN_ACTIVATION_ROLE_COLLISION");
+  }
   return {
     environment,
     hub,
@@ -67,6 +72,8 @@ function contracts(value: unknown, label: string): ActivationContracts {
     fipo: address(input.fipo, `${label}_FIPO`),
     floats: address(input.floats, `${label}_FLOATS`),
     nav: address(input.nav, `${label}_NAV`),
+    governance: address(input.governance, `${label}_GOVERNANCE`),
+    guardian: address(input.guardian, `${label}_GUARDIAN`),
   };
 }
 

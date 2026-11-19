@@ -2,8 +2,8 @@
 
 import { motion, useTransform, type MotionValue } from "motion/react";
 import type { CSSProperties } from "react";
-import { CONSTITUENTS } from "@/data/constituents";
 import { RULES } from "@/data/methodology";
+import { useHomeMarketUniverse } from "../HomeMarketUniverse";
 import styles from "./OrbitScene.module.css";
 
 const CX = 150;
@@ -43,6 +43,7 @@ function FarObject({ label, x, y, appear, progress }: (typeof FAR_OBJECTS)[numbe
 
 /** The index drawn as an orbital system: a planet of rings with constituents in orbit, pulling back as you scroll. */
 export function OrbitScene({ progress, activeRing }: OrbitSceneProps) {
+  const universe = useHomeMarketUniverse().filter((item) => !item.isIndex).slice(0, 12);
   const scale = useTransform(progress, [0, 0.55, 1], [1.12, 0.82, 0.64]);
   const outerOpacity = useTransform(progress, [0.1, 0.3], [0, 1]);
 
@@ -79,21 +80,21 @@ export function OrbitScene({ progress, activeRing }: OrbitSceneProps) {
           );
         })}
 
-        {CONSTITUENTS.map((item, index) => {
+        {universe.map((item, index) => {
           const ring = index % RING_RADII.length;
           const style = {
             "--period": `${BASE_PERIOD_S + ring * 22}s`,
-            "--start": `${(index / CONSTITUENTS.length) * 360 + ring * 11}deg`,
+            "--start": `${(index / universe.length) * 360 + ring * 11}deg`,
             "--cx": `${CX}px`,
             "--cy": `${CY}px`,
           } as CSSProperties;
           return (
-            <g key={item.ticker} className={styles.orbit} style={style}>
+            <g key={item.id} className={styles.orbit} style={style}>
               <g transform={`translate(${CX + (RING_RADII[ring] ?? 0)} ${CY})`}>
                 <g className={styles.counter}>
                   <rect x="-5" y="-5" width="10" height="10" className={styles.node} />
                   <text x="14" y="4" className={styles.nodeLabel}>
-                    {item.ticker}
+                    {item.symbol}
                   </text>
                 </g>
               </g>

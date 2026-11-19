@@ -79,14 +79,14 @@ export async function depositOptionsLiquidity(input: {
 }
 
 export async function requestOptionsWithdrawal(input: {
-  provider: Eip1193Provider; account: string; vault: `0x${string}`; shares18: bigint; unlockAt: number;
+  provider: Eip1193Provider; account: string; vault: `0x${string}`; shares: bigint; unlockAt: number;
   onStatus?(status: "transaction" | "confirming"): void;
 }): Promise<string> {
   input.onStatus?.("transaction");
   const hash = await submit(input.provider, input.account, input.vault, encodeFunctionData({
     abi: vaultAbi,
     functionName: "requestWithdrawal",
-    args: [input.shares18, input.account as `0x${string}`, input.unlockAt],
+    args: [input.shares, input.account as `0x${string}`, input.unlockAt],
   }));
   input.onStatus?.("confirming");
   await waitForReceipt(input.provider, hash);

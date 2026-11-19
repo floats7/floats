@@ -47,14 +47,21 @@
     "import:market-candidates": "node --experimental-transform-types scripts/import-market-candidates.ts",
     "sync:rhj-candidates": "node --experimental-transform-types scripts/sync-rhj-market-candidates.ts",
     "verify:market-candidates": "node --experimental-transform-types scripts/verify-market-candidates.ts",
+    "control:market-candidate-product": "node --experimental-transform-types scripts/set-market-candidate-product-pause.ts",
+    "acknowledge:market-candidate-alert": "node --experimental-transform-types scripts/acknowledge-market-candidate-alert.ts",
+    "prepare:market-candidate-announcement": "node --experimental-transform-types scripts/prepare-market-candidate-announcement.ts",
+    "record:market-candidate-signoff": "node --experimental-transform-types scripts/record-market-candidate-signoff.ts",
     "seed:options-testnet": "node --experimental-transform-types scripts/seed-options-testnet.ts"
   },
   "dependencies": {
+    "@layerzerolabs/lz-evm-messagelib-v2": "3.0.168",
     "@layerzerolabs/lz-evm-protocol-v2": "3.0.168",
+    "@layerzerolabs/oapp-evm": "0.4.1",
     "@layerzerolabs/oft-evm": "4.0.1",
     "@openzeppelin/contracts": "5.7.0",
     "@openzeppelin/contracts-upgradeable": "5.7.0",
     "pg": "^8.16.3",
+    "solidity-bytes-utils": "0.8.4",
     "viem": "2.58.0"
   },
   "devDependencies": {
@@ -63,5 +70,8 @@
     "railway": "^3.17.0",
     "supabase": "^3.2.0",
     "typescript": "5.9.3"
+  },
+  "overrides": {
+    "ws": "8.23.0"
   }
 }

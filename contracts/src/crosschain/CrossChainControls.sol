@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.24;
 
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 /// @title CrossChainControls
 /// @notice Reusable guardian pause and per-path rolling rate limits for Floats OApps.
 abstract contract CrossChainControls {
+    using SafeCast for uint256;
+
     struct RateLimit {
         uint128 capacity;
-        uint128 used;
+        uint128 available;
         uint64 window;
-        uint64 windowStartedAt;
+        uint64 lastUpdatedAt;
     }
 
     error BridgePaused();
@@ -57,7 +61,10 @@ abstract contract CrossChainControls {
         if (capacity == 0 || window == 0) revert InvalidRateLimit(capacity, window);
 
         _rateLimits[_pathKey(eid, inbound)] = RateLimit({
-            capacity: capacity, used: 0, window: window, windowStartedAt: uint64(block.timestamp)
+            capacity: capacity,
+            available: capacity,
+            window: window,
+            lastUpdatedAt: block.timestamp.toUint64()
         });
         emit RateLimitSet(eid, inbound, capacity, window);
     }
@@ -72,27 +79,25 @@ abstract contract CrossChainControls {
     }
 
     function _consumeRateLimit(uint32 eid, bool inbound, uint256 amount) internal {
-        if (bridgePaused) revert BridgePaused();
+        if (!inbound && bridgePaused) revert BridgePaused();
 
         bytes32 key = _pathKey(eid, inbound);
         RateLimit storage limit = _rateLimits[key];
         uint256 available = _available(limit);
         if (amount > available) revert RateLimitExceeded(eid, inbound, amount, available);
 
-        if (block.timestamp >= uint256(limit.windowStartedAt) + limit.window) {
-            limit.used = 0;
-            limit.windowStartedAt = uint64(block.timestamp);
-        }
-        limit.used += uint128(amount);
+        limit.available = (available - amount).toUint128();
+        limit.lastUpdatedAt = block.timestamp.toUint64();
         emit RateLimitConsumed(eid, inbound, amount, available - amount);
     }
 
     function _available(RateLimit memory limit) private view returns (uint256) {
         if (limit.capacity == 0) return 0;
-        if (block.timestamp >= uint256(limit.windowStartedAt) + limit.window) {
-            return limit.capacity;
-        }
-        return uint256(limit.capacity) - limit.used;
+        uint256 elapsed = block.timestamp - limit.lastUpdatedAt;
+        if (elapsed >= limit.window) return limit.capacity;
+        uint256 refilled = uint256(limit.capacity) * elapsed / limit.window;
+        uint256 current = uint256(limit.available) + refilled;
+        return current > limit.capacity ? limit.capacity : current;
     }
 
     function _requireGovernance() private view {

@@ -39,8 +39,12 @@ function unwrapMigration(sql: string, filename: string): string {
   return withoutCommit;
 }
 
-const environmentPath = process.argv[2];
-if (!environmentPath) fail("usage: apply-supabase-migrations.ts <environment-file>");
+const [environmentPath, fromVersion, toVersion] = process.argv.slice(2);
+if (!environmentPath) fail("usage: apply-supabase-migrations.ts <environment-file> [from-version] [to-version]");
+if ((fromVersion && !/^\d{12}_[a-z0-9_]+$/.test(fromVersion)) || (toVersion && !/^\d{12}_[a-z0-9_]+$/.test(toVersion))) {
+  fail("migration range versions are invalid");
+}
+if (fromVersion && toVersion && fromVersion > toVersion) fail("migration range is invalid");
 
 const values = readEnvironment(environmentPath);
 const databaseUrl = values.get("SUPABASE_DB_URL");
@@ -51,6 +55,8 @@ if (environment !== "testnet" && environment !== "mainnet") fail("APP_ENV is inv
 
 const files = readdirSync(migrationsDirectory)
   .filter((filename) => filename.endsWith(".sql"))
+  .filter((filename) => !fromVersion || basename(filename, ".sql") >= fromVersion)
+  .filter((filename) => !toVersion || basename(filename, ".sql") <= toVersion)
   .sort();
 if (files.length === 0) fail("no migration files found");
 for (const filename of files) {

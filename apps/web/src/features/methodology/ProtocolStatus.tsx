@@ -7,6 +7,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { useIndexState } from "@/features/index-state/IndexStateProvider";
 import { floatApi, type OperationalActionDto } from "@/lib/api-client";
 import { resolveSharePriceUsd18 } from "@/lib/nav-history";
+import { deriveRebalanceProgress } from "@/lib/rebalance-progress";
 import styles from "./ProtocolStatus.module.css";
 
 const SNAPSHOT_BUDGET_SECONDS = 90;
@@ -15,16 +16,16 @@ type Health = "healthy" | "attention" | "checking";
 
 export function ProtocolStatus() {
   const { data, loading, error, refresh } = useIndexState();
-  const [rebalance, setRebalance] = useState<OperationalActionDto | null>(null);
+  const [rebalanceActions, setRebalanceActions] = useState<readonly OperationalActionDto[]>([]);
   const [activityError, setActivityError] = useState(false);
   const [activityAttempt, setActivityAttempt] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
-    floatApi.getOperationalActions("rebalance", 1, controller.signal)
+    floatApi.getOperationalActions("rebalance", 50, controller.signal)
       .then((actions) => {
         if (!controller.signal.aborted) {
-          setRebalance(actions[0] ?? null);
+          setRebalanceActions(actions);
           setActivityError(false);
         }
       })
@@ -38,6 +39,8 @@ export function ProtocolStatus() {
   const liveOracles = data?.holdings.filter((holding) => holding.oracleHealth === "live").length ?? 0;
   const oracleTotal = data?.holdings.length ?? 0;
   const snapshotAge = data ? Math.max(0, Math.floor((Date.now() - Date.parse(data.observedAt)) / 1_000)) : null;
+  const rebalance = rebalanceActions[0] ?? null;
+  const rebalanceProgress = deriveRebalanceProgress(rebalanceActions);
 
   return (
     <section className={`container ${styles.section}`} aria-labelledby="protocol-status-title">
@@ -75,7 +78,9 @@ export function ProtocolStatus() {
           title="Latest rebalance"
           health={activityError ? "attention" : rebalance ? "healthy" : "checking"}
           value={rebalance ? humanize(rebalance.action) : activityError ? "Unavailable" : "No indexed action"}
-          detail={rebalance ? `Confirmed at block ${rebalance.block_number.toLocaleString("en-US")}.` : "Waiting for indexed execution activity."}
+          detail={rebalance
+            ? `${rebalanceProgress.executed} of ${rebalanceProgress.authorized} authorized chunks executed. Latest confirmation: block ${rebalance.block_number.toLocaleString("en-US")}.`
+            : "Waiting for indexed execution activity."}
         />
       </div>
 
@@ -88,7 +93,6 @@ export function ProtocolStatus() {
     </section>
   );
 }
-
 function StatusCard({ title, health, value, detail }: { readonly title: string; readonly health: Health; readonly value: string; readonly detail: string }) {
   return (
     <article className={styles.card} data-health={health}>

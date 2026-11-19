@@ -11,6 +11,11 @@ const date = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
   timeZone: "UTC",
 });
+const monthDay = new Intl.DateTimeFormat("en-US", {
+  day: "numeric",
+  month: "short",
+  timeZone: "UTC",
+});
 
 const MINUS = "-";
 
@@ -21,6 +26,11 @@ export const formatUsdCompact = (value: number) => usdCompact.format(value);
 export function formatDate(value: string): string {
   const parsed = new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00Z` : value);
   return Number.isNaN(parsed.getTime()) ? "Unavailable" : date.format(parsed);
+}
+
+export function formatMonthDay(value: string): string {
+  const parsed = new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00Z` : value);
+  return Number.isNaN(parsed.getTime()) ? "Unavailable" : monthDay.format(parsed);
 }
 
 export function formatNumber(value: number, digits = 2): string {

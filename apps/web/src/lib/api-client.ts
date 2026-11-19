@@ -294,7 +294,7 @@ export interface MarketProductDto {
 
 export interface MarketAssetDto {
   readonly id: string;
-  readonly kind: "index" | "constituent";
+  readonly kind: "index" | "constituent" | "candidate";
   readonly address: string;
   readonly uid: string | null;
   readonly symbol: string;
@@ -325,19 +325,81 @@ export interface MarketCandidateDto {
   readonly listingDate: string | null;
   readonly eligibleFrom: string | null;
   readonly tokenAddress: string | null;
+  readonly officialTokenName: string | null;
+  readonly tokenDecimals: number | null;
+  readonly currentMultiplier: string | null;
+  readonly pendingMultiplier: string | null;
+  readonly tradingCapabilities: {
+    readonly market: TradingCapabilityState;
+    readonly extended: TradingCapabilityState;
+    readonly overnight: TradingCapabilityState;
+  };
+  readonly officialMetadataObservedAt: string | null;
+  readonly tradingHalted: boolean | null;
+  readonly officialQuoteGeneratedAt: string | null;
   readonly logoUrl: string | null;
   readonly checks: { readonly tokenLive: boolean; readonly priceFeed: boolean; readonly liquidity: boolean };
+  readonly oracle: {
+    readonly feedAddress: string | null;
+    readonly healthySince: string | null;
+    readonly lastPrice18: string | null;
+    readonly lastFailure: string | null;
+  };
+  readonly liquidity: {
+    readonly dexReferencePrice18: string | null;
+    readonly observedAt: string | null;
+  };
   readonly governanceApproved: boolean;
+  readonly productControls: {
+    readonly spotPaused: boolean;
+    readonly optionsPaused: boolean;
+    readonly optionsExposureWarning: boolean;
+    readonly reason: string | null;
+    readonly updatedAt: string | null;
+  };
   readonly disabledReason: string | null;
   readonly sourceUrl: string | null;
   readonly lastCheckedAt: string | null;
+  readonly publication: {
+    readonly detectedAt: string | null;
+    readonly availableAt: string | null;
+    readonly slaSeconds: number | null;
+    readonly targetSeconds: number;
+    readonly withinTarget: boolean | null;
+  };
 }
+
+export interface MarketCandidateReadinessDto {
+  readonly candidateId: string;
+  readonly symbol: string;
+  readonly canonicalAddress: string | null;
+  readonly checkedAt: string | null;
+  readonly tiers: Readonly<Record<"market" | "spot" | "options" | "index", {
+    readonly ready: boolean;
+    readonly gates: Readonly<Record<string, boolean>>;
+    readonly blockers: readonly string[];
+  }>>;
+  readonly signoffs: readonly {
+    readonly id: number;
+    readonly tier: "market" | "spot" | "options" | "index";
+    readonly decision: "approved" | "rejected";
+    readonly governanceOrCanaryReference: string | null;
+    readonly signedAt: string;
+  }[];
+}
+
+export type TradingCapabilityState = "tradable" | "restricted" | "unavailable" | "unknown";
 
 export type MarketCandidateStatus =
   | "upcoming"
   | "listing_expected"
   | "listed"
   | "token_pending"
+  | "detected"
+  | "verification_pending"
+  | "approval_pending"
+  | "rejected"
+  | "suspected_fake"
   | "token_live"
   | "oracle_pending"
   | "liquidity_pending"
@@ -448,6 +510,16 @@ export class FloatsApiClient {
 
   public getMarketCandidates(signal?: AbortSignal): Promise<readonly MarketCandidateDto[]> {
     return this.get<readonly MarketCandidateDto[]>("/market-candidates", signal);
+  }
+
+  public getMarketCandidateReadiness(
+    candidateId: string,
+    signal?: AbortSignal,
+  ): Promise<MarketCandidateReadinessDto> {
+    return this.get<MarketCandidateReadinessDto>(
+      `/market-candidates/${encodeURIComponent(candidateId)}/readiness`,
+      signal,
+    );
   }
 
   public getMarketCandidateHistory(

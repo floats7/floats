@@ -7,6 +7,7 @@
 
 .routeCard,
 .navCard,
+.trustCard,
 .history {
   border: 1px solid var(--line-base);
   background: rgb(0 0 0 / 0.72);
@@ -14,12 +15,17 @@
 }
 
 .history { grid-column: 1 / -1; }
+.trustCard { grid-column: 1 / -1; }
 .sectionHeading { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); }
 .sectionHeading h2 { margin-top: var(--space-2); font-size: var(--text-2xl); }
 .routeFacts, .navFacts { display: grid; gap: 0; margin-top: var(--space-6); }
 .routeFacts > div, .navFacts > div { display: flex; justify-content: space-between; gap: var(--space-5); border-top: 1px solid var(--line-soft); padding-block: var(--space-4); }
 .routeFacts dt, .navFacts dt, .count { color: var(--text-muted); font-family: var(--font-mono); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.08em; }
 .routeFacts dd, .navFacts dd { max-width: 60%; text-align: right; }
+.trustFacts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: var(--space-5); border-top: 1px solid var(--line-soft); border-left: 1px solid var(--line-soft); }
+.trustFacts > div { min-width: 0; border-right: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); padding: var(--space-4); }
+.trustFacts dt { color: var(--text-strong); font-family: var(--font-mono); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.08em; }
+.trustFacts dd { margin-top: var(--space-2); color: var(--text-muted); font-size: var(--text-sm); line-height: 1.6; }
 .notice { display: flex; gap: var(--space-3); border: 1px solid var(--line-base); padding: var(--space-4); color: var(--text-muted); font-size: var(--text-sm); }
 .notice svg { flex: 0 0 auto; margin-top: 0.15rem; color: var(--text-strong); }
 .primaryAction { width: 100%; margin-top: var(--space-4); border: 1px solid var(--text-strong); background: var(--surface-paper); color: var(--text-on-paper); padding: var(--space-4); font-family: var(--font-mono); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
@@ -38,6 +44,8 @@
 .tableWrap th { color: var(--text-muted); font-family: var(--font-mono); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.08em; }
 .tableWrap code { font-family: var(--font-mono); font-size: var(--text-sm); }
 .messageLink { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text-strong); text-decoration: underline; text-underline-offset: 0.2em; }
+.retryAction { display: inline-flex; align-items: center; gap: var(--space-2); border: 1px solid var(--text-strong); padding: var(--space-2) var(--space-3); color: var(--text-strong); font-family: var(--font-mono); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
+.noAction { color: var(--text-muted); font-size: var(--text-sm); white-space: nowrap; }
 .tradeForm { margin-top: var(--space-4); border-top: 1px solid var(--line-soft); padding-top: var(--space-4); }
 .tradeForm label { display: grid; gap: var(--space-2); color: var(--text-muted); font-size: var(--text-sm); }
 .tradeForm input { width: 100%; border: 1px solid var(--line-base); background: var(--surface-void); color: var(--text-strong); padding: var(--space-4); font-family: var(--font-mono); font-size: var(--text-xl); }
@@ -65,9 +73,10 @@
 }
 
 @media (max-width: 600px) {
-  .routeCard, .navCard, .history { padding: var(--space-5); }
+  .routeCard, .navCard, .trustCard, .history { padding: var(--space-5); }
   .sectionHeading, .routeFacts > div, .navFacts > div { align-items: flex-start; flex-direction: column; }
   .networkSwitch { grid-template-columns: 1fr; }
   .networkSwitch button + button { border-top: 1px solid var(--line-base); border-left: 0; }
   .routeFacts dd, .navFacts dd { max-width: none; text-align: left; }
+  .trustFacts { grid-template-columns: 1fr; }
 }

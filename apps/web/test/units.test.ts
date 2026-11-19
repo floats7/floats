@@ -14,4 +14,6 @@ test("formats whole and bounded fractional values without changing their scale",
   assert.equal(formatUnits("123450000", 6, 4), "123.45");
   assert.equal(formatUnits("1000000", 6, 6), "1");
   assert.equal(formatUnits("56", 6, 6), "0.000056");
+  assert.equal(formatUnits(5_000, 6, 4), "0.005");
+  assert.equal(formatUnits(10_000n, 6, 4), "0.01");
 });

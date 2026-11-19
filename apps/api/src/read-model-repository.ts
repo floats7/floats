@@ -157,13 +157,47 @@ export interface MarketCandidateReadModel {
   readonly eligible_from: string | null;
   readonly source_url: string | null;
   readonly token_address: string | null;
+  readonly asset_uid: string | null;
+  readonly identity_approval_status: string;
+  readonly identity_approved_at: string | null;
+  readonly official_token_name: string | null;
+  readonly token_decimals: number | null;
+  readonly current_multiplier: string | null;
+  readonly pending_multiplier: string | null;
+  readonly trading_capabilities: unknown;
+  readonly official_metadata_observed_at: string | null;
+  readonly trading_halted: boolean | null;
+  readonly official_quote_generated_at: string | null;
   readonly logo_url: string | null;
   readonly token_live: boolean;
   readonly oracle_ready: boolean;
+  readonly official_feed_address: string | null;
+  readonly oracle_healthy_since: string | null;
+  readonly oracle_last_price_18: string | null;
+  readonly oracle_last_failure: string | null;
   readonly liquidity_ready: boolean;
+  readonly dex_reference_price_18: string | null;
+  readonly liquidity_observed_at: string | null;
   readonly governance_approved: boolean;
+  readonly spot_paused: boolean;
+  readonly options_paused: boolean;
+  readonly options_exposure_warning: boolean;
+  readonly product_pause_reason: string | null;
+  readonly product_control_updated_at: string | null;
   readonly disabled_reason: string | null;
   readonly last_checked_at: string | null;
+  readonly official_token_detected_at: string | null;
+  readonly public_available_at: string | null;
+  readonly publication_sla_seconds: number | null;
+}
+
+export interface MarketCandidateSignoffReadModel {
+  readonly id: number;
+  readonly candidate_id: string;
+  readonly tier: "market" | "spot" | "options" | "index";
+  readonly decision: "approved" | "rejected";
+  readonly governance_or_canary_reference: string | null;
+  readonly signed_at: string;
 }
 
 export interface CrossChainMessageReadModel {
@@ -220,11 +254,29 @@ export class ReadModelRepository {
 
   public listMarketCandidates(signal?: AbortSignal): Promise<readonly MarketCandidateReadModel[]> {
     const query = this.scopedQuery(
-      "candidate_id,symbol,company_name,lifecycle_status,ipo_date,expected_listing_date,eligible_from,source_url,token_address,logo_url,token_live,oracle_ready,liquidity_ready,governance_approved,disabled_reason,last_checked_at",
+      "candidate_id,symbol,company_name,lifecycle_status,ipo_date,expected_listing_date,eligible_from,source_url,token_address,asset_uid,identity_approval_status,identity_approved_at,official_token_name,token_decimals,current_multiplier,pending_multiplier,trading_capabilities,official_metadata_observed_at,trading_halted,official_quote_generated_at,logo_url,token_live,oracle_ready,official_feed_address,oracle_healthy_since,oracle_last_price_18,oracle_last_failure,liquidity_ready,dex_reference_price_18,liquidity_observed_at,governance_approved,spot_paused,options_paused,options_exposure_warning,product_pause_reason,product_control_updated_at,disabled_reason,last_checked_at,official_token_detected_at,public_available_at,publication_sla_seconds",
     );
     query.set("order", "expected_listing_date.desc.nullslast,symbol.asc");
     query.set("limit", "500");
     return this.client.select<readonly MarketCandidateReadModel[]>("market_candidates", query, signal);
+  }
+
+  public listMarketCandidateSignoffs(
+    candidateId: string,
+    signal?: AbortSignal,
+  ): Promise<readonly MarketCandidateSignoffReadModel[]> {
+    if (!/^[a-z0-9-]{1,80}$/.test(candidateId)) throw new Error("Market candidate ID is invalid");
+    const query = this.scopedQuery(
+      "id,candidate_id,tier,decision,governance_or_canary_reference,signed_at",
+    );
+    query.set("candidate_id", `eq.${candidateId}`);
+    query.set("order", "signed_at.desc,id.desc");
+    query.set("limit", "100");
+    return this.client.select<readonly MarketCandidateSignoffReadModel[]>(
+      "market_candidate_operator_signoffs",
+      query,
+      signal,
+    );
   }
 
   public listCrossChainMessages(

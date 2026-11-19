@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { formatPercent, formatUsd } from "@/lib/format";
 import { decimalUnitsToNumber } from "@/lib/units";
-import { marketCandidateStatusLabel } from "@/lib/market-candidate";
+import { marketCandidatePresentationLabel } from "@/lib/market-candidate";
 import { MarketSparkline } from "./MarketSparkline";
 import { useMarkets } from "./useMarkets";
 import styles from "./markets.module.css";
@@ -54,7 +54,7 @@ export function MarketsView() {
             <div className={styles.identity}>
               <AssetLogo name={candidate.name} symbol={candidate.symbol} src={candidate.logoUrl ?? undefined} size="md" />
               <div><strong>{candidate.symbol}</strong><span>{candidate.name}</span></div>
-              <StatusChip tone={candidate.status === "active" ? "solid" : "outline"}>{marketCandidateStatusLabel(candidate.status)}</StatusChip>
+              <StatusChip tone={candidate.status === "active" ? "solid" : "outline"}>{marketCandidatePresentationLabel(candidate.status, candidate.listingDate)}</StatusChip>
             </div>
             <div className={styles.price}>
               <span>Reference value</span>

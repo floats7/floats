@@ -12,6 +12,7 @@ import {
   type PublicConfigDto,
 } from "@/lib/api-client";
 import { executeBridge, quoteBridge, type BridgeQuote } from "@/lib/bridge-transactions";
+import { safeBridgeRetryUrl } from "@/lib/bridge-retry";
 import { useWallet } from "@/features/wallet/WalletProvider";
 import { useCrossChainBalances } from "./useCrossChainBalances";
 import styles from "./BridgeView.module.css";
@@ -253,6 +254,42 @@ export function BridgeView() {
         ) : null}
       </section>
 
+      <section className={styles.trustCard} aria-labelledby="bridge-trust-heading">
+        <div className={styles.sectionHeading}>
+          <div>
+            <p className="eyebrow">Trust and limitations</p>
+            <h2 id="bridge-trust-heading">What the route depends on</h2>
+          </div>
+          <StatusChip tone="outline">Public disclosure</StatusChip>
+        </div>
+        <dl className={styles.trustFacts}>
+          <div>
+            <dt>Canonical custody</dt>
+            <dd>Canonical fIPO and FLOATS remain locked in adapters on Robinhood Chain while OFT representations circulate on Zero.</dd>
+          </div>
+          <div>
+            <dt>Message security</dt>
+            <dd>Delivery depends on the configured LayerZero Endpoint, executor, required DVNs, peer contracts, and finality settings on both networks.</dd>
+          </div>
+          <div>
+            <dt>Operating controls</dt>
+            <dd>Governance can change bounded route configuration. A guardian can pause new outbound transfers, while only governance can unpause them.</dd>
+          </div>
+          <div>
+            <dt>Rate limits</dt>
+            <dd>Each token and direction has an independent onchain capacity. A transfer can be unavailable even when both networks are operating.</dd>
+          </div>
+          <div>
+            <dt>Mirrored NAV</dt>
+            <dd>Zero NAV is informational, can become stale, and never authorizes minting, redemption, options settlement, or vault accounting.</dd>
+          </div>
+          <div>
+            <dt>Activation policy</dt>
+            <dd>No route is enabled until peers, libraries, DVNs, executor, confirmations, roles, rate limits, and supply reconciliation pass verification.</dd>
+          </div>
+        </dl>
+      </section>
+
       <section className={styles.history} aria-labelledby="bridge-history-heading">
         <div className={styles.sectionHeading}>
           <div>
@@ -268,9 +305,13 @@ export function BridgeView() {
         {state.messages.length > 0 ? (
           <div className={styles.tableWrap}>
             <table>
-              <thead><tr><th>Message</th><th>Route</th><th>Amount</th><th>State</th><th>Updated</th></tr></thead>
+              <thead><tr><th>Message</th><th>Route</th><th>Amount</th><th>State</th><th>Updated</th><th>Action</th></tr></thead>
               <tbody>{state.messages.map((message) => {
                 const messageScanUrl = scanUrl(state.config, message);
+                const retryUrl = safeBridgeRetryUrl(
+                  message,
+                  state.config?.crossChainRoutes ?? EMPTY_ROUTES,
+                );
                 return (
                 <tr key={`${message.sourceEid}:${message.guid}`}>
                   <td>{messageScanUrl ? (
@@ -282,6 +323,11 @@ export function BridgeView() {
                   <td><code>{message.amountLocal}</code></td>
                   <td><StatusChip tone={message.state === "delivered" ? "solid" : "outline"}>{message.state}</StatusChip></td>
                   <td>{formatTime(message.updatedAt)}</td>
+                  <td>{retryUrl ? (
+                    <a className={styles.retryAction} href={retryUrl} target="_blank" rel="noreferrer">
+                      Review retry <Icon name="external-link" />
+                    </a>
+                  ) : <span className={styles.noAction}>Not available</span>}</td>
                 </tr>
                 );
               })}</tbody>

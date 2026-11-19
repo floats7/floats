@@ -29,6 +29,7 @@ export function CandidateMarketChart({ item }: { readonly item: MarketCandidateD
 
   const series = buildMarketSeries(history);
   const latest = history.at(-1);
+  const opening = history.at(0);
   return (
     <section className={styles.marketBlock} aria-labelledby="candidate-market-title">
       <div className={styles.marketHeading}>
@@ -42,6 +43,7 @@ export function CandidateMarketChart({ item }: { readonly item: MarketCandidateD
         />
       )}
       {loading && <p role="status">Checking public market data…</p>}
+      {opening && <p className={styles.marketNote}>{item.symbol} opened at {formatUsd(decimalUnitsToNumber(opening.valueUsd18, 18))} on Nasdaq. Source: Nasdaq public market data.</p>}
       <p className={styles.marketNote}>Reference equity data is informational. Onchain trading remains unavailable until the official Robinhood Stock Token, oracle and executable liquidity route are verified.</p>
     </section>
   );
