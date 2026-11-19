@@ -76,13 +76,13 @@ export async function verifyPendingMarketCandidateIdentities(
       );
       await recordAdditionalEvidence(config, candidate, "bytecode", comparison, observedAt, request);
       if (config.explorerUrl) {
-        const lineage = await compareDeploymentLineageWithReferences(
+        const lineage = await inspectDeploymentLineage(
           config.explorerUrl,
           candidate.detected_token_address,
           config.referenceTokenAddresses ?? [],
           request,
         );
-        await recordAdditionalEvidence(config, candidate, "deployment_lineage", lineage, observedAt, request);
+        await recordAdditionalEvidence(config, candidate, "deployer", lineage, observedAt, request);
       }
     }
     await updateCandidate(config, candidate, evidence, observedAt, request);
@@ -100,6 +100,28 @@ export async function verifyPendingMarketCandidateIdentities(
     if (evidence.passed) verified += 1;
   }
   return verified;
+}
+
+async function inspectDeploymentLineage(
+  explorerUrl: URL,
+  tokenAddress: string,
+  referenceTokenAddresses: readonly string[],
+  request: typeof globalThis.fetch,
+): Promise<unknown> {
+  try {
+    return await compareDeploymentLineageWithReferences(
+      explorerUrl,
+      tokenAddress,
+      referenceTokenAddresses,
+      request,
+    );
+  } catch (error) {
+    return {
+      passed: false,
+      available: false,
+      reason: error instanceof Error ? error.message : "Deployment lineage lookup failed",
+    };
+  }
 }
 
 async function recordAdditionalEvidence(

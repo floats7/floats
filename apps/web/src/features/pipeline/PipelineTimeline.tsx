@@ -9,7 +9,7 @@ import { Reveal } from "@/components/ui/Reveal";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { formatDate, formatMonthDay } from "@/lib/format";
 import { SPRING } from "@/lib/motion";
-import { marketCandidatePresentationLabel } from "@/lib/market-candidate";
+import { marketCandidatePresentationLabel, marketCandidatePublicSymbol } from "@/lib/market-candidate";
 import { EligibilityChecks } from "./EligibilityChecks";
 import styles from "./PipelineTimeline.module.css";
 import { useMarketCandidates } from "./useMarketCandidates";
@@ -38,13 +38,13 @@ export function PipelineTimeline() {
           <Reveal className={styles.card}>
             <div className={styles.head}>
               <div className={styles.identity}>
-                <AssetLogo name={item.name} symbol={item.symbol} src={item.logoUrl ?? undefined} size="md" />
+                <AssetLogo name={item.name} symbol={marketCandidatePublicSymbol(item)} src={item.logoUrl ?? undefined} size="md" />
                 <div>
-                <p className="eyebrow">{item.symbol}</p>
+                <p className="eyebrow">{marketCandidatePublicSymbol(item)}</p>
                 <h2 className={styles.name}>{item.name}</h2>
                 </div>
               </div>
-              <StatusChip tone={item.status === "active" ? "solid" : "outline"}>{marketCandidatePresentationLabel(item.status, item.listingDate)}</StatusChip>
+              <StatusChip tone={item.status === "active" ? "solid" : "outline"}>{marketCandidatePresentationLabel(item.status, item.listingDate, new Date(), item.ipoStage)}</StatusChip>
             </div>
             <p className={`${styles.dates} tabular`}>
               IPO {item.ipoDate ? formatDate(item.ipoDate) : "TBA"} <Separator /> Day 5 {item.eligibleFrom ? formatDate(item.eligibleFrom) : "TBA"}

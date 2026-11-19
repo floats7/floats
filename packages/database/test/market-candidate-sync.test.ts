@@ -98,7 +98,7 @@ test("sync does not rewrite an unchanged pending identity", async () => {
   assert.equal(requests.length, 2);
 });
 
-test("approved candidates keep refreshing official metadata and alert on a new trading halt", async () => {
+test("legacy-approved candidates keep refreshing official metadata and alert on a new trading halt", async () => {
   const tokenAddress = `0x${"1".repeat(40)}`;
   const requests: Array<{ method: string; body: Record<string, unknown> | null }> = [];
   const alerts: unknown[] = [];
@@ -110,7 +110,7 @@ test("approved candidates keep refreshing official metadata and alert on a new t
       if (url.pathname.startsWith("/rhj/prices/")) return Response.json({ quotes: [{ tokenSymbol: "ANT", isTradingHalt: true, generatedAt: "2026-11-19T13:00:00Z" }] });
       return Response.json({ assets: [officialAsset("ANT", tokenAddress)] });
     }
-    if (method === "GET") return Response.json([{ candidate_id: "anthropic", symbol: "ANT", lifecycle_status: "active", token_address: tokenAddress, identity_approval_status: "approved", trading_halted: false }]);
+    if (method === "GET") return Response.json([{ candidate_id: "anthropic", symbol: "ANT", lifecycle_status: "active", token_address: tokenAddress, identity_approval_status: "legacy_approved", trading_halted: false }]);
     return new Response(null, { status: 204 });
   };
 

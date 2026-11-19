@@ -28,7 +28,17 @@ export function marketCandidatePresentationLabel(
   status: MarketCandidateStatus,
   listingDate: string | null,
   now = new Date(),
+  ipoStage?: import("./api-client").MarketCandidateDto["ipoStage"],
 ): string {
+  if (ipoStage === "confidential_filed") return "Filed · no date";
+  if (ipoStage === "public_s1") return "Public filing";
+  if (ipoStage === "roadshow") return "Roadshow";
+  if (ipoStage === "priced") return "Priced";
+  if (ipoStage === "withdrawn") return "Withdrawn";
   if (status === "listing_expected" && isDebutingToday(listingDate, now)) return "Debuts today";
   return marketCandidateStatusLabel(status);
+}
+
+export function marketCandidatePublicSymbol(item: Pick<import("./api-client").MarketCandidateDto, "symbol" | "tickerAnnounced">): string {
+  return item.tickerAnnounced === false ? "Ticker TBA" : item.symbol;
 }

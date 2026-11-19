@@ -9,6 +9,12 @@ const COLUMNS = [
   { title: "Protocol", paths: ["/", "/pipeline", "/methodology"] },
 ] as const;
 
+const TRUST_LINKS = [
+  { href: "/security", label: "Security" },
+  { href: "/privacy", label: "Privacy" },
+  { href: "/terms", label: "Terms" },
+] as const;
+
 export function SiteFooter() {
   return (
     <footer className={styles.footer} data-tone="paper">
@@ -38,6 +44,18 @@ export function SiteFooter() {
             </ul>
           </nav>
         ))}
+        <nav aria-label="Trust and legal">
+          <p className={styles.heading}>Trust</p>
+          <ul>
+            {TRUST_LINKS.map((link) => (
+              <li key={link.href}>
+                <Link href={link.href} className={styles.link}>
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
         <div className={styles.network}>
           <p>Deployed on Robinhood Chain</p>
           <XLink showHandle />

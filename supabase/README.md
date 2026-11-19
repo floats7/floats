@@ -17,8 +17,13 @@ isolated production project.
 Generate database types only from the applied remote schema:
 
 ```bash
-supabase gen types typescript --schema public --remote="$SUPABASE_DB_URL"
+npm run generate:database-types -- .env.testnet
 ```
+
+The wrapper reads `SUPABASE_DB_URL` from the selected ignored environment file, invokes the
+generator without printing credentials, validates the generated artifact, and replaces the
+tracked type file atomically. Use `.env.mainnet` only after the same reviewed migrations have
+been applied there.
 
 The generated artifact lives at `packages/database/src/database.generated.ts`; application code
 must derive database row/view types from it instead of declaring duplicate handwritten shapes.

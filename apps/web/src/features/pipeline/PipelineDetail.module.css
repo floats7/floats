@@ -120,6 +120,62 @@
   font-size: var(--text-xl);
 }
 
+.ipoTimeline {
+  display: grid;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-5);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-md);
+  background: var(--surface-base);
+}
+
+.ipoTimelineHeading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.ipoTimelineHeading a {
+  color: var(--text-strong);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-decoration: underline;
+  text-underline-offset: 0.25rem;
+}
+
+.ipoStages {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.ipoStage {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  min-height: 7rem;
+  padding: var(--space-4);
+  border: 1px solid var(--line-soft);
+  background: var(--surface-raised);
+}
+
+.ipoStage[data-state="current"] {
+  border-color: var(--text-strong);
+}
+
+.ipoStage[data-state="pending"] strong {
+  color: var(--text-muted);
+}
+
+.disclaimer {
+  max-width: 52rem;
+  margin-bottom: var(--space-4);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
 .marketBlock {
   display: grid;
   gap: var(--space-5);
@@ -145,6 +201,12 @@
 .marketNote {
   max-width: 52rem;
   color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.evidenceWarning {
+  max-width: 52rem;
+  color: var(--status-warning, #d6a84b);
   font-size: var(--text-sm);
 }
 
@@ -254,6 +316,14 @@
 }
 
 @media (max-width: 720px) {
+  .ipoStages {
+    grid-template-columns: 1fr;
+  }
+
+  .ipoStage {
+    min-height: auto;
+  }
+
   .signoffHeader {
     display: none;
   }

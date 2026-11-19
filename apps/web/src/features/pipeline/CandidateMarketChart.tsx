@@ -7,6 +7,7 @@ import { floatApi, type MarketCandidateDto, type MarketHistoryPointDto } from "@
 import { formatUsd } from "@/lib/format";
 import { decimalUnitsToNumber } from "@/lib/units";
 import { buildMarketSeries } from "@/features/markets/market-history";
+import { marketCandidatePublicSymbol } from "@/lib/market-candidate";
 import styles from "./PipelineDetail.module.css";
 
 export function CandidateMarketChart({ item }: { readonly item: MarketCandidateDto }) {
@@ -30,10 +31,11 @@ export function CandidateMarketChart({ item }: { readonly item: MarketCandidateD
   const series = buildMarketSeries(history);
   const latest = history.at(-1);
   const opening = history.at(0);
+  const publicSymbol = marketCandidatePublicSymbol(item);
   return (
     <section className={styles.marketBlock} aria-labelledby="candidate-market-title">
       <div className={styles.marketHeading}>
-        <div><p className="eyebrow">Public equity market</p><h2 id="candidate-market-title">{item.symbol} price history</h2></div>
+        <div><p className="eyebrow">Public equity market</p><h2 id="candidate-market-title">{publicSymbol} price history</h2></div>
         <strong>{latest ? formatUsd(decimalUnitsToNumber(latest.valueUsd18, 18)) : "Awaiting first trade"}</strong>
       </div>
       {series.ALL.length >= 2 ? <RangeChart seriesByRange={series} /> : (
@@ -43,7 +45,7 @@ export function CandidateMarketChart({ item }: { readonly item: MarketCandidateD
         />
       )}
       {loading && <p role="status">Checking public market data…</p>}
-      {opening && <p className={styles.marketNote}>{item.symbol} opened at {formatUsd(decimalUnitsToNumber(opening.valueUsd18, 18))} on Nasdaq. Source: Nasdaq public market data.</p>}
+      {opening && item.exchange && <p className={styles.marketNote}>{publicSymbol} opened at {formatUsd(decimalUnitsToNumber(opening.valueUsd18, 18))} on {item.exchange}. Source: public market data.</p>}
       <p className={styles.marketNote}>Reference equity data is informational. Onchain trading remains unavailable until the official Robinhood Stock Token, oracle and executable liquidity route are verified.</p>
     </section>
   );

@@ -127,6 +127,9 @@ export async function getMarketCandidateHistory(
     const candidates = await context.readModels.listMarketCandidates(signal);
     const candidate = candidates.find((item) => item.candidate_id === candidateId);
     if (!candidate) return json({ error: { code: "MARKET_CANDIDATE_NOT_FOUND" } }, 404, PUBLIC_CACHE);
+    if (candidate.ticker_announced === false || (candidate.ipo_stage != null && candidate.ipo_stage !== "trading")) {
+      return json({ data: [] }, 200, "public, max-age=300, stale-while-revalidate=900");
+    }
     const history = await context.candidateMarketData.history(candidate.symbol, limit, signal);
     return json({ data: history }, 200, "public, max-age=60, stale-while-revalidate=300");
   } catch {
@@ -319,7 +322,7 @@ export async function getAssets(context: ApiContext, signal?: AbortSignal): Prom
 export async function getMarketCandidates(context: ApiContext, signal?: AbortSignal): Promise<Response> {
   try {
     const candidates = await context.readModels.listMarketCandidates(signal);
-    return json({ data: candidates.map((item) => ({
+    return json({ data: orderMarketCandidates(candidates).map((item) => ({
       id: item.candidate_id,
       symbol: item.symbol,
       name: item.company_name,
@@ -327,6 +330,14 @@ export async function getMarketCandidates(context: ApiContext, signal?: AbortSig
       ipoDate: item.ipo_date,
       listingDate: item.expected_listing_date,
       eligibleFrom: item.eligible_from,
+      ipoStage: item.ipo_stage ?? null,
+      tickerAnnounced: item.ticker_announced ?? true,
+      exchange: item.exchange ?? null,
+      priceRangeLow: item.price_range_low ?? null,
+      priceRangeHigh: item.price_range_high ?? null,
+      ipoPrice: item.ipo_price ?? null,
+      stageSourceUrl: item.stage_source_url ?? null,
+      stageUpdatedAt: item.stage_updated_at ?? null,
       sourceUrl: item.source_url,
       tokenAddress: item.token_address,
       officialTokenName: item.official_token_name,
@@ -370,6 +381,24 @@ export async function getMarketCandidates(context: ApiContext, signal?: AbortSig
   } catch {
     return internalError();
   }
+}
+
+function orderMarketCandidates<T extends { readonly ipo_stage?: string | null }>(candidates: readonly T[]): readonly T[] {
+  const rank: Readonly<Record<string, number>> = {
+    trading: 6,
+    priced: 5,
+    roadshow: 4,
+    public_s1: 3,
+    confidential_filed: 2,
+    withdrawn: 0,
+  };
+  return candidates
+    .map((item, index) => ({ item, index }))
+    .sort((left, right) => {
+      const stageDifference = (rank[right.item.ipo_stage ?? ""] ?? 1) - (rank[left.item.ipo_stage ?? ""] ?? 1);
+      return stageDifference || left.index - right.index;
+    })
+    .map(({ item }) => item);
 }
 
 export async function getMarketCandidateReadiness(

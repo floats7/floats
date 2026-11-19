@@ -3,9 +3,10 @@ import type { MarketCandidateOperationalAlert } from "../../../packages/database
 import type { CandidateOracleAlert } from "../../../packages/database/src/market-candidate-oracle-sync.ts";
 import type { CandidateLiquidityAlert } from "../../../packages/database/src/market-candidate-liquidity-sync.ts";
 import type { CandidateOptionsRiskAlert } from "../../../packages/database/src/market-candidate-options-risk-sync.ts";
+import type { MarketCandidateFilingAlert } from "../../../packages/database/src/market-candidate-filing-sync.ts";
 import { createHash } from "node:crypto";
 
-type CandidateAlert = MarketCandidateIdentityAlert | MarketCandidateOperationalAlert | CandidateOracleAlert | CandidateLiquidityAlert | CandidateOptionsRiskAlert;
+type CandidateAlert = MarketCandidateIdentityAlert | MarketCandidateOperationalAlert | CandidateOracleAlert | CandidateLiquidityAlert | CandidateOptionsRiskAlert | MarketCandidateFilingAlert;
 
 export interface CandidateAlertDelivery {
   readonly telegramBotToken?: string;
@@ -70,6 +71,9 @@ async function persistAlert(config: CandidateAlertDelivery, alert: CandidateAler
 }
 
 function alertFingerprintInput(alert: CandidateAlert): object {
+  if (alert.code === "PUBLIC_S1_DETECTED") {
+    return { code: alert.code, candidateId: alert.candidateId, cik: alert.cik, accessionNumber: alert.accessionNumber };
+  }
   if (alert.code === "SUSPECTED_FAKE_STOCK_TOKEN") {
     return { code: alert.code, candidateId: alert.candidateId, tokenAddress: alert.tokenAddress.toLowerCase(), failures: [...alert.failures].sort() };
   }
@@ -107,6 +111,9 @@ async function loadLaunchSnapshot(config: CandidateAlertDelivery, candidateId: s
 }
 
 export function formatCandidateAlert(alert: CandidateAlert): string {
+  if (alert.code === "PUBLIC_S1_DETECTED") {
+    return ["ACTION REQUIRED: public S-1 detected", `Candidate: ${alert.candidateId}`, `Registrant: ${alert.registrantName}`, `CIK: ${alert.cik}`, `Form: ${alert.formType}`, `Accession: ${alert.accessionNumber}`, `Source: ${alert.sourceUrl}`, "Stage promotion requires operator review."].join("\n");
+  }
   if (alert.code === "OFFICIAL_TRADING_HALTED") {
     return [
       "CRITICAL: official Stock Token trading halted",

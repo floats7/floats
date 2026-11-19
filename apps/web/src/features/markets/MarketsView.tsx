@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { formatPercent, formatUsd } from "@/lib/format";
 import { decimalUnitsToNumber } from "@/lib/units";
-import { marketCandidatePresentationLabel } from "@/lib/market-candidate";
+import { marketCandidatePresentationLabel, marketCandidatePublicSymbol } from "@/lib/market-candidate";
 import { MarketSparkline } from "./MarketSparkline";
 import { useMarkets } from "./useMarkets";
 import styles from "./markets.module.css";
@@ -52,9 +52,9 @@ export function MarketsView() {
         {candidates.map((candidate) => (
           <Link key={candidate.id} href={`/pipeline/${candidate.id}`} className={styles.card}>
             <div className={styles.identity}>
-              <AssetLogo name={candidate.name} symbol={candidate.symbol} src={candidate.logoUrl ?? undefined} size="md" />
-              <div><strong>{candidate.symbol}</strong><span>{candidate.name}</span></div>
-              <StatusChip tone={candidate.status === "active" ? "solid" : "outline"}>{marketCandidatePresentationLabel(candidate.status, candidate.listingDate)}</StatusChip>
+              <AssetLogo name={candidate.name} symbol={marketCandidatePublicSymbol(candidate)} src={candidate.logoUrl ?? undefined} size="md" />
+              <div><strong>{marketCandidatePublicSymbol(candidate)}</strong><span>{candidate.name}</span></div>
+              <StatusChip tone={candidate.status === "active" ? "solid" : "outline"}>{marketCandidatePresentationLabel(candidate.status, candidate.listingDate, new Date(), candidate.ipoStage)}</StatusChip>
             </div>
             <div className={styles.price}>
               <span>Reference value</span>

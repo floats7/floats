@@ -118,7 +118,7 @@ export async function syncOfficialMarketCandidates(config: MarketCandidateSyncCo
     const asset = bySymbol.get(candidate.symbol.toUpperCase());
     const deployment = asset?.deployments.find((item) => item.chainId === config.chainId);
     if (!asset || !deployment || asset.status !== "ASSET_STATUS_ACTIVE") continue;
-    if (candidate.identity_approval_status === "approved") {
+    if (isApprovedIdentity(candidate.identity_approval_status)) {
       if (candidate.token_address?.toLowerCase() !== deployment.contractAddress.toLowerCase()) continue;
       await refreshApprovedCandidate(config, candidate, asset, deployment.contractAddress, request);
       updated += 1;
@@ -185,7 +185,7 @@ async function refreshApprovedCandidate(
     chain_id: `eq.${config.chainId}`,
     candidate_id: `eq.${candidate.candidate_id}`,
     token_address: `eq.${tokenAddress.toLowerCase()}`,
-    identity_approval_status: "eq.approved",
+    identity_approval_status: "in.(approved,legacy_approved)",
   }).toString();
   const update = await request(updateUrl, {
     method: "PATCH",
@@ -216,6 +216,10 @@ async function refreshApprovedCandidate(
       observedAt,
     });
   }
+}
+
+function isApprovedIdentity(status: string | undefined): boolean {
+  return status === "approved" || status === "legacy_approved";
 }
 
 async function readOfficialQuote(

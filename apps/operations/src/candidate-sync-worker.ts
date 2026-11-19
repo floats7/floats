@@ -5,12 +5,21 @@ import { discoverCandidateOracleRoutes, parseCandidateOracleRoutes, syncCandidat
 import { parseCandidateOptionsRiskRoutes, syncCandidateOptionsRisk } from "../../../packages/database/src/market-candidate-options-risk-sync.ts";
 import { createCandidateAlertDelivery } from "./candidate-alerts.ts";
 import { scanMarketCandidateImpostors } from "../../../packages/database/src/market-candidate-impostor-scan.ts";
+import { parseCandidateFilingRoutes, syncCandidateFilings } from "../../../packages/database/src/market-candidate-filing-sync.ts";
 
 const environment = required("APP_ENV");
 if (environment !== "testnet" && environment !== "mainnet") throw new Error("APP_ENV is invalid");
 const chainId = integer("CHAIN_ID", 1);
 const mode = candidateSyncMode(process.env.MARKET_CANDIDATE_SYNC_MODE);
 const intervalMs = integer("MARKET_CANDIDATE_SYNC_INTERVAL_MS", 15_000, modeInterval(mode));
+const onAlert = createCandidateAlertDelivery({
+  telegramBotToken: process.env.CANDIDATE_ALERT_TELEGRAM_BOT_TOKEN?.trim(),
+  telegramChatId: process.env.CANDIDATE_ALERT_TELEGRAM_CHAT_ID?.trim(),
+  databaseUrl: new URL(required("SUPABASE_URL")),
+  secretKey: required("SUPABASE_SECRET_KEY"),
+  environment,
+  chainId,
+});
 const config = {
   databaseUrl: new URL(required("SUPABASE_URL")),
   secretKey: required("SUPABASE_SECRET_KEY"),
@@ -22,16 +31,12 @@ const config = {
   oracleRoutes: parseCandidateOracleRoutes(process.env.MARKET_CANDIDATE_ORACLE_ROUTES_JSON),
   optionsRiskRoutes: parseCandidateOptionsRiskRoutes(process.env.MARKET_CANDIDATE_OPTIONS_RISK_ROUTES_JSON),
   referenceTokenAddresses: parseReferenceTokenAddresses(process.env.MARKET_CANDIDATE_REFERENCE_TOKEN_ADDRESSES_JSON),
-  onAlert: createCandidateAlertDelivery({
-    telegramBotToken: process.env.CANDIDATE_ALERT_TELEGRAM_BOT_TOKEN?.trim(),
-    telegramChatId: process.env.CANDIDATE_ALERT_TELEGRAM_CHAT_ID?.trim(),
-    databaseUrl: new URL(required("SUPABASE_URL")),
-    secretKey: required("SUPABASE_SECRET_KEY"),
-    environment,
-    chainId,
-  }),
+  onAlert,
 } as const;
 const chainlinkFeedDirectoryUrl = optionalHttpsUrl("CHAINLINK_FEED_DIRECTORY_URL");
+const filingRoutes = parseCandidateFilingRoutes(process.env.MARKET_CANDIDATE_SEC_FILINGS_JSON);
+const secUserAgent = process.env.SEC_USER_AGENT?.trim();
+if (filingRoutes.length > 0 && !secUserAgent) throw new Error("SEC_USER_AGENT is required when SEC filing monitoring is configured");
 
 let stopping = false;
 let wake: (() => void) | undefined;
@@ -54,7 +59,10 @@ while (!stopping) {
     const liquidityReady = await syncCandidateLiquidity(config);
     const optionsRiskWarnings = await syncCandidateOptionsRisk(config);
     const listingsUpdated = await syncListedMarketCandidates(config);
-    console.log(JSON.stringify({ event: "candidate_sync_completed", environment, chainId, officialAssetsUpdated, interfacesVerified, suspectedImpostors, oraclesReady, liquidityReady, optionsRiskWarnings, listingsUpdated }));
+    const publicFilingsDetected = filingRoutes.length > 0
+      ? await syncCandidateFilings({ ...config, filingRoutes, secUserAgent: secUserAgent!, onAlert })
+      : 0;
+    console.log(JSON.stringify({ event: "candidate_sync_completed", environment, chainId, officialAssetsUpdated, interfacesVerified, suspectedImpostors, oraclesReady, liquidityReady, optionsRiskWarnings, listingsUpdated, publicFilingsDetected }));
     consecutiveFailures = 0;
   } catch (error) {
     consecutiveFailures += 1;

@@ -6,6 +6,7 @@ import { buildMarketSeries } from "@/features/markets/market-history";
 import { useMarkets } from "@/features/markets/useMarkets";
 import { decimalUnitsToNumber } from "@/lib/units";
 import type { MarketHistoryPointDto } from "@/lib/api-client";
+import { marketCandidatePublicSymbol } from "@/lib/market-candidate";
 
 export interface HomeMarketItem {
   readonly id: string;
@@ -45,7 +46,7 @@ export function HomeMarketUniverseProvider({ children }: { readonly children: Re
       .filter((candidate) => !finalizedSymbols.has(candidate.symbol.toUpperCase()))
       .map((candidate): HomeMarketItem => toHomeMarketItem({
         id: candidate.id,
-        symbol: candidate.symbol,
+        symbol: marketCandidatePublicSymbol(candidate),
         name: candidate.name,
         priceUsd18: null,
         history: historyByMarketId[candidate.id],

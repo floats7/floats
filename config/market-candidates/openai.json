@@ -1,0 +1,28 @@
+[
+  {
+    "id": "openai",
+    "symbol": "OPENAI",
+    "name": "OpenAI",
+    "status": "upcoming",
+    "ipoDate": null,
+    "listingDate": null,
+    "eligibleFrom": null,
+    "sourceUrl": "https://openai.com/index/openai-submits-confidential-s-1/",
+    "tokenAddress": null,
+    "logoUrl": "https://openai.com/favicon.svg",
+    "tokenLive": false,
+    "oracleReady": false,
+    "liquidityReady": false,
+    "governanceApproved": false,
+    "disabledReason": "Confidential draft registration statement submitted. No public filing, ticker, exchange, or listing date has been announced.",
+    "ipoStage": "confidential_filed",
+    "tickerAnnounced": false,
+    "exchange": null,
+    "priceRangeLow": null,
+    "priceRangeHigh": null,
+    "ipoPrice": null,
+    "stageSourceUrl": "https://openai.com/index/openai-submits-confidential-s-1/",
+    "stageUpdatedAt": "2026-11-19T15:00:00Z",
+    "impostorAliases": ["OpenAI", "OAI", "ChatGPT"]
+  }
+]

@@ -69,7 +69,7 @@ export class MarketCatalog {
     const currentAddresses = new Set(currentAssets.map((asset) => asset.token_address.toLowerCase()));
     const executableCandidates = candidates.filter((candidate) => candidate.token_address
       && candidate.token_live
-      && candidate.identity_approval_status === "approved"
+      && isApprovedIdentity(candidate.identity_approval_status)
       && !currentAddresses.has(candidate.token_address.toLowerCase()));
     const metadata = await Promise.all([
       this.metadata.read(this.config.vaultAddress),
@@ -210,7 +210,7 @@ export class MarketCatalog {
         ? "Official market capability is unavailable"
         : candidate.pending_multiplier && candidate.pending_multiplier !== candidate.current_multiplier
           ? "Official token multiplier change is pending"
-        : !candidate.token_live || candidate.identity_approval_status !== "approved"
+        : !candidate.token_live || !isApprovedIdentity(candidate.identity_approval_status)
           ? "Canonical token identity is not approved"
           : undefined;
     const spotBlocker = executionBlocker
@@ -254,6 +254,10 @@ export class MarketCatalog {
       chartKind: "price",
     };
   }
+}
+
+function isApprovedIdentity(status: string | null | undefined): boolean {
+  return status === "approved" || status === "legacy_approved";
 }
 
 function groupSeries(series: readonly OptionsSeriesReadModel[]): Map<string, readonly OptionsSeriesReadModel[]> {

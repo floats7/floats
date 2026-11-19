@@ -189,6 +189,14 @@ export interface MarketCandidateReadModel {
   readonly official_token_detected_at: string | null;
   readonly public_available_at: string | null;
   readonly publication_sla_seconds: number | null;
+  readonly ipo_stage?: "confidential_filed" | "public_s1" | "roadshow" | "priced" | "trading" | "withdrawn" | null;
+  readonly ticker_announced?: boolean;
+  readonly exchange?: string | null;
+  readonly price_range_low?: string | null;
+  readonly price_range_high?: string | null;
+  readonly ipo_price?: string | null;
+  readonly stage_source_url?: string | null;
+  readonly stage_updated_at?: string | null;
 }
 
 export interface MarketCandidateSignoffReadModel {
@@ -254,7 +262,7 @@ export class ReadModelRepository {
 
   public listMarketCandidates(signal?: AbortSignal): Promise<readonly MarketCandidateReadModel[]> {
     const query = this.scopedQuery(
-      "candidate_id,symbol,company_name,lifecycle_status,ipo_date,expected_listing_date,eligible_from,source_url,token_address,asset_uid,identity_approval_status,identity_approved_at,official_token_name,token_decimals,current_multiplier,pending_multiplier,trading_capabilities,official_metadata_observed_at,trading_halted,official_quote_generated_at,logo_url,token_live,oracle_ready,official_feed_address,oracle_healthy_since,oracle_last_price_18,oracle_last_failure,liquidity_ready,dex_reference_price_18,liquidity_observed_at,governance_approved,spot_paused,options_paused,options_exposure_warning,product_pause_reason,product_control_updated_at,disabled_reason,last_checked_at,official_token_detected_at,public_available_at,publication_sla_seconds",
+      "candidate_id,symbol,company_name,lifecycle_status,ipo_date,expected_listing_date,eligible_from,source_url,token_address,asset_uid,identity_approval_status,identity_approved_at,official_token_name,token_decimals,current_multiplier,pending_multiplier,trading_capabilities,official_metadata_observed_at,trading_halted,official_quote_generated_at,logo_url,token_live,oracle_ready,official_feed_address,oracle_healthy_since,oracle_last_price_18,oracle_last_failure,liquidity_ready,dex_reference_price_18,liquidity_observed_at,governance_approved,spot_paused,options_paused,options_exposure_warning,product_pause_reason,product_control_updated_at,disabled_reason,last_checked_at,official_token_detected_at,public_available_at,publication_sla_seconds,ipo_stage,ticker_announced,exchange,price_range_low,price_range_high,ipo_price,stage_source_url,stage_updated_at",
     );
     query.set("order", "expected_listing_date.desc.nullslast,symbol.asc");
     query.set("limit", "500");

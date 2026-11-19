@@ -58,7 +58,7 @@ export function OptionsPortfolio({ embedded = false }: { readonly embedded?: boo
       ) : portfolio === undefined ? (
         <EmptyState
           title="Verify wallet data"
-          description="Your wallet is connected. One read-only signature unlocks private history and positions for this wallet session."
+          description="Your wallet is connected. An optional, five-minute signature proves wallet ownership for private records. It cannot submit transactions, approve tokens or spend funds."
           action={<Button onClick={authorize} loading={walletDataStatus === "loading"}>Verify wallet data</Button>}
         />
       ) : (

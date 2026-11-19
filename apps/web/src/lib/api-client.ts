@@ -324,6 +324,14 @@ export interface MarketCandidateDto {
   readonly ipoDate: string | null;
   readonly listingDate: string | null;
   readonly eligibleFrom: string | null;
+  readonly ipoStage: "confidential_filed" | "public_s1" | "roadshow" | "priced" | "trading" | "withdrawn" | null;
+  readonly tickerAnnounced: boolean;
+  readonly exchange: string | null;
+  readonly priceRangeLow: string | null;
+  readonly priceRangeHigh: string | null;
+  readonly ipoPrice: string | null;
+  readonly stageSourceUrl: string | null;
+  readonly stageUpdatedAt: string | null;
   readonly tokenAddress: string | null;
   readonly officialTokenName: string | null;
   readonly tokenDecimals: number | null;

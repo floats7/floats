@@ -7,7 +7,7 @@ const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${development ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https:",
+  "img-src 'self' data: blob: https://www.anthropic.com https://anthropic.com https://openai.com https://www.openai.com https://www.spacex.com https://static.figma.com https://www.navan.com https://navan.com https://cdn.sanity.io https://cdn.prod.website-files.com https://fireflyspace.com https://www.google.com https://t0.gstatic.com https://cdn.robinhood.com",
   "font-src 'self' data:",
   `connect-src 'self'${apiOrigin ? ` ${apiOrigin}` : ""} https://*.walletconnect.com wss://*.walletconnect.com https://*.reown.com wss://*.reown.com https://*.web3modal.org`,
   "object-src 'none'",

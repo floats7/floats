@@ -8,12 +8,13 @@ import type { EligibilityChecks as Checks } from "@/data/types";
 import type { MarketCandidateDto, MarketCandidateReadinessDto } from "@/lib/api-client";
 import { addDays } from "@/lib/dates";
 import { formatDate, formatMonthDay } from "@/lib/format";
-import { marketCandidatePresentationLabel } from "@/lib/market-candidate";
+import { marketCandidatePresentationLabel, marketCandidatePublicSymbol } from "@/lib/market-candidate";
 import { isDebutingToday } from "@/lib/us-market-clock";
 import { EligibilityChecks } from "./EligibilityChecks";
 import { CandidateMarketChart } from "./CandidateMarketChart";
 import { CandidateContractIdentity } from "./CandidateContractIdentity";
 import { ListingCountdown } from "./ListingCountdown";
+import { IpoStageTimeline } from "./IpoStageTimeline";
 import { TradingCapabilities } from "./TradingCapabilities";
 import styles from "./PipelineDetail.module.css";
 
@@ -34,6 +35,7 @@ const STAGES = (item: MarketCandidateDto) => [
 export function PipelineDetail({ item, readiness }: { item: MarketCandidateDto; readiness: MarketCandidateReadinessDto | null }) {
   const ready = Object.values(item.checks).every(Boolean);
   const debutsToday = isDebutingToday(item.listingDate);
+  const publicSymbol = marketCandidatePublicSymbol(item);
 
   return (
     <div className={`container ${styles.page}`}>
@@ -43,21 +45,23 @@ export function PipelineDetail({ item, readiness }: { item: MarketCandidateDto; 
           Pipeline
         </Link>
         <div className={styles.titleRow}>
-          <AssetLogo name={item.name} symbol={item.symbol} src={item.logoUrl ?? undefined} size="lg" />
+          <AssetLogo name={item.name} symbol={publicSymbol} src={item.logoUrl ?? undefined} size="lg" />
           <div className={styles.identityCopy}>
-            <p className="eyebrow">{item.symbol}</p>
+            <p className="eyebrow">{publicSymbol}</p>
             <h1 className={styles.title}>{item.name}</h1>
           </div>
-          <StatusChip tone={item.status === "active" ? "solid" : "outline"}>{marketCandidatePresentationLabel(item.status, item.listingDate)}</StatusChip>
+          <StatusChip tone={item.status === "active" ? "solid" : "outline"}>{marketCandidatePresentationLabel(item.status, item.listingDate, new Date(), item.ipoStage)}</StatusChip>
         </div>
         <p className={styles.lede}>
           {ready
             ? item.governanceApproved
               ? "The index governance change is confirmed onchain."
               : "Market checks pass. Index inclusion still requires fifth-trading-day eligibility and confirmed onchain governance execution."
-            : item.eligibleFrom
+            : item.ipoStage === "confidential_filed"
+              ? "Confidential filing submitted. Public filing, ticker, exchange and date remain to be announced."
+              : item.eligibleFrom
               ? `No earlier than ${formatMonthDay(item.eligibleFrom)}, once every check below passes.`
-              : "Past its fifth trading day. Waiting for the remaining checks to pass."}
+              : "The listing and eligibility schedule is awaiting official confirmation."}
         </p>
       </Reveal>
 
@@ -67,12 +71,14 @@ export function PipelineDetail({ item, readiness }: { item: MarketCandidateDto; 
         <Reveal className={styles.launchNotice}>
           <div>
             <p className="eyebrow">Listing watch active</p>
-            <strong>{item.symbol} debuts on Nasdaq today</strong>
+            <strong>{publicSymbol} debuts on {item.exchange ?? "the announced exchange"} today</strong>
           </div>
           <ListingCountdown listingDate={item.listingDate} />
           <p>First-day prices may move sharply. Public-equity data is informational; onchain actions remain gated by canonical token, oracle, and liquidity verification.</p>
         </Reveal>
       )}
+
+      <IpoStageTimeline item={item} />
 
       <Reveal delay={0.06} className={styles.block}>
         <CandidateMarketChart item={item} />
@@ -143,6 +149,9 @@ export function PipelineDetail({ item, readiness }: { item: MarketCandidateDto; 
       )}
 
       <Reveal delay={0.16}>
+        {!item.tickerAnnounced && (
+          <p className={styles.disclaimer}>OpenAI has not announced an IPO date. Floats lists only a canonically verified Robinhood Stock Token once one exists. Floats is not affiliated with OpenAI.</p>
+        )}
         <LinkButton href="/methodology" variant="outline">
           Read the entry rules
         </LinkButton>

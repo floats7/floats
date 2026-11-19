@@ -28,6 +28,7 @@ const excludedDirectories = new Set([
   "docs",
   "deployments",
   "node_modules",
+  "local-only",
   "out",
   "temp",
   "tmp",
@@ -137,6 +138,7 @@ function verifyIgnorePolicy(): void {
     ".agents/",
     ".claude/",
     ".aws/",
+    "/scripts/local-only/",
   ];
   for (const rule of requiredRules) {
     if (!ignoreFile.split(/\r?\n/).includes(rule)) {

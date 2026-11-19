@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { StatusIcon } from "@/components/ui/StatusIcon";
@@ -27,7 +28,13 @@ export function ConnectModal({ phase, onBrowserConnect, onWalletConnect, onCance
             <Button onClick={onBrowserConnect}>Browser wallet</Button>
             <Button variant="outline" onClick={onWalletConnect}>WalletConnect</Button>
           </div>
-          <p className={styles.note}>By connecting you agree to the terms of use. Floats never takes custody of your funds.</p>
+          <div className={styles.safetyNotice}>
+            <strong>Wallet safety</strong>
+            <p>Floats never asks for a seed phrase, private key or wallet password. Connecting does not authorize token transfers.</p>
+          </div>
+          <p className={styles.note}>
+            By connecting you agree to the <Link href="/terms" onClick={onClose}>Terms of Use</Link>. Review our <Link href="/security" onClick={onClose}>Security Policy</Link> before signing.
+          </p>
         </div>
       )}
 

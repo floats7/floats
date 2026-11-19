@@ -19,6 +19,7 @@ interface CandidateIdentity {
   readonly company_name: string;
   readonly detected_token_address: string | null;
   readonly token_address: string | null;
+  readonly impostor_aliases?: readonly string[];
 }
 
 interface SearchItem {
@@ -58,8 +59,12 @@ export async function scanMarketCandidateImpostors(config: MarketCandidateImpost
     for (const item of items) {
       const address = item.address_hash?.toLowerCase();
       if (item.type !== "token" || !address || !isAddress(address, { strict: false }) || canonical.has(address)) continue;
-      const symbolMatch = item.symbol?.trim().toUpperCase() === candidate.symbol.toUpperCase();
-      const nameMatch = item.name?.toLowerCase().includes(candidate.company_name.toLowerCase()) === true;
+      const aliases = [candidate.symbol, candidate.company_name, ...(candidate.impostor_aliases ?? [])]
+        .map((value) => value.trim().toLowerCase());
+      const discoveredSymbol = item.symbol?.trim().toLowerCase();
+      const discoveredName = item.name?.trim().toLowerCase();
+      const symbolMatch = Boolean(discoveredSymbol && aliases.includes(discoveredSymbol));
+      const nameMatch = Boolean(discoveredName && aliases.some((alias) => discoveredName.includes(alias)));
       if (!symbolMatch && !nameMatch) continue;
       const suspectKey = `${config.environment}:${config.chainId}:${candidate.candidate_id}:${address}`;
       if (seenSuspects.has(suspectKey)) continue;
@@ -133,7 +138,7 @@ async function searchRecentMintedTokens(rpcUrl: URL, request: typeof globalThis.
 async function readCandidates(config: MarketCandidateImpostorScanConfig, request: typeof globalThis.fetch): Promise<CandidateIdentity[]> {
   const url = new URL("/rest/v1/market_candidates", config.databaseUrl);
   url.search = new URLSearchParams({
-    select: "candidate_id,symbol,company_name,detected_token_address,token_address",
+    select: "candidate_id,symbol,company_name,detected_token_address,token_address,impostor_aliases",
     environment: `eq.${config.environment}`,
     chain_id: `eq.${config.chainId}`,
   }).toString();

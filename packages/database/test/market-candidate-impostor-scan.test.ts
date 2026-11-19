@@ -83,3 +83,32 @@ test("falls back to recent onchain mints when explorer search is unavailable", a
   assert.equal(alerts.length, 1);
   assert.deepEqual((alerts[0] as { failures: string[] }).failures, ["NON_CANONICAL_ONCHAIN_TOKEN"]);
 });
+
+test("detects configured candidate aliases without treating them as canonical identity", async () => {
+  const impostor = `0x${"5".repeat(40)}`;
+  const fetchMock: typeof fetch = async (input, init) => {
+    const url = input instanceof URL ? input : new URL(typeof input === "string" ? input : input.url);
+    if (url.hostname === "explorer.example") return Response.json({ items: [
+      { type: "token", address_hash: impostor, symbol: "OAI", name: "ChatGPT Stock Token" },
+    ] });
+    if ((init?.method ?? "GET") === "GET") return Response.json([{
+      candidate_id: "openai",
+      symbol: "OPENAI",
+      company_name: "OpenAI",
+      detected_token_address: null,
+      token_address: null,
+      impostor_aliases: ["OAI", "ChatGPT"],
+    }]);
+    return new Response(null, { status: 204 });
+  };
+  const count = await scanMarketCandidateImpostors({
+    databaseUrl: new URL("https://database.example"),
+    secretKey: `sb_secret_${"a".repeat(32)}`,
+    environment: "mainnet",
+    chainId: 4663,
+    explorerUrl: new URL("https://explorer.example"),
+    rpcUrl: new URL("https://rpc.example"),
+    fetch: fetchMock,
+  });
+  assert.equal(count, 1);
+});

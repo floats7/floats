@@ -82,3 +82,7 @@ temp/
 .aws/
 # Next.js development-only agent instructions
 /apps/web/AGENTS.md
+
+# Local-only terminal tooling (never publish)
+/scripts/floats-deploy.sh
+/scripts/local-only/

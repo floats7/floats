@@ -5,7 +5,7 @@ import { Icon } from "@/components/ui/Icon";
 import { AssetLogo } from "@/components/ui/AssetLogo";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { formatDate } from "@/lib/format";
-import { marketCandidateStatusLabel } from "@/lib/market-candidate";
+import { marketCandidatePresentationLabel, marketCandidatePublicSymbol } from "@/lib/market-candidate";
 import { useMarketCandidates } from "@/features/pipeline/useMarketCandidates";
 import styles from "./PipelineNext.module.css";
 
@@ -20,9 +20,10 @@ export function PipelineNext() {
         {candidates.slice(0, COUNT).map((item) => (
           <li key={item.id}>
             <Link href={`/pipeline/${item.id}`} className={styles.row}>
-              <AssetLogo name={item.name} symbol={item.symbol} src={item.logoUrl ?? undefined} size="sm" />
+              <AssetLogo name={item.name} symbol={marketCandidatePublicSymbol(item)} src={item.logoUrl ?? undefined} size="sm" />
               <span className={styles.name}>{item.name}</span>
-              <StatusChip tone="muted">{marketCandidateStatusLabel(item.status)}</StatusChip>
+              <span className={styles.symbol}>{marketCandidatePublicSymbol(item)}</span>
+              <StatusChip tone="muted">{marketCandidatePresentationLabel(item.status, item.listingDate, new Date(), item.ipoStage)}</StatusChip>
               <span className={`${styles.date} tabular`}>{item.eligibleFrom ? `Eligible ${formatDate(item.eligibleFrom)}` : "Eligibility TBA"}</span>
             </Link>
           </li>
