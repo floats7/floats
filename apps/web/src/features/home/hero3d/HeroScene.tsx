@@ -19,6 +19,8 @@ const RING_EXTENT = 3.4;
 const RING_FIT = 0.46;
 const MIN_SCALE = 0.3;
 const MAX_SCALE = 0.62;
+const DESKTOP_VERTICAL_OFFSET = 0;
+const MOBILE_VERTICAL_OFFSET = -0.5;
 
 interface HeroSceneProps {
   /** Whether the scene should render continuously. */
@@ -60,7 +62,7 @@ function Stage({ animate }: { animate: boolean }) {
     if (!group) return;
 
     const scroll = MathUtils.clamp(window.scrollY / size.height, 0, 1);
-    const targetY = scroll * 1.4;
+    const targetY = (wide ? DESKTOP_VERTICAL_OFFSET : MOBILE_VERTICAL_OFFSET) + scroll * 1.4;
     const ease = animate ? 1 - Math.exp(-POINTER_EASING * delta) : 1;
 
     group.position.y = MathUtils.lerp(group.position.y, targetY, ease);
@@ -79,7 +81,7 @@ function Stage({ animate }: { animate: boolean }) {
     <>
       <Environment />
       <ParticleField count={particleCount} opacityRef={particleOpacity} animate={animate} />
-      <group ref={rig}>
+      <group ref={rig} position={[0, wide ? DESKTOP_VERTICAL_OFFSET : MOBILE_VERTICAL_OFFSET, 0]}>
         {medalFaces && assetFaces && (
           <>
             <group ref={medal}>

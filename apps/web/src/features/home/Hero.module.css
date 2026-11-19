@@ -28,7 +28,7 @@
   display: grid;
   justify-items: center;
   align-content: start;
-  padding: 19dvh var(--gutter) 0;
+  padding: 9dvh var(--gutter) 0;
   text-align: center;
 }
 
@@ -82,7 +82,7 @@
 
 @media (max-width: 48rem) {
   .copy {
-    padding-top: 16dvh;
+    padding-top: 8dvh;
   }
 
   .name {

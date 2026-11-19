@@ -18,7 +18,10 @@ export const formatUsd = (value: number) => usd.format(value);
 
 export const formatUsdCompact = (value: number) => usdCompact.format(value);
 
-export const formatDate = (iso: string) => date.format(new Date(`${iso}T00:00:00Z`));
+export function formatDate(value: string): string {
+  const parsed = new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00Z` : value);
+  return Number.isNaN(parsed.getTime()) ? "Unavailable" : date.format(parsed);
+}
 
 export function formatNumber(value: number, digits = 2): string {
   return value.toLocaleString("en-US", {

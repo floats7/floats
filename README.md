@@ -2,6 +2,10 @@
   <img src="./assets/floats-banner.png" alt="Floats index constituents banner" width="100%" />
 </p>
 
+```text
+CA: 0x50187d5b6fdd6d39e89f30a161d77a6956fef437
+```
+
 <div align="center">
 
 # Floats
@@ -12,6 +16,7 @@
 [![Follow Floats on X](https://img.shields.io/badge/Follow_on_X-@floats37-000000?style=for-the-badge&logo=x)](https://x.com/floats37)
 
 </div>
+
 
 Floats is an onchain index protocol designed to provide transparent, rules-based exposure to tokenized shares of recently public companies. The protocol combines an ERC-4626 vault, deterministic index governance, oracle-based valuation, constrained execution, and independently indexed public data.
 
