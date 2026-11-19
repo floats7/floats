@@ -4,6 +4,9 @@ import { privateKeyToAccount } from "viem/accounts";
 
 import type { ApiContext } from "../src/context.ts";
 import {
+  getBridgeMessage,
+  getBridgeMessages,
+  getBridgeNav,
   getLatestIndexState,
   getMarket,
   getMarketCandidates,
@@ -39,6 +42,7 @@ function context(readModels: Partial<ReadModelRepository> = {}): ApiContext {
       optionsVaultAddress: null,
       optionTokenAddress: null,
       spotRoutes: [],
+      crossChainRoutes: [],
     },
     vaultAddress: `0x${"1".repeat(40)}`,
     readModels: readModels as ReadModelRepository,
@@ -56,6 +60,131 @@ test("public config endpoint cannot expose Supabase configuration", async () => 
   assert.equal(body.includes("supabase"), false);
   assert.equal(body.includes("secret"), false);
   assert.match(response.headers.get("cache-control") ?? "", /max-age=15/);
+});
+
+test("bridge history is bounded and exposes stable public fields", async () => {
+  let observedLimit: number | undefined;
+  const message = {
+    source_chain_id: 4663,
+    destination_chain_id: 33001,
+    source_eid: 30416,
+    destination_eid: 30500,
+    guid: `0x${"1".repeat(64)}`,
+    sender_address: `0x${"2".repeat(40)}`,
+    recipient_address: `0x${"3".repeat(40)}`,
+    token_address: `0x${"4".repeat(40)}`,
+    amount_local: "1000000000000",
+    native_fee: "10",
+    state: "pending" as const,
+    source_transaction_hash: `0x${"5".repeat(64)}`,
+    destination_transaction_hash: null,
+    sent_at: "2026-11-19T00:00:00.000Z",
+    updated_at: "2026-11-19T00:00:00.000Z",
+  };
+  const response = await getBridgeMessages(
+    context({
+      listCrossChainMessages: async (limit) => {
+        observedLimit = limit;
+        return [message];
+      },
+    }),
+    new URL("https://floats.test/api/bridge/messages?limit=25"),
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(observedLimit, 25);
+  assert.deepEqual((await response.json() as { data: unknown[] }).data, [{
+    sourceChainId: 4663,
+    destinationChainId: 33001,
+    sourceEid: 30416,
+    destinationEid: 30500,
+    guid: message.guid,
+    sender: message.sender_address,
+    recipient: message.recipient_address,
+    token: message.token_address,
+    amountLocal: message.amount_local,
+    nativeFee: message.native_fee,
+    state: "pending",
+    sourceTransactionHash: message.source_transaction_hash,
+    destinationTransactionHash: null,
+    sentAt: message.sent_at,
+    updatedAt: message.updated_at,
+  }]);
+
+  const invalid = await getBridgeMessages(
+    context(),
+    new URL("https://floats.test/api/bridge/messages?limit=101"),
+  );
+  assert.equal(invalid.status, 400);
+});
+
+test("bridge message status validates identity and returns not found", async () => {
+  const guid = `0x${"a".repeat(64)}`;
+  const missing = await getBridgeMessage(
+    context({ getCrossChainMessage: async () => [] }),
+    "30416",
+    guid,
+  );
+  assert.equal(missing.status, 404);
+  assert.deepEqual(await missing.json(), { error: { code: "BRIDGE_MESSAGE_NOT_FOUND" } });
+
+  const invalid = await getBridgeMessage(context(), "0", "invalid");
+  assert.equal(invalid.status, 400);
+  assert.deepEqual(await invalid.json(), { error: { code: "INVALID_MESSAGE_IDENTITY" } });
+});
+
+test("bridge NAV returns the latest canonical projection for one destination", async () => {
+  let observedDestination: number | undefined;
+  const nav = {
+    source_chain_id: 4663,
+    destination_chain_id: 33001,
+    source_eid: 30416,
+    destination_eid: 30500,
+    guid: `0x${"b".repeat(64)}`,
+    sequence: "7",
+    nav_18: "1000000000000000000",
+    canonical_total_supply_18: "500000000000000000000",
+    state: "mirrored" as const,
+    source_transaction_hash: `0x${"c".repeat(64)}`,
+    destination_transaction_hash: `0x${"d".repeat(64)}`,
+    observed_at: "2026-11-19T00:00:00.000Z",
+    published_at: "2026-11-19T00:00:01.000Z",
+    mirrored_at: "2026-11-19T00:00:10.000Z",
+    updated_at: "2026-11-19T00:00:10.000Z",
+  };
+  const response = await getBridgeNav(
+    context({ latestCrossChainNav: async (destination) => {
+      observedDestination = destination;
+      return [nav];
+    } }),
+    new URL("https://floats.test/api/bridge/nav?destinationChainId=33001"),
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(observedDestination, 33001);
+  assert.deepEqual((await response.json() as { data: unknown }).data, {
+    sourceChainId: 4663,
+    destinationChainId: 33001,
+    sourceEid: 30416,
+    destinationEid: 30500,
+    guid: nav.guid,
+    sequence: "7",
+    nav18: nav.nav_18,
+    canonicalTotalSupply18: nav.canonical_total_supply_18,
+    state: "mirrored",
+    sourceTransactionHash: nav.source_transaction_hash,
+    destinationTransactionHash: nav.destination_transaction_hash,
+    observedAt: nav.observed_at,
+    publishedAt: nav.published_at,
+    mirroredAt: nav.mirrored_at,
+    updatedAt: nav.updated_at,
+  });
+
+  const invalid = await getBridgeNav(
+    context(),
+    new URL("https://floats.test/api/bridge/nav?destinationChainId=0"),
+  );
+  assert.equal(invalid.status, 400);
 });
 
 test("market endpoints expose capability-driven assets and bounded canonical history", async () => {

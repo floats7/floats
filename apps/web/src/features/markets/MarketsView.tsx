@@ -42,7 +42,7 @@ export function MarketsView() {
               <span>Reference value</span>
               <strong>{market.priceUsd18 ? formatUsd(decimalUnitsToNumber(market.priceUsd18, 18)) : "Unavailable"}</strong>
             </div>
-            <MarketSparkline history={historyByMarketId[market.id]} label={market.name} />
+            <MarketSparkline history={preferredMarketHistory(market, allCandidates, historyByMarketId)} label={market.name} />
             <dl className={styles.meta}>
               <div><dt>Index weight</dt><dd>{market.targetWeightBps === null ? "Index" : formatPercent(market.targetWeightBps / 100, 2)}</dd></div>
               <div><dt>Products</dt><dd>{market.products.filter((product) => product.enabled).map((product) => product.label).join(", ") || "View status"}</dd></div>
@@ -77,4 +77,15 @@ export function MarketsView() {
 function candidateReferenceValue(history: readonly import("@/lib/api-client").MarketHistoryPointDto[] | undefined): string {
   const latest = history?.at(-1);
   return latest ? formatUsd(decimalUnitsToNumber(latest.valueUsd18, 18)) : "Not active";
+}
+
+function preferredMarketHistory(
+  market: import("./types").MarketAsset,
+  candidates: readonly import("@/lib/api-client").MarketCandidateDto[],
+  histories: Readonly<Record<string, readonly import("@/lib/api-client").MarketHistoryPointDto[]>>,
+): readonly import("@/lib/api-client").MarketHistoryPointDto[] | undefined {
+  if (market.kind === "index") return histories[market.id];
+  const candidate = candidates.find((item) => item.tokenAddress?.toLowerCase() === market.address.toLowerCase())
+    ?? candidates.find((item) => item.symbol.toUpperCase() === market.symbol.toUpperCase());
+  return candidate ? histories[candidate.id] : histories[market.id];
 }

@@ -3,6 +3,9 @@ import { createHash } from "node:crypto";
 import { createApiContext } from "./context.ts";
 import {
   getAssets,
+  getBridgeMessage,
+  getBridgeMessages,
+  getBridgeNav,
   getFeeRates,
   getLatestIndexState,
   getMarket,
@@ -102,6 +105,23 @@ async function route(request: Request, url: URL): Promise<Response> {
   if (request.method === "GET" && endpoint === "config") return getPublicConfig(context);
   if (request.method === "GET" && endpoint === "fee-rates") return getFeeRates(context);
   if (request.method === "GET" && endpoint === "assets") return getAssets(context, request.signal);
+  if (request.method === "GET" && endpoint === "bridge/messages") {
+    return getBridgeMessages(context, url, request.signal);
+  }
+  if (request.method === "GET" && endpoint === "bridge/nav") {
+    return getBridgeNav(context, url, request.signal);
+  }
+  const bridgeMessageMatch = endpoint.match(
+    /^bridge\/messages\/([1-9][0-9]*)\/(0x[0-9a-fA-F]{64})$/,
+  );
+  if (request.method === "GET" && bridgeMessageMatch?.[1] && bridgeMessageMatch[2]) {
+    return getBridgeMessage(
+      context,
+      bridgeMessageMatch[1],
+      bridgeMessageMatch[2],
+      request.signal,
+    );
+  }
   if (request.method === "GET" && endpoint === "markets") return getMarkets(context, request.signal);
   if (request.method === "GET" && endpoint === "market-candidates") return getMarketCandidates(context, request.signal);
   const candidateHistoryMatch = endpoint.match(/^market-candidates\/([a-z0-9-]{1,80})\/history$/);

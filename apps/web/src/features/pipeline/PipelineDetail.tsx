@@ -6,7 +6,7 @@ import { Reveal } from "@/components/ui/Reveal";
 import { StatusChip } from "@/components/ui/StatusChip";
 import type { EligibilityChecks as Checks } from "@/data/types";
 import type { MarketCandidateDto } from "@/lib/api-client";
-import { AS_OF, addDays, daysBetween } from "@/lib/dates";
+import { addDays, daysBetween } from "@/lib/dates";
 import { formatDate } from "@/lib/format";
 import { marketCandidateStatusLabel } from "@/lib/market-candidate";
 import { EligibilityChecks } from "./EligibilityChecks";
@@ -22,13 +22,14 @@ const CHECK_EXPLANATIONS: Record<keyof Checks, { title: string; body: string }> 
 const ELIGIBILITY_WINDOW_DAYS = 90;
 
 const STAGES = (item: MarketCandidateDto) => [
-  { label: "IPO", date: item.ipoDate },
+  { label: "IPO", date: item.ipoDate ?? item.listingDate },
   { label: "Fifth trading day", date: item.eligibleFrom },
   { label: "Eligibility window closes", date: item.eligibleFrom ? addDays(item.eligibleFrom, ELIGIBILITY_WINDOW_DAYS) : null },
 ];
 
 export function PipelineDetail({ item }: { item: MarketCandidateDto }) {
-  const daysToEntry = item.eligibleFrom ? daysBetween(AS_OF, item.eligibleFrom) : null;
+  const today = new Date().toISOString().slice(0, 10);
+  const daysToEntry = item.eligibleFrom ? daysBetween(today, item.eligibleFrom) : null;
   const ready = Object.values(item.checks).every(Boolean);
 
   return (

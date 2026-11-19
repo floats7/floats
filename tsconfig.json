@@ -20,6 +20,7 @@
     "apps/keeper/**/*.ts",
     "apps/pricer/**/*.ts",
     "apps/signer/**/*.ts",
+    "packages/crosschain/**/*.ts",
     "scripts/**/*.ts"
   ]
 }

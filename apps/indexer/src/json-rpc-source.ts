@@ -1,4 +1,4 @@
-import { decodeFloatsCoreLog, FLOATS_CORE_EVENT_TOPICS } from "./event-decoder.ts";
+import { FLOATS_CORE_EVENT_CATALOG, type EventCatalog } from "./event-catalog.ts";
 import type { Address, ChainBlock, ChainEventSource, DecodedProtocolEvent, Hex } from "./types.ts";
 
 interface RpcLog {
@@ -19,6 +19,10 @@ interface RpcBlock {
   readonly timestamp: Hex;
 }
 
+interface RpcTransaction {
+  readonly input: Hex;
+}
+
 interface RpcResponse<T> {
   readonly jsonrpc: "2.0";
   readonly id: number;
@@ -33,7 +37,7 @@ export class JsonRpcError extends Error {
   }
 }
 
-export class RobinhoodJsonRpcSource implements ChainEventSource {
+export class EvmJsonRpcSource implements ChainEventSource {
   readonly #fetch: typeof globalThis.fetch;
   readonly #addresses: readonly Address[];
   #requestId = 0;
@@ -42,6 +46,7 @@ export class RobinhoodJsonRpcSource implements ChainEventSource {
     private readonly rpcUrl: URL,
     addresses: readonly Address[],
     fetchImplementation?: typeof globalThis.fetch,
+    private readonly eventCatalog: EventCatalog = FLOATS_CORE_EVENT_CATALOG,
   ) {
     if (rpcUrl.protocol !== "https:" && rpcUrl.hostname !== "127.0.0.1" && rpcUrl.hostname !== "localhost") {
       throw new Error("RPC URL must use HTTPS outside local development");
@@ -77,16 +82,33 @@ export class RobinhoodJsonRpcSource implements ChainEventSource {
       fromBlock: toQuantity(fromBlock),
       toBlock: toQuantity(toBlock),
       address: this.#addresses,
-      topics: [FLOATS_CORE_EVENT_TOPICS],
+      topics: [this.eventCatalog.topics],
     }]);
     const uniqueBlocks = [...new Set(logs.filter((log) => !log.removed).map((log) => log.blockNumber))];
     const blocks = await Promise.all(uniqueBlocks.map(async (number) => [number, await this.getBlock(BigInt(number))] as const));
     const blockByNumber = new Map(blocks);
+    const inputTransactions = [
+      ...new Set(
+        logs
+          .filter((log) => !log.removed && this.eventCatalog.requiresTransactionInput(log))
+          .map((log) => log.transactionHash),
+      ),
+    ];
+    const transactionInputs = new Map(
+      await Promise.all(
+        inputTransactions.map(async (hash) => {
+          const transaction = await this.call<RpcTransaction | null>("eth_getTransactionByHash", [hash]);
+          if (!transaction) throw new Error("TRANSACTION_NOT_FOUND");
+          return [hash.toLowerCase(), transaction.input] as const;
+        }),
+      ),
+    );
 
     return logs
       .filter((log) => !log.removed)
       .flatMap((log) => {
-        const decoded = decodeFloatsCoreLog(log);
+        const transactionInput = transactionInputs.get(log.transactionHash.toLowerCase());
+        const decoded = this.eventCatalog.decode(log, transactionInput);
         if (!decoded) return [];
         const block = blockByNumber.get(log.blockNumber);
         if (!block || block.hash.toLowerCase() !== log.blockHash.toLowerCase()) throw new Error("LOG_BLOCK_MISMATCH");
@@ -122,6 +144,8 @@ export class RobinhoodJsonRpcSource implements ChainEventSource {
     return payload.result;
   }
 }
+
+export { EvmJsonRpcSource as RobinhoodJsonRpcSource };
 
 function toQuantity(value: bigint): Hex {
   if (value < 0n) throw new Error("Block number cannot be negative");

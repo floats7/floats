@@ -45,6 +45,10 @@
 .informationTabs button[aria-selected="true"] { background: var(--text-strong); color: var(--text-on-paper); }
 .sectionTitle { display: flex; align-items: end; justify-content: space-between; gap: var(--space-4); }
 .sectionTitle h2, .transactionPanel h2 { margin: 0; }
+.chartSourceTabs { display: inline-flex; width: fit-content; gap: var(--space-1); padding: var(--space-1); border: 1px solid var(--line-base); background: var(--surface-base); }
+.chartSourceTabs button { min-height: 2.5rem; padding-inline: var(--space-4); border: 0; background: transparent; color: var(--text-muted); font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: .06em; text-transform: uppercase; }
+.chartSourceTabs button[aria-selected="true"] { background: var(--text-strong); color: var(--text-on-paper); }
+.chartSourceNote { margin: 0; color: var(--text-muted); font-size: var(--text-sm); }
 .productTabs { display: flex; gap: var(--space-1); }
 .productTabs button { flex: 1 1 0; min-width: 0; min-height: 2.75rem; padding-inline: var(--space-2); border: 1px solid var(--line-soft); border-radius: var(--radius-sm); background: transparent; color: inherit; font-size: var(--text-xs); white-space: nowrap; }
 .productTabs button[aria-selected="true"] { border-color: var(--positive); background: var(--positive); color: var(--text-on-paper); font-weight: 700; }

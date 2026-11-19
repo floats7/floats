@@ -32,6 +32,7 @@ export function createApiContext(environment: NodeJS.ProcessEnv): ApiContext {
   const optionsMarketAddress = optionalAddress(environment, "OPTIONS_MARKET_ADDRESS");
   const optionTokenAddress = optionalAddress(environment, "OPTION_TOKEN_ADDRESS");
   const spotRoutes = readSpotRoutes(environment);
+  const crossChainRoutes = readCrossChainRoutes(environment);
   const optionsPricerUrl = optionalHttpsUrl(environment, "OPTIONS_PRICER_URL");
   const optionsPricerToken = environment.OPTIONS_PRICER_AUTH_TOKEN?.trim();
   if ((optionsPricerUrl === undefined) !== !optionsPricerToken) {
@@ -46,6 +47,7 @@ export function createApiContext(environment: NodeJS.ProcessEnv): ApiContext {
         ...(optionsVaultAddress ? { optionsVaultAddress } : {}),
         ...(optionTokenAddress ? { optionTokenAddress } : {}),
         spotRoutes,
+        crossChainRoutes,
       },
       requireValue(environment, "WALLETS_CONNECT_PROJECT_ID"),
     );
@@ -78,6 +80,89 @@ export function createApiContext(environment: NodeJS.ProcessEnv): ApiContext {
   };
 }
 
+export function readCrossChainRoutes(environment: NodeJS.ProcessEnv) {
+  const raw = environment.CROSSCHAIN_ROUTES_JSON?.trim();
+  if (!raw) return [];
+  const value: unknown = JSON.parse(raw);
+  if (!Array.isArray(value)) throw new Error("CROSSCHAIN_ROUTES_JSON must be an array");
+  const identifiers = new Set<string>();
+  return value.map((item, index) => {
+    if (!item || typeof item !== "object") {
+      throw new Error(`CROSSCHAIN_ROUTES_JSON[${index}] is invalid`);
+    }
+    const route = item as Record<string, unknown>;
+    const id = stringValue(route.id, `CROSSCHAIN_ROUTES_JSON[${index}].id`, /^[a-z0-9-]{1,64}$/);
+    if (identifiers.has(id)) throw new Error(`CROSSCHAIN_ROUTES_JSON contains duplicate id ${id}`);
+    identifiers.add(id);
+    const tokenSymbol = stringValue(
+      route.tokenSymbol,
+      `CROSSCHAIN_ROUTES_JSON[${index}].tokenSymbol`,
+      /^[A-Z][A-Z0-9]{0,15}$/,
+    );
+    const sourceChainId = positiveInteger(route.sourceChainId, `CROSSCHAIN_ROUTES_JSON[${index}].sourceChainId`);
+    const destinationChainId = positiveInteger(
+      route.destinationChainId,
+      `CROSSCHAIN_ROUTES_JSON[${index}].destinationChainId`,
+    );
+    const sourceEid = positiveInteger(route.sourceEid, `CROSSCHAIN_ROUTES_JSON[${index}].sourceEid`);
+    const destinationEid = positiveInteger(
+      route.destinationEid,
+      `CROSSCHAIN_ROUTES_JSON[${index}].destinationEid`,
+    );
+    if (sourceChainId === destinationChainId || sourceEid === destinationEid) {
+      throw new Error(`CROSSCHAIN_ROUTES_JSON[${index}] must connect different networks`);
+    }
+    return {
+      id,
+      tokenSymbol,
+      tokenDecimals: boundedInteger(route.tokenDecimals, `CROSSCHAIN_ROUTES_JSON[${index}].tokenDecimals`, 0, 255),
+      sourceTokenAddress: addressValue(route.sourceTokenAddress, `CROSSCHAIN_ROUTES_JSON[${index}].sourceTokenAddress`),
+      sourceRequiresApproval: booleanValue(route.sourceRequiresApproval, `CROSSCHAIN_ROUTES_JSON[${index}].sourceRequiresApproval`),
+      minimumReceivedBps: boundedInteger(route.minimumReceivedBps, `CROSSCHAIN_ROUTES_JSON[${index}].minimumReceivedBps`, 1, 10_000),
+      enforcedOptions: hexValue(route.enforcedOptions, `CROSSCHAIN_ROUTES_JSON[${index}].enforcedOptions`),
+      sourceNetworkName: stringValue(
+        route.sourceNetworkName,
+        `CROSSCHAIN_ROUTES_JSON[${index}].sourceNetworkName`,
+        /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$/,
+      ),
+      sourceChainId,
+      sourceEid,
+      sourceContract: addressValue(
+        route.sourceContract,
+        `CROSSCHAIN_ROUTES_JSON[${index}].sourceContract`,
+      ),
+      sourceExplorerUrl: publicHttpsUrl(
+        route.sourceExplorerUrl,
+        `CROSSCHAIN_ROUTES_JSON[${index}].sourceExplorerUrl`,
+      ),
+      destinationChainId,
+      destinationNetworkName: stringValue(
+        route.destinationNetworkName,
+        `CROSSCHAIN_ROUTES_JSON[${index}].destinationNetworkName`,
+        /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$/,
+      ),
+      destinationEid,
+      destinationContract: addressValue(
+        route.destinationContract,
+        `CROSSCHAIN_ROUTES_JSON[${index}].destinationContract`,
+      ),
+      destinationTokenAddress: addressValue(route.destinationTokenAddress, `CROSSCHAIN_ROUTES_JSON[${index}].destinationTokenAddress`),
+      destinationExplorerUrl: publicHttpsUrl(
+        route.destinationExplorerUrl,
+        `CROSSCHAIN_ROUTES_JSON[${index}].destinationExplorerUrl`,
+      ),
+      layerZeroScanUrl: publicHttpsUrl(
+        route.layerZeroScanUrl,
+        `CROSSCHAIN_ROUTES_JSON[${index}].layerZeroScanUrl`,
+      ),
+      maximumNavAgeSeconds: positiveInteger(
+        route.maximumNavAgeSeconds,
+        `CROSSCHAIN_ROUTES_JSON[${index}].maximumNavAgeSeconds`,
+      ),
+    };
+  });
+}
+
 function readSpotRoutes(environment: NodeJS.ProcessEnv) {
   const raw = environment.SPOT_ROUTES_JSON?.trim();
   if (!raw) return [];
@@ -98,6 +183,46 @@ function readSpotRoutes(environment: NodeJS.ProcessEnv) {
 function addressValue(value: unknown, label: string): string {
   if (typeof value !== "string" || !/^0x[0-9a-fA-F]{40}$/.test(value)) throw new Error(`${label} must be an EVM address`);
   return value.toLowerCase();
+}
+
+function positiveInteger(value: unknown, label: string): number {
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) throw new Error(`${label} must be a positive integer`);
+  return parsed;
+}
+
+function boundedInteger(value: unknown, label: string, minimum: number, maximum: number): number {
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < minimum || parsed > maximum) {
+    throw new Error(`${label} must be an integer between ${minimum} and ${maximum}`);
+  }
+  return parsed;
+}
+
+function booleanValue(value: unknown, label: string): boolean {
+  if (typeof value !== "boolean") throw new Error(`${label} must be a boolean`);
+  return value;
+}
+
+function hexValue(value: unknown, label: string): string {
+  if (typeof value !== "string" || !/^0x(?:[0-9a-fA-F]{2})*$/.test(value)) {
+    throw new Error(`${label} must be even-length hex`);
+  }
+  return value.toLowerCase();
+}
+
+function stringValue(value: unknown, label: string, pattern: RegExp): string {
+  if (typeof value !== "string" || !pattern.test(value)) throw new Error(`${label} is invalid`);
+  return value;
+}
+
+function publicHttpsUrl(value: unknown, label: string): string {
+  if (typeof value !== "string") throw new Error(`${label} must be an HTTPS URL`);
+  const url = new URL(value);
+  if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) {
+    throw new Error(`${label} must be a public HTTPS URL without credentials, query, or fragment`);
+  }
+  return url.toString();
 }
 
 function optionalHttpsUrl(environment: NodeJS.ProcessEnv, key: string): URL | undefined {

@@ -8,6 +8,105 @@ export async function getPublicConfig(context: ApiContext): Promise<Response> {
   return json({ data: context.publicConfig }, 200, PUBLIC_CACHE);
 }
 
+export async function getBridgeMessages(
+  context: ApiContext,
+  requestUrl: URL,
+  signal?: AbortSignal,
+): Promise<Response> {
+  const limit = parseLimit(requestUrl);
+  if (limit === undefined) return invalidRequest("INVALID_LIMIT");
+  try {
+    const messages = await context.readModels.listCrossChainMessages(limit, signal);
+    return json({ data: messages.map(mapCrossChainMessage) }, 200, PUBLIC_CACHE);
+  } catch {
+    return internalError();
+  }
+}
+
+export async function getBridgeMessage(
+  context: ApiContext,
+  sourceEid: string,
+  guid: string,
+  signal?: AbortSignal,
+): Promise<Response> {
+  if (!/^[1-9][0-9]*$/.test(sourceEid) || !/^0x[0-9a-fA-F]{64}$/.test(guid)) {
+    return invalidRequest("INVALID_MESSAGE_IDENTITY");
+  }
+  const parsedSourceEid = Number(sourceEid);
+  if (!Number.isSafeInteger(parsedSourceEid)) return invalidRequest("INVALID_MESSAGE_IDENTITY");
+  try {
+    const [message] = await context.readModels.getCrossChainMessage(
+      parsedSourceEid,
+      guid,
+      signal,
+    );
+    if (!message) return json({ error: { code: "BRIDGE_MESSAGE_NOT_FOUND" } }, 404, PUBLIC_CACHE);
+    return json({ data: mapCrossChainMessage(message) }, 200, PUBLIC_CACHE);
+  } catch {
+    return internalError();
+  }
+}
+
+export async function getBridgeNav(
+  context: ApiContext,
+  requestUrl: URL,
+  signal?: AbortSignal,
+): Promise<Response> {
+  const destination = requestUrl.searchParams.get("destinationChainId");
+  if (destination !== null && !/^[1-9][0-9]*$/.test(destination)) {
+    return invalidRequest("INVALID_DESTINATION_CHAIN_ID");
+  }
+  const destinationChainId = destination === null ? undefined : Number(destination);
+  if (destinationChainId !== undefined && !Number.isSafeInteger(destinationChainId)) {
+    return invalidRequest("INVALID_DESTINATION_CHAIN_ID");
+  }
+  try {
+    const [nav] = await context.readModels.latestCrossChainNav(destinationChainId, signal);
+    if (!nav) return json({ data: null }, 200, PUBLIC_CACHE);
+    return json({ data: {
+      sourceChainId: nav.source_chain_id,
+      destinationChainId: nav.destination_chain_id,
+      sourceEid: nav.source_eid,
+      destinationEid: nav.destination_eid,
+      guid: nav.guid,
+      sequence: nav.sequence,
+      nav18: nav.nav_18,
+      canonicalTotalSupply18: nav.canonical_total_supply_18,
+      state: nav.state,
+      sourceTransactionHash: nav.source_transaction_hash,
+      destinationTransactionHash: nav.destination_transaction_hash,
+      observedAt: nav.observed_at,
+      publishedAt: nav.published_at,
+      mirroredAt: nav.mirrored_at,
+      updatedAt: nav.updated_at,
+    } }, 200, PUBLIC_CACHE);
+  } catch {
+    return internalError();
+  }
+}
+
+function mapCrossChainMessage(
+  message: Awaited<ReturnType<ApiContext["readModels"]["getCrossChainMessage"]>>[number],
+) {
+  return {
+    sourceChainId: message.source_chain_id,
+    destinationChainId: message.destination_chain_id,
+    sourceEid: message.source_eid,
+    destinationEid: message.destination_eid,
+    guid: message.guid,
+    sender: message.sender_address,
+    recipient: message.recipient_address,
+    token: message.token_address,
+    amountLocal: message.amount_local,
+    nativeFee: message.native_fee,
+    state: message.state,
+    sourceTransactionHash: message.source_transaction_hash,
+    destinationTransactionHash: message.destination_transaction_hash,
+    sentAt: message.sent_at,
+    updatedAt: message.updated_at,
+  };
+}
+
 export async function getFeeRates(context: ApiContext): Promise<Response> {
   try {
     return json({ data: await context.vaultQuotes.readFeeRates() }, 200, PUBLIC_CACHE);

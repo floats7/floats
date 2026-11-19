@@ -19,6 +19,7 @@ export interface PublicConfig {
   readonly optionsVaultAddress: string | null;
   readonly optionTokenAddress: string | null;
   readonly spotRoutes: readonly PublicSpotRoute[];
+  readonly crossChainRoutes: readonly PublicCrossChainRoute[];
 }
 
 export interface PublicSpotRoute {
@@ -28,6 +29,29 @@ export interface PublicSpotRoute {
   readonly fee: number;
 }
 
+export interface PublicCrossChainRoute {
+  readonly id: string;
+  readonly tokenSymbol: string;
+  readonly tokenDecimals: number;
+  readonly sourceTokenAddress: string;
+  readonly sourceRequiresApproval: boolean;
+  readonly minimumReceivedBps: number;
+  readonly enforcedOptions: string;
+  readonly sourceNetworkName: string;
+  readonly sourceChainId: number;
+  readonly sourceEid: number;
+  readonly sourceContract: string;
+  readonly sourceExplorerUrl: string;
+  readonly destinationChainId: number;
+  readonly destinationNetworkName: string;
+  readonly destinationEid: number;
+  readonly destinationContract: string;
+  readonly destinationTokenAddress: string;
+  readonly destinationExplorerUrl: string;
+  readonly layerZeroScanUrl: string;
+  readonly maximumNavAgeSeconds: number;
+}
+
 export interface PublicProtocolAddresses {
   readonly vaultAddress: string;
   readonly usdgAddress: string;
@@ -35,6 +59,7 @@ export interface PublicProtocolAddresses {
   readonly optionsVaultAddress?: string;
   readonly optionTokenAddress?: string;
   readonly spotRoutes?: readonly PublicSpotRoute[];
+  readonly crossChainRoutes?: readonly PublicCrossChainRoute[];
 }
 
 function requireValue(environment: NodeJS.ProcessEnv, key: string): string {
@@ -93,5 +118,6 @@ export function createPublicConfig(
     optionsVaultAddress: addresses.optionsVaultAddress ?? null,
     optionTokenAddress: addresses.optionTokenAddress ?? null,
     spotRoutes: addresses.spotRoutes ?? [],
+    crossChainRoutes: addresses.crossChainRoutes ?? [],
   };
 }

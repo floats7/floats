@@ -10,8 +10,10 @@ import { getWalletConnectAppKit } from "./wallet-connect";
 
 interface WalletApi {
   address: string | null;
+  chainId: number | null;
   openConnect: () => void;
   disconnect: () => void;
+  switchChain: (chainId: number) => Promise<void>;
   provider: Eip1193Provider | null;
 }
 
@@ -27,6 +29,7 @@ export function useWallet(): WalletApi {
 export function WalletProvider({ children }: { children: ReactNode }) {
   const { notify } = useToast();
   const [address, setAddress] = useState<string | null>(null);
+  const [chainId, setChainId] = useState<number | null>(null);
   const [provider, setProvider] = useState<Eip1193Provider | null>(null);
   const [phase, setPhase] = useState<ConnectPhase>("closed");
   const appKitRef = useRef<AppKit | null>(null);
@@ -40,7 +43,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       const next = Array.isArray(accounts) ? accounts.find(isAddress) : undefined;
       setAddress(next?.toLowerCase() ?? null);
     };
-    const chainChanged = () => setAddress(null);
+    const chainChanged = (...args: unknown[]) => {
+      const value = args[0];
+      if (typeof value === "string" && /^0x[0-9a-fA-F]+$/.test(value)) setChainId(Number.parseInt(value, 16));
+    };
     injectedProvider.on("accountsChanged", accountsChanged);
     injectedProvider.on("chainChanged", chainChanged);
     return () => {
@@ -69,6 +75,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       const account = accounts.find(isAddress);
       if (!account) throw new Error("WALLET_ACCOUNT_MISSING");
       setAddress(account.toLowerCase());
+      setChainId(config.chainId);
       setProvider(provider);
       setPhase("closed");
       notify("Wallet connected", "success");
@@ -90,6 +97,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         if (!isEip1193Provider(walletProvider)) return;
         setAddress(account.address.toLowerCase());
         setProvider(walletProvider);
+        void walletProvider.request<string>({ method: "eth_chainId" }).then((value) => setChainId(Number.parseInt(value, 16)));
         setPhase("closed");
         notify("Wallet connected", "success");
       }, "eip155");
@@ -111,16 +119,25 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       void appKitRef.current.disconnect("eip155");
     }
     setAddress(null);
+    setChainId(null);
     setProvider(null);
     notify("Wallet disconnected");
   }, [notify, provider]);
 
+  const switchChain = useCallback(async (nextChainId: number) => {
+    if (!provider || !Number.isSafeInteger(nextChainId) || nextChainId <= 0) throw new Error("WALLET_CHAIN_INVALID");
+    await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: `0x${nextChainId.toString(16)}` }] });
+    setChainId(nextChainId);
+  }, [provider]);
+
   const api = useMemo<WalletApi>(() => ({
     address,
+    chainId,
     openConnect: () => setPhase("idle"),
     disconnect,
+    switchChain,
     provider,
-  }), [address, disconnect, provider]);
+  }), [address, chainId, disconnect, provider, switchChain]);
 
   return (
     <WalletContext.Provider value={api}>

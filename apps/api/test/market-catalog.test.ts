@@ -49,6 +49,7 @@ test("catalog derives identity and products without frontend symbol branching", 
     walletConnectProjectId: "0".repeat(32), optionsMarketAddress: `0x${"6".repeat(40)}`,
     optionsVaultAddress: `0x${"7".repeat(40)}`, optionTokenAddress: `0x${"8".repeat(40)}`,
     spotRoutes: [],
+    crossChainRoutes: [],
   });
 
   const markets = await catalog.list();

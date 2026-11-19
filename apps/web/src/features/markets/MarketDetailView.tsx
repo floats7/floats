@@ -25,7 +25,7 @@ import { SpotTradePanel } from "./SpotTradePanel";
 import styles from "./markets.module.css";
 
 export function MarketDetailView({ assetId }: { readonly assetId: string }) {
-  const { markets, loading, error, refresh } = useMarkets();
+  const { markets, candidates, historyByMarketId, loading, error, refresh } = useMarkets();
   const { data: indexState } = useIndexState();
   const normalizedAssetId = assetId.toLowerCase();
   const market = normalizedAssetId === "index"
@@ -35,6 +35,7 @@ export function MarketDetailView({ assetId }: { readonly assetId: string }) {
   const [product, setProduct] = useState<MarketProductId>();
   const [history, setHistory] = useState<readonly MarketHistoryPointDto[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [chartSource, setChartSource] = useState<"public" | "oracle">("public");
   const [selectedOptionsSeriesId, setSelectedOptionsSeriesId] = useState<string>();
   const [informationTab, setInformationTab] = useState<"series" | "positions" | "activity">("activity");
 
@@ -62,10 +63,17 @@ export function MarketDetailView({ assetId }: { readonly assetId: string }) {
   if (error) return <PageHeader eyebrow="Market" title="Market unavailable" description="Finalized market state could not be loaded." aside={<button type="button" onClick={refresh}>Try again</button>} />;
   if (!market) return <PageHeader eyebrow="Market" title="Asset not found" description="This asset is not present in the canonical market registry." />;
 
-  const marketSeries = buildMarketSeries(history);
-  const priceUsd18 = market.kind === "index"
+  const candidate = market.kind === "constituent"
+    ? candidates.find((item) => item.tokenAddress?.toLowerCase() === market.address.toLowerCase())
+      ?? candidates.find((item) => item.symbol.toUpperCase() === market.symbol.toUpperCase())
+    : undefined;
+  const publicHistory = candidate ? historyByMarketId[candidate.id] ?? [] : [];
+  const selectedHistory = market.kind === "constituent" && chartSource === "public" ? publicHistory : history;
+  const marketSeries = buildMarketSeries(selectedHistory);
+  const selectedLatest = selectedHistory.at(-1)?.valueUsd18 ?? null;
+  const priceUsd18 = selectedLatest ?? (market.kind === "index"
     ? (indexState ? resolveSharePriceUsd18(indexState) : null) ?? market.priceUsd18
-    : market.priceUsd18;
+    : market.priceUsd18);
   return (
     <>
       <nav className={`container ${styles.topBack}`} aria-label="Markets navigation">
@@ -91,11 +99,23 @@ export function MarketDetailView({ assetId }: { readonly assetId: string }) {
       <main className={`container ${styles.detailGrid}`}>
         <div className={styles.marketColumn}>
           <section className={styles.chartPanel} aria-labelledby="market-chart-title">
-            <div className={styles.sectionTitle}><div><p className="eyebrow">Market data</p><h2 id="market-chart-title">{market.chartKind === "nav" ? "NAV history" : "Price history"}</h2></div><strong>{priceUsd18 ? formatUsd(decimalUnitsToNumber(priceUsd18, 18)) : "Unavailable"}</strong></div>
-            {marketSeries.ALL.length >= 2 ? <RangeChart seriesByRange={marketSeries} /> : (
-              <EmptyState title="Historical chart is not available yet" description="The chart will appear after this asset has at least two canonical finalized observations." />
+            <div className={styles.sectionTitle}><div><p className="eyebrow">Market data</p><h2 id="market-chart-title">{market.chartKind === "nav" ? "NAV history" : chartSource === "public" ? "Public equity price history" : "Onchain oracle history"}</h2></div><strong>{priceUsd18 ? formatUsd(decimalUnitsToNumber(priceUsd18, 18)) : "Unavailable"}</strong></div>
+            {market.kind === "constituent" && (
+              <div className={styles.chartSourceTabs} role="tablist" aria-label="Chart price source">
+                <button type="button" role="tab" aria-selected={chartSource === "public"} onClick={() => setChartSource("public")}>Public equity market</button>
+                <button type="button" role="tab" aria-selected={chartSource === "oracle"} onClick={() => setChartSource("oracle")}>Onchain oracle</button>
+              </div>
             )}
-            {historyLoading && <p role="status">Loading canonical price history…</p>}
+            {marketSeries.ALL.length >= 2 ? <RangeChart seriesByRange={marketSeries} /> : (
+              <EmptyState
+                title="Historical chart is not available yet"
+                description={market.kind === "constituent" && chartSource === "public"
+                  ? "The chart will appear after the public market-data source publishes at least two valid observations."
+                  : "The chart will appear after this asset has at least two canonical finalized observations."}
+              />
+            )}
+            {historyLoading && chartSource === "oracle" && <p role="status">Loading canonical price history…</p>}
+            {market.kind === "constituent" && <p className={styles.chartSourceNote}>{chartSource === "public" ? "Public equity data is informational. Transactions and protocol accounting use the verified onchain oracle." : "Canonical finalized oracle observations used by the protocol."}</p>}
           </section>
           <section className={styles.informationPanel} aria-labelledby="market-information-title">
             <div className={styles.informationHeader}>

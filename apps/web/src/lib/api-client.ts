@@ -50,6 +50,7 @@ export interface PublicConfigDto {
   readonly optionsVaultAddress: string | null;
   readonly optionTokenAddress: string | null;
   readonly spotRoutes: readonly SpotRouteDto[];
+  readonly crossChainRoutes: readonly CrossChainRouteDto[];
 }
 
 export interface SpotRouteDto {
@@ -57,6 +58,65 @@ export interface SpotRouteDto {
   readonly routerAddress: string;
   readonly quoterAddress: string;
   readonly fee: number;
+}
+
+export interface CrossChainRouteDto {
+  readonly id: string;
+  readonly tokenSymbol: string;
+  readonly tokenDecimals: number;
+  readonly sourceTokenAddress: string;
+  readonly sourceRequiresApproval: boolean;
+  readonly minimumReceivedBps: number;
+  readonly enforcedOptions: string;
+  readonly sourceNetworkName: string;
+  readonly sourceChainId: number;
+  readonly sourceEid: number;
+  readonly sourceContract: string;
+  readonly sourceExplorerUrl: string;
+  readonly destinationChainId: number;
+  readonly destinationNetworkName: string;
+  readonly destinationEid: number;
+  readonly destinationContract: string;
+  readonly destinationTokenAddress: string;
+  readonly destinationExplorerUrl: string;
+  readonly layerZeroScanUrl: string;
+  readonly maximumNavAgeSeconds: number;
+}
+
+export interface CrossChainMessageDto {
+  readonly sourceChainId: number;
+  readonly destinationChainId: number;
+  readonly sourceEid: number;
+  readonly destinationEid: number;
+  readonly guid: string;
+  readonly sender: string;
+  readonly recipient: string;
+  readonly token: string;
+  readonly amountLocal: string;
+  readonly nativeFee: string;
+  readonly state: "pending" | "delivered" | "retryable" | "failed";
+  readonly sourceTransactionHash: string;
+  readonly destinationTransactionHash: string | null;
+  readonly sentAt: string;
+  readonly updatedAt: string;
+}
+
+export interface CrossChainNavDto {
+  readonly sourceChainId: number;
+  readonly destinationChainId: number;
+  readonly sourceEid: number;
+  readonly destinationEid: number;
+  readonly guid: string;
+  readonly sequence: string;
+  readonly nav18: string;
+  readonly canonicalTotalSupply18: string;
+  readonly state: "published" | "mirrored";
+  readonly sourceTransactionHash: string;
+  readonly destinationTransactionHash: string | null;
+  readonly observedAt: string;
+  readonly publishedAt: string;
+  readonly mirroredAt: string | null;
+  readonly updatedAt: string;
 }
 
 export interface IndexHoldingDto {
@@ -291,6 +351,47 @@ export class FloatsApiClient {
 
   public getPublicConfig(signal?: AbortSignal): Promise<PublicConfigDto> {
     return this.get<PublicConfigDto>("/config", signal);
+  }
+
+  public getBridgeMessages(
+    limit = 50,
+    signal?: AbortSignal,
+  ): Promise<readonly CrossChainMessageDto[]> {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+      throw new Error("Bridge message limit must be between 1 and 100");
+    }
+    return this.get<readonly CrossChainMessageDto[]>(`/bridge/messages?limit=${limit}`, signal);
+  }
+
+  public getBridgeMessage(
+    sourceEid: number,
+    guid: string,
+    signal?: AbortSignal,
+  ): Promise<CrossChainMessageDto> {
+    if (!Number.isSafeInteger(sourceEid) || sourceEid <= 0) {
+      throw new Error("Source EID must be a positive integer");
+    }
+    if (!/^0x[0-9a-fA-F]{64}$/.test(guid)) throw new Error("Message GUID is invalid");
+    return this.get<CrossChainMessageDto>(
+      `/bridge/messages/${sourceEid}/${guid.toLowerCase()}`,
+      signal,
+    );
+  }
+
+  public getBridgeNav(
+    destinationChainId?: number,
+    signal?: AbortSignal,
+  ): Promise<CrossChainNavDto | null> {
+    if (
+      destinationChainId !== undefined
+      && (!Number.isSafeInteger(destinationChainId) || destinationChainId <= 0)
+    ) {
+      throw new Error("Destination chain ID must be a positive integer");
+    }
+    const query = destinationChainId === undefined
+      ? ""
+      : `?destinationChainId=${destinationChainId}`;
+    return this.get<CrossChainNavDto | null>(`/bridge/nav${query}`, signal);
   }
 
   public requestOptionsQuote(

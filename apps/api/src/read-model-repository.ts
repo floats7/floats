@@ -166,6 +166,42 @@ export interface MarketCandidateReadModel {
   readonly last_checked_at: string | null;
 }
 
+export interface CrossChainMessageReadModel {
+  readonly source_chain_id: number;
+  readonly destination_chain_id: number;
+  readonly source_eid: number;
+  readonly destination_eid: number;
+  readonly guid: string;
+  readonly sender_address: string;
+  readonly recipient_address: string;
+  readonly token_address: string;
+  readonly amount_local: string;
+  readonly native_fee: string;
+  readonly state: "pending" | "delivered" | "retryable" | "failed";
+  readonly source_transaction_hash: string;
+  readonly destination_transaction_hash: string | null;
+  readonly sent_at: string;
+  readonly updated_at: string;
+}
+
+export interface CrossChainNavReadModel {
+  readonly source_chain_id: number;
+  readonly destination_chain_id: number;
+  readonly source_eid: number;
+  readonly destination_eid: number;
+  readonly guid: string;
+  readonly sequence: string;
+  readonly nav_18: string;
+  readonly canonical_total_supply_18: string;
+  readonly state: "published" | "mirrored";
+  readonly source_transaction_hash: string;
+  readonly destination_transaction_hash: string | null;
+  readonly observed_at: string;
+  readonly published_at: string;
+  readonly mirrored_at: string | null;
+  readonly updated_at: string;
+}
+
 export class ReadModelRepository {
   public constructor(
     private readonly client: SupabaseRestClient,
@@ -189,6 +225,70 @@ export class ReadModelRepository {
     query.set("order", "expected_listing_date.desc.nullslast,symbol.asc");
     query.set("limit", "500");
     return this.client.select<readonly MarketCandidateReadModel[]>("market_candidates", query, signal);
+  }
+
+  public listCrossChainMessages(
+    limit = 50,
+    signal?: AbortSignal,
+  ): Promise<readonly CrossChainMessageReadModel[]> {
+    const query = this.environmentQuery(
+      "source_chain_id,destination_chain_id,source_eid,destination_eid,guid,sender_address,recipient_address,token_address,amount_local,native_fee,state,source_transaction_hash,destination_transaction_hash,sent_at,updated_at",
+    );
+    query.set("canonical", "eq.true");
+    query.set("order", "sent_at.desc");
+    query.set("limit", boundedLimit(limit));
+    return this.client.select<readonly CrossChainMessageReadModel[]>(
+      "crosschain_messages",
+      query,
+      signal,
+    );
+  }
+
+  public getCrossChainMessage(
+    sourceEid: number,
+    guid: string,
+    signal?: AbortSignal,
+  ): Promise<readonly CrossChainMessageReadModel[]> {
+    if (!Number.isSafeInteger(sourceEid) || sourceEid <= 0) throw new Error("Invalid source EID");
+    if (!/^0x[0-9a-fA-F]{64}$/.test(guid)) throw new Error("Invalid message GUID");
+    const query = this.environmentQuery(
+      "source_chain_id,destination_chain_id,source_eid,destination_eid,guid,sender_address,recipient_address,token_address,amount_local,native_fee,state,source_transaction_hash,destination_transaction_hash,sent_at,updated_at",
+    );
+    query.set("source_eid", `eq.${sourceEid}`);
+    query.set("guid", `eq.${guid.toLowerCase()}`);
+    query.set("canonical", "eq.true");
+    query.set("limit", "1");
+    return this.client.select<readonly CrossChainMessageReadModel[]>(
+      "crosschain_messages",
+      query,
+      signal,
+    );
+  }
+
+  public latestCrossChainNav(
+    destinationChainId?: number,
+    signal?: AbortSignal,
+  ): Promise<readonly CrossChainNavReadModel[]> {
+    if (
+      destinationChainId !== undefined
+      && (!Number.isSafeInteger(destinationChainId) || destinationChainId <= 0)
+    ) {
+      throw new Error("Invalid destination chain ID");
+    }
+    const query = this.environmentQuery(
+      "source_chain_id,destination_chain_id,source_eid,destination_eid,guid,sequence,nav_18,canonical_total_supply_18,state,source_transaction_hash,destination_transaction_hash,observed_at,published_at,mirrored_at,updated_at",
+    );
+    query.set("source_canonical", "eq.true");
+    if (destinationChainId !== undefined) {
+      query.set("destination_chain_id", `eq.${destinationChainId}`);
+    }
+    query.set("order", "sequence.desc,published_at.desc");
+    query.set("limit", "1");
+    return this.client.select<readonly CrossChainNavReadModel[]>(
+      "crosschain_nav_messages",
+      query,
+      signal,
+    );
   }
 
   public latestNav(vaultAddress: string, signal?: AbortSignal): Promise<readonly NavReadModel[]> {
@@ -426,6 +526,13 @@ export class ReadModelRepository {
       select,
       environment: `eq.${this.scope.environment}`,
       chain_id: `eq.${this.scope.chainId}`,
+    });
+  }
+
+  private environmentQuery(select: string): URLSearchParams {
+    return new URLSearchParams({
+      select,
+      environment: `eq.${this.scope.environment}`,
     });
   }
 }

@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { encodeAbiParameters, encodeFunctionData, pad, parseAbi, parseAbiParameters } from "viem";
 
 import { decodeFloatsCoreLog } from "../src/event-decoder.ts";
-import { RobinhoodJsonRpcSource } from "../src/json-rpc-source.ts";
+import { FLOATS_OFT_EVENT_CATALOG } from "../src/event-catalog.ts";
+import { EvmJsonRpcSource, RobinhoodJsonRpcSource } from "../src/json-rpc-source.ts";
+import { OFT_SENT_TOPIC } from "../src/oft-event-decoder.ts";
 
 const word = (value: bigint) => `0x${value.toString(16).padStart(64, "0")}` as const;
 const blockHash = `0x${"a".repeat(64)}` as const;
@@ -153,4 +156,57 @@ test("rejects logs whose block hash no longer matches the canonical block", asyn
   const source = new RobinhoodJsonRpcSource(new URL("https://example.com"), [feeModule], fetchStub);
 
   await assert.rejects(() => source.getEvents(100n, 100n), /LOG_BLOCK_MISMATCH/);
+});
+
+test("crosschain source fetches transaction calldata before decoding OFTSent", async () => {
+  const guid = word(99n);
+  const recipient = `0x${"d".repeat(40)}` as const;
+  const sender = `0x${"e".repeat(40)}` as const;
+  const sendAbi = parseAbi([
+    "function send((uint32 dstEid,bytes32 to,uint256 amountLD,uint256 minAmountLD,bytes extraOptions,bytes composeMsg,bytes oftCmd) sendParam,(uint256 nativeFee,uint256 lzTokenFee) fee,address refundAddress) payable returns ((bytes32 guid,uint64 nonce,(uint256 nativeFee,uint256 lzTokenFee) fee) receipt,(uint256 amountSentLD,uint256 amountReceivedLD) oftReceipt)",
+  ]);
+  const input = encodeFunctionData({
+    abi: sendAbi,
+    functionName: "send",
+    args: [
+      { dstEid: 30_500, to: pad(recipient, { size: 32 }), amountLD: 2_000n, minAmountLD: 1_900n, extraOptions: "0x", composeMsg: "0x", oftCmd: "0x" },
+      { nativeFee: 50n, lzTokenFee: 0n },
+      sender,
+    ],
+  });
+  const methods: string[] = [];
+  const fetchStub: typeof fetch = async (_input, init) => {
+    const request = JSON.parse(String(init?.body)) as { id: number; method: string };
+    methods.push(request.method);
+    const result = request.method === "eth_getLogs"
+      ? [{
+          address: feeModule,
+          blockNumber: "0x64",
+          blockHash,
+          transactionHash,
+          transactionIndex: "0x0",
+          logIndex: "0x0",
+          data: encodeAbiParameters(
+            parseAbiParameters("uint32 dstEid, uint256 amountSentLD, uint256 amountReceivedLD"),
+            [30_500, 2_000n, 1_995n],
+          ),
+          topics: [OFT_SENT_TOPIC, guid, pad(sender, { size: 32 })],
+        }]
+      : request.method === "eth_getBlockByNumber"
+        ? { number: "0x64", hash: blockHash, timestamp: "0x6553f100" }
+        : { input };
+    return Response.json({ jsonrpc: "2.0", id: request.id, result });
+  };
+  const source = new EvmJsonRpcSource(
+    new URL("https://example.com"),
+    [feeModule],
+    fetchStub,
+    FLOATS_OFT_EVENT_CATALOG,
+  );
+
+  const [event] = await source.getEvents(100n, 100n);
+  assert.deepEqual(methods, ["eth_getLogs", "eth_getBlockByNumber", "eth_getTransactionByHash"]);
+  assert.equal(event?.eventName, "OFTSent");
+  assert.equal(event?.payload.toAddress, recipient);
+  assert.equal(event?.payload.nativeFee, "50");
 });

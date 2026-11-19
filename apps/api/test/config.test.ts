@@ -30,6 +30,8 @@ test("public configuration excludes all Supabase values", () => {
     optionsMarketAddress: null,
     optionsVaultAddress: null,
     optionTokenAddress: null,
+    spotRoutes: [],
+    crossChainRoutes: [],
   });
   assert.equal("supabaseUrl" in publicConfig, false);
   assert.equal("supabaseSecretKey" in publicConfig, false);
