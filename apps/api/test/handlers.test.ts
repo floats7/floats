@@ -24,6 +24,7 @@ import type { ReadModelRepository } from "../src/read-model-repository.ts";
 import type { VaultQuoteReader } from "../src/vault-quote-reader.ts";
 import type { OptionsQuoteClient } from "../src/options-quote-client.ts";
 import type { MarketCatalog } from "../src/market-catalog.ts";
+import type { CandidateMarketData } from "../src/candidate-market-data.ts";
 
 function context(readModels: Partial<ReadModelRepository> = {}): ApiContext {
   return {
@@ -43,6 +44,7 @@ function context(readModels: Partial<ReadModelRepository> = {}): ApiContext {
     readModels: readModels as ReadModelRepository,
     vaultQuotes: {} as VaultQuoteReader,
     markets: {} as MarketCatalog,
+    candidateMarketData: {} as CandidateMarketData,
   };
 }
 

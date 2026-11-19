@@ -349,6 +349,21 @@ export class FloatsApiClient {
     return this.get<readonly MarketCandidateDto[]>("/market-candidates", signal);
   }
 
+  public getMarketCandidateHistory(
+    candidateId: string,
+    limit = 500,
+    signal?: AbortSignal,
+  ): Promise<readonly MarketHistoryPointDto[]> {
+    if (!/^[a-z0-9-]{1,80}$/.test(candidateId)) throw new Error("Market candidate ID is invalid");
+    if (!Number.isSafeInteger(limit) || limit < 2 || limit > 1000) {
+      throw new Error("Market history limit must be between 2 and 1000");
+    }
+    return this.get<readonly MarketHistoryPointDto[]>(
+      `/market-candidates/${encodeURIComponent(candidateId)}/history?limit=${limit}`,
+      signal,
+    );
+  }
+
   public getMarket(assetId: string, signal?: AbortSignal): Promise<MarketAssetDto> {
     return this.get<MarketAssetDto>(`/markets/${marketAssetId(assetId)}`, signal);
   }

@@ -7,6 +7,7 @@ import { OptionsQuoteClient } from "./options-quote-client.ts";
 import type { Address } from "../../indexer/src/types.ts";
 import { MarketCatalog } from "./market-catalog.ts";
 import { TokenMetadataReader } from "./token-metadata-reader.ts";
+import { CandidateMarketData } from "./candidate-market-data.ts";
 
 export interface ApiContext {
   readonly publicConfig: PublicConfig;
@@ -16,6 +17,7 @@ export interface ApiContext {
   readonly optionsVault?: OptionsVaultReader;
   readonly optionsQuotes?: OptionsQuoteClient;
   readonly markets: MarketCatalog;
+  readonly candidateMarketData: CandidateMarketData;
 }
 
 export function createApiContext(environment: NodeJS.ProcessEnv): ApiContext {
@@ -60,6 +62,7 @@ export function createApiContext(environment: NodeJS.ProcessEnv): ApiContext {
       new TokenMetadataReader(requireHttpsUrl(environment, "RPC_URL")),
       publicConfig,
     ),
+    candidateMarketData: new CandidateMarketData(),
     vaultQuotes: new VaultQuoteReader(requireHttpsUrl(environment, "RPC_URL"), vaultAddress as Address),
     ...(optionsVaultAddress === undefined
       ? {}

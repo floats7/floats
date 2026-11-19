@@ -13,6 +13,52 @@ interface CandidateRow {
   readonly lifecycle_status: string;
 }
 
+export async function syncListedMarketCandidates(config: MarketCandidateSyncConfig): Promise<number> {
+  if (config.databaseUrl.protocol !== "https:") throw new Error("Database URL must use HTTPS");
+  if (!config.secretKey.startsWith("sb_secret_")) throw new Error("Candidate sync requires a server-only secret key");
+  const request = config.fetch ?? globalThis.fetch;
+  const candidatesUrl = databaseEndpoint(config, "/rest/v1/market_candidates");
+  candidatesUrl.search = new URLSearchParams({
+    select: "candidate_id,symbol,lifecycle_status",
+    environment: `eq.${config.environment}`,
+    chain_id: `eq.${config.chainId}`,
+    lifecycle_status: "eq.listing_expected",
+  }).toString();
+  const response = await request(candidatesUrl, {
+    headers: databaseHeaders(config),
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!response.ok) throw new Error(`Candidate listing read failed with status ${response.status}`);
+  const candidates = await response.json() as CandidateRow[];
+
+  let updated = 0;
+  for (const candidate of candidates) {
+    if (!await hasPublicTrades(candidate.symbol, request)) continue;
+    const updateUrl = databaseEndpoint(config, "/rest/v1/market_candidates");
+    updateUrl.search = new URLSearchParams({
+      environment: `eq.${config.environment}`,
+      chain_id: `eq.${config.chainId}`,
+      candidate_id: `eq.${candidate.candidate_id}`,
+      lifecycle_status: "eq.listing_expected",
+    }).toString();
+    const now = new Date().toISOString();
+    const update = await request(updateUrl, {
+      method: "PATCH",
+      headers: databaseHeaders(config, "return=minimal"),
+      body: JSON.stringify({
+        lifecycle_status: "listed",
+        disabled_reason: "Official Stock Token pending",
+        last_checked_at: now,
+        updated_at: now,
+      }),
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!update.ok) throw new Error(`Candidate listing sync failed with status ${update.status}`);
+    updated += 1;
+  }
+  return updated;
+}
+
 interface RegistryAsset {
   readonly id: string;
   readonly tokenSymbol: string;
@@ -83,6 +129,28 @@ export async function syncOfficialMarketCandidates(config: MarketCandidateSyncCo
 
 function tokenPrecedesOracle(status: string): boolean {
   return ["upcoming", "listing_expected", "listed", "token_pending", "token_live"].includes(status);
+}
+
+async function hasPublicTrades(symbol: string, request: typeof globalThis.fetch): Promise<boolean> {
+  if (!/^[A-Z][A-Z0-9.-]{0,9}$/.test(symbol.toUpperCase())) return false;
+  const url = new URL(`https://api.nasdaq.com/api/quote/${encodeURIComponent(symbol.toUpperCase())}/chart`);
+  url.searchParams.set("assetclass", "stocks");
+  try {
+    const response = await request(url, {
+      headers: { accept: "application/json", "user-agent": "Mozilla/5.0 (compatible; FloatsCandidateSync/1.0)" },
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!response.ok) return false;
+    const value: unknown = await response.json();
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const data = (value as { data?: unknown }).data;
+    if (!data || typeof data !== "object" || Array.isArray(data)) return false;
+    const chart = (data as { chart?: unknown }).chart;
+    return Array.isArray(chart) && chart.some((point) => point && typeof point === "object"
+      && typeof (point as { x?: unknown }).x === "number" && typeof (point as { y?: unknown }).y === "number");
+  } catch {
+    return false;
+  }
 }
 
 function databaseEndpoint(config: MarketCandidateSyncConfig, path: string): URL {

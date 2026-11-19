@@ -10,6 +10,7 @@ import { AS_OF, addDays, daysBetween } from "@/lib/dates";
 import { formatDate } from "@/lib/format";
 import { marketCandidateStatusLabel } from "@/lib/market-candidate";
 import { EligibilityChecks } from "./EligibilityChecks";
+import { CandidateMarketChart } from "./CandidateMarketChart";
 import styles from "./PipelineDetail.module.css";
 
 const CHECK_EXPLANATIONS: Record<keyof Checks, { title: string; body: string }> = {
@@ -52,6 +53,10 @@ export function PipelineDetail({ item }: { item: MarketCandidateDto }) {
               ? `Earliest entry is in ${daysToEntry} days, once every check below passes.`
               : "Past its fifth trading day. Waiting for the remaining checks to pass."}
         </p>
+      </Reveal>
+
+      <Reveal delay={0.06} className={styles.block}>
+        <CandidateMarketChart item={item} />
       </Reveal>
 
       <Reveal delay={0.08} className={styles.block}>

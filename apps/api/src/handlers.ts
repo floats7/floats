@@ -16,6 +16,25 @@ export async function getFeeRates(context: ApiContext): Promise<Response> {
   }
 }
 
+export async function getMarketCandidateHistory(
+  context: ApiContext,
+  candidateId: string,
+  requestUrl: URL,
+  signal?: AbortSignal,
+): Promise<Response> {
+  const limit = parseBoundedLimit(requestUrl, 500, 2, 1000);
+  if (limit === undefined) return invalidRequest("INVALID_LIMIT");
+  try {
+    const candidates = await context.readModels.listMarketCandidates(signal);
+    const candidate = candidates.find((item) => item.candidate_id === candidateId);
+    if (!candidate) return json({ error: { code: "MARKET_CANDIDATE_NOT_FOUND" } }, 404, PUBLIC_CACHE);
+    const history = await context.candidateMarketData.history(candidate.symbol, limit, signal);
+    return json({ data: history }, 200, "public, max-age=60, stale-while-revalidate=300");
+  } catch {
+    return json({ data: [] }, 200, "public, max-age=30, stale-while-revalidate=60");
+  }
+}
+
 export async function postVaultQuote(context: ApiContext, request: Request): Promise<Response> {
   let body: unknown;
   try {

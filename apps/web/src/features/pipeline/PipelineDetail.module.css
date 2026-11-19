@@ -58,6 +58,34 @@
   font-size: var(--text-xl);
 }
 
+.marketBlock {
+  display: grid;
+  gap: var(--space-5);
+  width: 100%;
+  padding: var(--space-6);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-md);
+  background: var(--surface-base);
+}
+
+.marketHeading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.marketHeading h2 {
+  margin-top: var(--space-2);
+  font-size: var(--text-xl);
+}
+
+.marketNote {
+  max-width: 52rem;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
 .stages {
   display: grid;
   gap: var(--space-3);
@@ -103,5 +131,12 @@
 
   .row {
     grid-template-columns: 16rem minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 40rem) {
+  .marketHeading {
+    align-items: start;
+    flex-direction: column;
   }
 }

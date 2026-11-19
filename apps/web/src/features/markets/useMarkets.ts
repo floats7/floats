@@ -29,14 +29,23 @@ export function useMarkets(): MarketState {
     Promise.all([floatApi.getMarkets(controller.signal), floatApi.getMarketCandidates(controller.signal)]).then(async ([nextMarkets, nextCandidates]) => {
       setMarkets(nextMarkets);
       setCandidates(nextCandidates);
-      const histories = await Promise.all(nextMarkets.map(async (market) => {
+      const marketHistories = nextMarkets.map(async (market) => {
         try {
           return [market.id, await floatApi.getMarketHistory(market.id, 500, controller.signal)] as const;
         } catch (reason: unknown) {
           if (reason instanceof DOMException && reason.name === "AbortError") throw reason;
           return [market.id, []] as const;
         }
-      }));
+      });
+      const candidateHistories = nextCandidates.map(async (candidate) => {
+        try {
+          return [candidate.id, await floatApi.getMarketCandidateHistory(candidate.id, 500, controller.signal)] as const;
+        } catch (reason: unknown) {
+          if (reason instanceof DOMException && reason.name === "AbortError") throw reason;
+          return [candidate.id, []] as const;
+        }
+      });
+      const histories = await Promise.all([...marketHistories, ...candidateHistories]);
       if (!controller.signal.aborted) setHistoryByMarketId(Object.fromEntries(histories));
     }).catch((reason: unknown) => {
       if (!(reason instanceof DOMException && reason.name === "AbortError")) setMarketError(true);

@@ -1,4 +1,4 @@
-import { syncOfficialMarketCandidates } from "../../../packages/database/src/market-candidate-sync.ts";
+import { syncListedMarketCandidates, syncOfficialMarketCandidates } from "../../../packages/database/src/market-candidate-sync.ts";
 
 const environment = required("APP_ENV");
 if (environment !== "testnet" && environment !== "mainnet") throw new Error("APP_ENV is invalid");
@@ -19,8 +19,9 @@ console.log(JSON.stringify({ event: "candidate_sync_started", environment, chain
 
 while (!stopping) {
   try {
-    const updated = await syncOfficialMarketCandidates(config);
-    console.log(JSON.stringify({ event: "candidate_sync_completed", environment, chainId, updated }));
+    const officialAssetsUpdated = await syncOfficialMarketCandidates(config);
+    const listingsUpdated = await syncListedMarketCandidates(config);
+    console.log(JSON.stringify({ event: "candidate_sync_completed", environment, chainId, officialAssetsUpdated, listingsUpdated }));
   } catch (error) {
     console.error(JSON.stringify({
       event: "candidate_sync_failed",

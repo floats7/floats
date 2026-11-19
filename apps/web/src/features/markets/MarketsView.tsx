@@ -58,9 +58,9 @@ export function MarketsView() {
             </div>
             <div className={styles.price}>
               <span>Reference value</span>
-              <strong>Not active</strong>
+              <strong>{candidateReferenceValue(historyByMarketId[candidate.id])}</strong>
             </div>
-            <MarketSparkline label={candidate.name} />
+            <MarketSparkline history={historyByMarketId[candidate.id]} label={candidate.name} />
             <dl className={styles.meta}>
               <div><dt>Index weight</dt><dd>Awaiting activation</dd></div>
               <div><dt>Products</dt><dd>View eligibility</dd></div>
@@ -72,4 +72,9 @@ export function MarketsView() {
       {!loading && error && <p className="container" role="alert">Markets are unavailable. <button type="button" onClick={refresh}>Try again</button></p>}
     </>
   );
+}
+
+function candidateReferenceValue(history: readonly import("@/lib/api-client").MarketHistoryPointDto[] | undefined): string {
+  const latest = history?.at(-1);
+  return latest ? formatUsd(decimalUnitsToNumber(latest.valueUsd18, 18)) : "Not active";
 }
