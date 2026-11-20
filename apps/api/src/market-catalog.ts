@@ -246,7 +246,7 @@ export class MarketCatalog {
       logoUrl: candidate.logo_url,
       decimals: metadata?.decimals ?? candidate.token_decimals ?? 18,
       status: "active",
-      priceUsd18: candidate.oracle_last_price_18 ?? candidate.dex_reference_price_18,
+      priceUsd18: databaseInteger(candidate.oracle_last_price_18 ?? candidate.dex_reference_price_18),
       targetWeightBps: null,
       oracleHealth: candidate.oracle_ready ? "live" : candidate.dex_reference_price_18 ? "dex_pending" : "pending",
       products: this.constituentProducts(address, activeSeries, candidate),
@@ -288,4 +288,15 @@ function capability(
 
 function shortAddress(address: string): string {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
+}
+
+/** PostgREST may decode large NUMERIC values as unsafe JavaScript numbers. */
+function databaseInteger(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string" && /^[0-9]+$/.test(value)) return value;
+  if (typeof value === "bigint" && value >= 0n) return value.toString();
+  if (typeof value === "number" && Number.isFinite(value) && Number.isInteger(value) && value >= 0) {
+    return BigInt(value).toString();
+  }
+  throw new Error("Market price is not an unsigned integer");
 }

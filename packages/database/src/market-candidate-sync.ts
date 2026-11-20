@@ -199,7 +199,6 @@ async function refreshApprovedCandidate(
       official_metadata_observed_at: observedAt,
       trading_halted: officialQuote?.isTradingHalt ?? candidate.trading_halted ?? null,
       official_quote_generated_at: officialQuote?.generatedAt ?? null,
-      logo_url: asset.logoUrl ?? null,
       last_checked_at: observedAt,
       updated_at: observedAt,
     }),

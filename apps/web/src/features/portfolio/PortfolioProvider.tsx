@@ -16,7 +16,7 @@ interface PortfolioApi {
   limits: AccountLimits;
   walletData?: WalletDataDto;
   walletDataStatus: "idle" | "loading" | "ready" | "error";
-  verifyWalletData: () => Promise<void>;
+  refreshWalletData: () => Promise<void>;
 }
 
 const PortfolioContext = createContext<PortfolioApi | null>(null);
@@ -29,7 +29,7 @@ export function usePortfolio(): PortfolioApi {
 
 /** Balances and history for the connected wallet, updated by completed trades. */
 export function PortfolioProvider({ children }: { children: ReactNode }) {
-  const { address, provider } = useWallet();
+  const { address } = useWallet();
   const balances = useWalletBalances();
   const [walletData, setWalletData] = useState<WalletDataDto>();
   const [walletDataStatus, setWalletDataStatus] = useState<PortfolioApi["walletDataStatus"]>("idle");
@@ -40,20 +40,22 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     setWalletDataStatus("idle");
   }, [address]);
 
-  const verifyWalletData = useCallback(async () => {
-    if (!address || !provider || walletDataStatus === "loading") return;
+  const refreshWalletData = useCallback(async () => {
+    if (!address) return;
     setWalletDataStatus("loading");
     try {
-      const challenge = await floatApi.getWalletDataChallenge(address);
-      const signature = await provider.request<unknown>({ method: "personal_sign", params: [challenge.message, address] });
-      if (typeof signature !== "string") throw new Error("Invalid wallet signature");
-      setWalletData(await floatApi.getWalletData(challenge.message, signature));
+      setWalletData(await floatApi.getWalletData(address));
       setWalletDataStatus("ready");
     } catch {
       setWalletDataStatus("error");
-      throw new Error("Wallet data verification failed");
+      throw new Error("Wallet data could not be loaded");
     }
-  }, [address, provider, walletDataStatus]);
+  }, [address]);
+
+  useEffect(() => {
+    if (!address) return;
+    void refreshWalletData().catch(() => undefined);
+  }, [address, refreshWalletData]);
 
   const value = useMemo<PortfolioApi>(
     () => ({
@@ -63,9 +65,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       limits: { usdgBalance: balances.usdg, shares: balances.shares, maxInKindMint: 0 },
       walletData,
       walletDataStatus,
-      verifyWalletData,
+      refreshWalletData,
     }),
-    [status, balances.usdg, balances.shares, walletData, walletDataStatus, verifyWalletData],
+    [status, balances.usdg, balances.shares, walletData, walletDataStatus, refreshWalletData],
   );
 
   return <PortfolioContext.Provider value={value}>{children}</PortfolioContext.Provider>;

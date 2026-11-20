@@ -30,18 +30,10 @@ interface PortfolioTransactionState {
 export function OptionsPortfolio({ embedded = false }: { readonly embedded?: boolean }) {
   const { address, provider, openConnect } = useWallet();
   const { notify } = useToast();
-  const { walletData, walletDataStatus, verifyWalletData } = usePortfolio();
+  const { walletData, walletDataStatus } = usePortfolio();
   const portfolio = walletData?.optionsPortfolio;
   const [transaction, setTransaction] = useState<PortfolioTransactionState>();
   const [activeTab, setActiveTab] = useState<PortfolioTab>("positions");
-
-  const authorize = async () => {
-    try {
-      await verifyWalletData();
-    } catch {
-      notify("Wallet data verification failed", "error");
-    }
-  };
 
   return (
     <Reveal className={`${embedded ? styles.embedded : "container"} ${styles.section}`}>
@@ -52,14 +44,13 @@ export function OptionsPortfolio({ embedded = false }: { readonly embedded?: boo
       {!address ? (
         <EmptyState
           title="Connect a wallet to continue"
-          description="Positions and withdrawal requests are returned only after wallet ownership is proven."
+          description="Connect a wallet to view its public onchain positions and withdrawal requests."
           action={<Button onClick={openConnect}>Connect wallet</Button>}
         />
       ) : portfolio === undefined ? (
         <EmptyState
-          title="Verify wallet data"
-          description="Your wallet is connected. An optional, five-minute signature proves wallet ownership for private records. It cannot submit transactions, approve tokens or spend funds."
-          action={<Button onClick={authorize} loading={walletDataStatus === "loading"}>Verify wallet data</Button>}
+          title={walletDataStatus === "error" ? "Portfolio unavailable" : "Loading portfolio"}
+          description={walletDataStatus === "error" ? "Public onchain portfolio data could not be loaded right now." : "Reading public onchain records for the connected wallet."}
         />
       ) : (
         <div className={styles.tableCard}>

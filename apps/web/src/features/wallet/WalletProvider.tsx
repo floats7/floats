@@ -6,7 +6,6 @@ import { useToast } from "@/components/ui/Toast";
 import { floatApi } from "@/lib/api-client";
 import { getInjectedProvider, isAddress, type Eip1193Provider } from "@/lib/eip1193";
 import { ConnectModal, type ConnectPhase } from "./ConnectModal";
-import { getWalletConnectAppKit } from "./wallet-connect";
 
 interface WalletApi {
   address: string | null;
@@ -88,6 +87,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const connectWalletConnect = useCallback(async () => {
     setPhase("connecting");
     try {
+      const { getWalletConnectAppKit } = await import("./wallet-connect");
       const appKit = await getWalletConnectAppKit();
       appKitRef.current = appKit;
       unsubscribeAccountRef.current?.();

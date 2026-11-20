@@ -29,8 +29,8 @@ export default function SecurityPage() {
           </ul>
         </article>
         <article className={styles.card}>
-          <h2>Wallet signatures</h2>
-          <p>Connecting a wallet only shares its public address. The optional portfolio signature proves ownership for private records, expires after five minutes, and cannot approve or transfer tokens.</p>
+          <h2>Wallet connections</h2>
+          <p>Connecting a wallet shares only its public address. Floats reads public onchain portfolio records without requesting a message signature.</p>
         </article>
         <article className={styles.card}>
           <h2>Official Floats contract</h2>

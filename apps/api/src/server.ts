@@ -25,6 +25,7 @@ import {
   getPublicConfig,
   getRegistryChanges,
   getWalletChallenge,
+  getPublicWalletData,
   internalError,
   postVaultQuote,
   postWalletHistory,
@@ -155,7 +156,7 @@ async function route(request: Request, url: URL): Promise<Response> {
   if (request.method === "POST" && endpoint === "quote") return postVaultQuote(context, request);
   if (request.method === "GET" && endpoint === "wallet-history") return getWalletChallenge(context, request);
   if (request.method === "POST" && endpoint === "wallet-history") return postWalletHistory(context, request);
-  if (request.method === "GET" && endpoint === "wallet-data") return getWalletChallenge(context, request);
+  if (request.method === "GET" && endpoint === "wallet-data") return getPublicWalletData(context, request);
   if (request.method === "POST" && endpoint === "wallet-data") return postWalletData(context, request);
   return new Response(null, { status: 404 });
 }

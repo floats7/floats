@@ -123,6 +123,7 @@ test("legacy-approved candidates keep refreshing official metadata and alert on 
   assert.equal(updated, 1);
   assert.equal(requests.at(-1)?.method, "PATCH");
   assert.equal(requests.at(-1)?.body?.trading_halted, true);
+  assert.equal(requests.at(-1)?.body?.logo_url, undefined);
   assert.deepEqual(alerts, [{ severity: "critical", code: "OFFICIAL_TRADING_HALTED", candidateId: "anthropic", symbol: "ANT", tokenAddress, observedAt: (alerts[0] as { observedAt: string }).observedAt }]);
 });
 

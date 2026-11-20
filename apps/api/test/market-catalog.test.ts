@@ -88,13 +88,13 @@ test("catalog disables candidate execution while official trading is halted", as
   assert.equal(ant?.products[0]?.disabledReason, "Official trading is halted");
 });
 
-test("approved candidate markets are tradable before IndexRegistry membership", async () => {
+test("approved candidate markets normalize database numeric prices and trade before IndexRegistry membership", async () => {
   const readModels = {
     async listActiveAssets() { return []; },
     async latestNav() { return []; },
     async listLatestHoldings() { return []; },
     async listOptionsSeries() { return [{ underlying: token, state: "0" }]; },
-    async listMarketCandidates() { return [{ token_address: token, asset_uid: `0x${"3".repeat(64)}`, symbol: "ANT", company_name: "Anthropic", official_token_name: "Anthropic Stock Token", token_decimals: 18, logo_url: null, identity_approval_status: "approved", token_live: true, liquidity_ready: true, oracle_ready: true, oracle_last_price_18: "100000000000000000000", trading_halted: false, trading_capabilities: { market: { whole: "tradable" } }, spot_paused: false, options_paused: false, product_pause_reason: null }]; },
+    async listMarketCandidates() { return [{ token_address: token, asset_uid: `0x${"3".repeat(64)}`, symbol: "ANT", company_name: "Anthropic", official_token_name: "Anthropic Stock Token", token_decimals: 18, logo_url: null, identity_approval_status: "approved", token_live: true, liquidity_ready: true, oracle_ready: true, oracle_last_price_18: 94_746_338_707_326_840_000, trading_halted: false, trading_capabilities: { market: { whole: "tradable" } }, spot_paused: false, options_paused: false, product_pause_reason: null }]; },
   } as unknown as ReadModelRepository;
   const catalog = new MarketCatalog(readModels, { async read(input) { return input === vault ? { name: "Floats IPO Index", symbol: "fIPO", decimals: 18 } : { name: "Anthropic Stock Token", symbol: "ANT", decimals: 18 }; } }, {
     appEnvironment: "mainnet", chainId: 4663, blockExplorerUrl: "https://explorer.example/", vaultAddress: vault, usdgAddress: `0x${"5".repeat(40)}`, walletConnectProjectId: "0".repeat(32), optionsMarketAddress: `0x${"6".repeat(40)}`, optionsVaultAddress: `0x${"7".repeat(40)}`, optionTokenAddress: `0x${"8".repeat(40)}`, spotRoutes: [{ tokenAddress: token, routerAddress: `0x${"a".repeat(40)}`, quoterAddress: `0x${"b".repeat(40)}`, fee: 500 }], crossChainRoutes: [],
@@ -102,6 +102,7 @@ test("approved candidate markets are tradable before IndexRegistry membership", 
   const markets = await catalog.list();
   const ant = markets.find((market) => market.symbol === "ANT");
   assert.equal(ant?.kind, "candidate");
+  assert.match(ant?.priceUsd18 ?? "", /^[0-9]+$/);
   assert.equal(ant?.targetWeightBps, null);
   assert.equal(ant?.products.every((product) => product.enabled), true);
 });

@@ -1,0 +1,11 @@
+[
+  { "id": "anthropic", "logoUrl": "https://www.anthropic.com/favicon.ico" },
+  { "id": "space-exploration-technologies", "logoUrl": "https://www.spacex.com/assets/favicon-spacex.ico" },
+  { "id": "cerebras-systems", "logoUrl": "https://cdn.sanity.io/images/e4qjo92p/production/e7a55ae5ab7e2c4fdfd4e66a51f628d1f2f44207-967x967.png?w=512&h=512&fit=max&auto=format" },
+  { "id": "navan", "logoUrl": "https://www.navan.com/favicon.ico" },
+  { "id": "firefly-aerospace", "logoUrl": "https://fireflyspace.com/wp-content/uploads/2022/01/cropped-Firefly-Aerospace-Icon-Pantone-389-192x192.png" },
+  { "id": "whitefiber", "logoUrl": "https://cdn.prod.website-files.com/673bd4e39d0fb4773ffa1054/6785db7db9b651aee4dc9afd_favicon%20(1).png" },
+  { "id": "figma", "logoUrl": "https://static.figma.com/app/icon/2/icon-256.png" },
+  { "id": "circle-internet-group", "logoUrl": "https://www.google.com/s2/favicons?domain=www.circle.com&sz=256" },
+  { "id": "coreweave", "logoUrl": "https://cdn.prod.website-files.com/62ba1fb86485b6d5029975c4/676dd39272d1e888a56c48ad_logo_coreweave_solo_256x256.png" }
+]

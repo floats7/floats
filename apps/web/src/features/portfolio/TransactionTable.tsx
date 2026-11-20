@@ -2,25 +2,15 @@
 
 import { Reveal } from "@/components/ui/Reveal";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Button, LinkButton } from "@/components/ui/Button";
-import { useToast } from "@/components/ui/Toast";
+import { LinkButton } from "@/components/ui/Button";
 import { usePortfolio } from "./PortfolioProvider";
 import { formatDate } from "@/lib/format";
 import { formatUnits } from "@/lib/units";
 import styles from "./TransactionTable.module.css";
 
 export function TransactionTable() {
-  const { walletData, walletDataStatus, verifyWalletData } = usePortfolio();
-  const { notify } = useToast();
+  const { walletData, walletDataStatus } = usePortfolio();
   const transactions = walletData?.transactions;
-
-  const loadHistory = async () => {
-    try {
-      await verifyWalletData();
-    } catch {
-      notify("Wallet data verification failed", "error");
-    }
-  };
 
   return (
     <section className={`container ${styles.section}`} aria-labelledby="history-title">
@@ -32,9 +22,8 @@ export function TransactionTable() {
 
       {transactions === undefined ? (
         <EmptyState
-          title="Verify wallet data"
-          description="Your wallet is connected. An optional, five-minute signature proves wallet ownership for private records. It cannot submit transactions, approve tokens or spend funds. Floats will never ask for a seed phrase or private key."
-          action={<Button onClick={loadHistory} loading={walletDataStatus === "loading"}>Verify wallet data</Button>}
+          title={walletDataStatus === "error" ? "History unavailable" : "Loading history"}
+          description={walletDataStatus === "error" ? "Public onchain history could not be loaded right now." : "Reading public onchain activity for the connected wallet."}
         />
       ) : transactions.length === 0 ? (
         <EmptyState

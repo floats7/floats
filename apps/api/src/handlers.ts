@@ -168,6 +168,32 @@ export async function getWalletChallenge(context: ApiContext, request: Request):
   return response;
 }
 
+export async function getPublicWalletData(context: ApiContext, request: Request): Promise<Response> {
+  const address = new URL(request.url).searchParams.get("address");
+  if (!address || !/^0x[0-9a-fA-F]{40}$/.test(address)) {
+    return invalidRequest("INVALID_WALLET_ADDRESS");
+  }
+  try {
+    const wallet = address.toLowerCase();
+    const [transactions, positions, withdrawals] = await Promise.all([
+      context.readModels.listUserTransactions(wallet, 100, request.signal),
+      context.readModels.listOptionsPositions(wallet, request.signal),
+      context.readModels.listOptionsWithdrawals(wallet, request.signal),
+    ]);
+    return json({ data: {
+      walletAddress: wallet,
+      transactions: transactions.map(mapWalletTransaction),
+      optionsPortfolio: {
+        walletAddress: wallet,
+        positions: positions.map((item) => ({ seriesId: item.series_id, underlying: item.underlying, underlyingSymbol: item.underlying_symbol, size18: item.size_18, netCashFlow6: item.net_cash_flow_6, updatedAt: item.updated_at })),
+        withdrawals: withdrawals.map((item) => ({ requestId: item.request_id, state: item.state, receiverAddress: item.receiver_address, shares: decimalString(item.shares), assets6: nullableDecimalString(item.assets_6), unlockAt: item.unlock_at, updatedAt: item.updated_at })),
+      },
+    } }, 200, NO_STORE);
+  } catch {
+    return internalError();
+  }
+}
+
 export async function postWalletHistory(context: ApiContext, request: Request): Promise<Response> {
   let body: unknown;
   try {
@@ -326,7 +352,7 @@ export async function getMarketCandidates(context: ApiContext, signal?: AbortSig
       id: item.candidate_id,
       symbol: item.symbol,
       name: item.company_name,
-      status: item.lifecycle_status,
+      status: publicCandidateStatus(item),
       ipoDate: item.ipo_date,
       listingDate: item.expected_listing_date,
       eligibleFrom: item.eligible_from,
@@ -353,11 +379,11 @@ export async function getMarketCandidates(context: ApiContext, signal?: AbortSig
       oracle: {
         feedAddress: item.official_feed_address,
         healthySince: item.oracle_healthy_since,
-        lastPrice18: item.oracle_last_price_18,
+        lastPrice18: nullableLargeInteger(item.oracle_last_price_18),
         lastFailure: item.oracle_last_failure,
       },
       liquidity: {
-        dexReferencePrice18: item.dex_reference_price_18,
+        dexReferencePrice18: nullableLargeInteger(item.dex_reference_price_18),
         observedAt: item.liquidity_observed_at,
       },
       governanceApproved: item.governance_approved,
@@ -383,7 +409,16 @@ export async function getMarketCandidates(context: ApiContext, signal?: AbortSig
   }
 }
 
-function orderMarketCandidates<T extends { readonly ipo_stage?: string | null }>(candidates: readonly T[]): readonly T[] {
+function orderMarketCandidates<T extends {
+  readonly ipo_stage?: string | null;
+  readonly lifecycle_status: string;
+  readonly identity_approval_status: string;
+  readonly token_live: boolean;
+  readonly liquidity_ready: boolean;
+  readonly trading_halted: boolean | null;
+  readonly spot_paused: boolean;
+  readonly trading_capabilities: unknown;
+}>(candidates: readonly T[]): readonly T[] {
   const rank: Readonly<Record<string, number>> = {
     trading: 6,
     priced: 5,
@@ -790,6 +825,37 @@ function decimalString(value: unknown): string {
 
 function nullableDecimalString(value: unknown): string | null {
   return value === null || value === undefined ? null : decimalString(value);
+}
+
+function nullableLargeInteger(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string" && /^[0-9]+$/.test(value)) return value;
+  if (typeof value === "bigint" && value >= 0n) return value.toString();
+  if (typeof value === "number" && Number.isFinite(value) && Number.isInteger(value) && value >= 0) {
+    return BigInt(value).toString();
+  }
+  throw new Error("INVALID_LARGE_INTEGER");
+}
+
+function publicCandidateStatus(candidate: {
+  readonly lifecycle_status: string;
+  readonly identity_approval_status: string;
+  readonly token_live: boolean;
+  readonly liquidity_ready: boolean;
+  readonly trading_halted: boolean | null;
+  readonly spot_paused: boolean;
+  readonly trading_capabilities: unknown;
+}): string {
+  const market = candidate.trading_capabilities && typeof candidate.trading_capabilities === "object"
+    ? (candidate.trading_capabilities as { market?: { whole?: unknown } }).market?.whole
+    : undefined;
+  const spotReady = candidate.identity_approval_status === "approved"
+    && candidate.token_live
+    && candidate.liquidity_ready
+    && candidate.trading_halted === false
+    && !candidate.spot_paused
+    && market === "TRADING_STATUS_TRADABLE";
+  return spotReady ? "active" : candidate.lifecycle_status;
 }
 
 function parseBoundedLimit(

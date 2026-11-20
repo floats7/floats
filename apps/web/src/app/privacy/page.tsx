@@ -17,7 +17,7 @@ export default function PrivacyPage() {
       </article>
       <article className={styles.section}>
         <h2>Read-only verification</h2>
-        <p>An optional signature can be used to prove wallet ownership before private portfolio records are returned. The challenge is bound to the requesting domain, contains a one-time nonce and expires after five minutes.</p>
+        <p>Floats uses the connected public wallet address to retrieve public onchain portfolio records. Reading portfolio data does not require a message signature.</p>
       </article>
       <article className={styles.section}>
         <h2>Infrastructure data</h2>

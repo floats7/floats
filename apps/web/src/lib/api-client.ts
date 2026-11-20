@@ -180,11 +180,6 @@ export interface FeeRatesDto {
   readonly offHoursBps: number;
 }
 
-export interface WalletChallengeDto {
-  readonly message: string;
-  readonly expiresAt: string;
-}
-
 export interface WalletTransactionDto {
   readonly transactionHash: string;
   readonly action: string;
@@ -571,40 +566,9 @@ export class FloatsApiClient {
     return this.get<readonly PublicActivityDto[]>(`/activity?limit=${limit}`, signal);
   }
 
-  public getWalletDataChallenge(address: string, signal?: AbortSignal): Promise<WalletChallengeDto> {
+  public getWalletData(address: string, signal?: AbortSignal): Promise<WalletDataDto> {
     if (!/^0x[0-9a-fA-F]{40}$/.test(address)) throw new Error("Wallet address is invalid");
-    return this.get<WalletChallengeDto>(`/wallet-data?address=${encodeURIComponent(address)}`, signal);
-  }
-
-  public getWalletData(message: string, signature: string, signal?: AbortSignal): Promise<WalletDataDto> {
-    if (!message || !/^0x[0-9a-fA-F]{130}$/.test(signature)) throw new Error("Wallet proof is invalid");
-    return this.post<WalletDataDto>("/wallet-data", { message, signature }, signal);
-  }
-
-  public getOptionsPortfolioChallenge(
-    address: string,
-    signal?: AbortSignal,
-  ): Promise<WalletChallengeDto> {
-    if (!/^0x[0-9a-fA-F]{40}$/.test(address)) throw new Error("Wallet address is invalid");
-    return this.get<WalletChallengeDto>(
-      `/options/portfolio?address=${encodeURIComponent(address)}`,
-      signal,
-    );
-  }
-
-  public getOptionsPortfolio(
-    message: string,
-    signature: string,
-    signal?: AbortSignal,
-  ): Promise<OptionsPortfolioDto> {
-    if (!message || !/^0x[0-9a-fA-F]{130}$/.test(signature)) {
-      throw new Error("Wallet proof is invalid");
-    }
-    return this.post<OptionsPortfolioDto>(
-      "/options/portfolio",
-      { message, signature },
-      signal,
-    );
+    return this.get<WalletDataDto>(`/wallet-data?address=${encodeURIComponent(address)}`, signal);
   }
 
   public quoteCash(
@@ -614,20 +578,6 @@ export class FloatsApiClient {
   ): Promise<CashQuoteDto> {
     if (!/^[1-9][0-9]{0,77}$/.test(amount)) throw new Error("Quote amount is invalid");
     return this.post<CashQuoteDto>("/quote", { direction, amount }, signal);
-  }
-
-  public getWalletChallenge(address: string, signal?: AbortSignal): Promise<WalletChallengeDto> {
-    if (!/^0x[0-9a-fA-F]{40}$/.test(address)) throw new Error("Wallet address is invalid");
-    return this.get<WalletChallengeDto>(`/wallet-history?address=${encodeURIComponent(address)}`, signal);
-  }
-
-  public getWalletHistory(
-    message: string,
-    signature: string,
-    signal?: AbortSignal,
-  ): Promise<readonly WalletTransactionDto[]> {
-    if (!message || !/^0x[0-9a-fA-F]{130}$/.test(signature)) throw new Error("Wallet proof is invalid");
-    return this.post<readonly WalletTransactionDto[]>("/wallet-history", { message, signature }, signal);
   }
 
   private async get<T>(path: string, signal?: AbortSignal): Promise<T> {
