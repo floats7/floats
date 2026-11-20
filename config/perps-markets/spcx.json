@@ -1,0 +1,29 @@
+{
+  "chainId": 4663,
+  "symbol": "SPCX-PERP",
+  "underlyingSymbol": "SPCX",
+  "underlyingAddress": "0x4a0E65A3EcceC6dBe60AE065F2e7bb85Fae35eEa",
+  "priceFeedAddress": "0xB265810950ba6c5C0Ff821c9963014a56fD8Bffb",
+  "marketState": "disabled",
+  "risk": {
+    "maxLeverageBps": 30000,
+    "initialMarginBps": 4000,
+    "maintenanceMarginBps": 2000,
+    "openInterestCapBps": 200,
+    "baseSpreadBps": 50,
+    "tradingFeeBps": 6,
+    "extendedSpreadMultiplierBps": 20000,
+    "extendedLeverageDivisorBps": 20000,
+    "maxPriceAgeSeconds": 7200,
+    "isolatedOnly": false,
+    "fundingSkewCoefficient18": "100000000000000",
+    "maximumFundingRate18": "500000000000000"
+  },
+  "activationGates": {
+    "officialFeedRequired": true,
+    "feedStabilityRequired": true,
+    "sessionCapabilityRequired": true,
+    "minimumLiquidityRequired": true,
+    "governanceApprovalRequired": true
+  }
+}

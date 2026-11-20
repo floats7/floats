@@ -8,6 +8,8 @@ import type { Address } from "../../indexer/src/types.ts";
 import { MarketCatalog } from "./market-catalog.ts";
 import { TokenMetadataReader } from "./token-metadata-reader.ts";
 import { CandidateMarketData } from "./candidate-market-data.ts";
+import { FUSDReader } from "./fusd-reader.ts";
+import { PerpsReader } from "./perps-reader.ts";
 
 export interface ApiContext {
   readonly publicConfig: PublicConfig;
@@ -18,6 +20,10 @@ export interface ApiContext {
   readonly optionsQuotes?: OptionsQuoteClient;
   readonly markets: MarketCatalog;
   readonly candidateMarketData: CandidateMarketData;
+  readonly fusd?: FUSDReader;
+  readonly fusdVaultAddress?: string;
+  readonly perps?: PerpsReader;
+  readonly perpsRestrictedCountries?: ReadonlySet<string>;
 }
 
 export function createApiContext(environment: NodeJS.ProcessEnv): ApiContext {
@@ -31,6 +37,24 @@ export function createApiContext(environment: NodeJS.ProcessEnv): ApiContext {
   const optionsVaultAddress = optionalAddress(environment, "OPTIONS_VAULT_ADDRESS");
   const optionsMarketAddress = optionalAddress(environment, "OPTIONS_MARKET_ADDRESS");
   const optionTokenAddress = optionalAddress(environment, "OPTION_TOKEN_ADDRESS");
+  const fusdVaultAddress = optionalAddress(environment, "FUSD_VAULT_ADDRESS");
+  const fusdStrategyAddress = optionalAddress(environment, "FUSD_STRATEGY_ADDRESS");
+  const fusdRateOracleAddress = optionalAddress(environment, "FUSD_RATE_ORACLE_ADDRESS");
+  const fusdToFipoRouterAddress = optionalAddress(environment, "FUSD_TO_FIPO_ROUTER_ADDRESS");
+  const perps = readPerpsAddresses(environment);
+  const perpsRestrictedCountries = readCountrySet(environment.PERPS_RESTRICTED_COUNTRIES);
+  const hasCompleteFusdConfiguration = Boolean(
+    fusdVaultAddress && fusdStrategyAddress && fusdRateOracleAddress,
+  );
+  if (
+    [fusdVaultAddress, fusdStrategyAddress, fusdRateOracleAddress].some(Boolean)
+    && !hasCompleteFusdConfiguration
+  ) {
+    throw new Error("All fUSD contract addresses must be configured together");
+  }
+  if (hasCompleteFusdConfiguration && serverConfig.appEnvironment !== "mainnet") {
+    throw new Error("fUSD is mainnet-only");
+  }
   const spotRoutes = readSpotRoutes(environment);
   const crossChainRoutes = readCrossChainRoutes(environment);
   const optionsPricerUrl = optionalHttpsUrl(environment, "OPTIONS_PRICER_URL");
@@ -46,6 +70,15 @@ export function createApiContext(environment: NodeJS.ProcessEnv): ApiContext {
         ...(optionsMarketAddress ? { optionsMarketAddress } : {}),
         ...(optionsVaultAddress ? { optionsVaultAddress } : {}),
         ...(optionTokenAddress ? { optionTokenAddress } : {}),
+        ...(fusdVaultAddress && fusdStrategyAddress && fusdRateOracleAddress
+          ? {
+              fusdVaultAddress,
+              fusdStrategyAddress,
+              fusdRateOracleAddress,
+              ...(fusdToFipoRouterAddress ? { fusdToFipoRouterAddress } : {}),
+            }
+          : {}),
+        ...(perps ? { perps } : {}),
         spotRoutes,
         crossChainRoutes,
       },
@@ -57,6 +90,7 @@ export function createApiContext(environment: NodeJS.ProcessEnv): ApiContext {
   });
   return {
     publicConfig,
+    perpsRestrictedCountries,
     vaultAddress,
     readModels,
     markets: new MarketCatalog(
@@ -66,6 +100,16 @@ export function createApiContext(environment: NodeJS.ProcessEnv): ApiContext {
     ),
     candidateMarketData: new CandidateMarketData(),
     vaultQuotes: new VaultQuoteReader(requireHttpsUrl(environment, "RPC_URL"), vaultAddress as Address),
+    ...(hasCompleteFusdConfiguration && fusdVaultAddress && fusdStrategyAddress
+      ? {
+          fusd: new FUSDReader(
+            requireHttpsUrl(environment, "RPC_URL"),
+            fusdVaultAddress as Address,
+            fusdStrategyAddress as Address,
+          ),
+          fusdVaultAddress,
+        }
+      : {}),
     ...(optionsVaultAddress === undefined
       ? {}
       : {
@@ -77,6 +121,60 @@ export function createApiContext(environment: NodeJS.ProcessEnv): ApiContext {
     ...(optionsPricerUrl && optionsPricerToken
       ? { optionsQuotes: new OptionsQuoteClient(optionsPricerUrl, optionsPricerToken) }
       : {}),
+    ...(perps
+      ? {
+          perps: new PerpsReader(
+            requireHttpsUrl(environment, "RPC_URL"),
+            perps.marketAddress as Address,
+            perps.registryAddress as Address,
+            perps.marginAccountAddress as Address,
+            perps.riskEngineAddress as Address,
+            perps.oracleAddress as Address,
+            perps.liquidityVaultAddress as Address,
+          ),
+        }
+      : {}),
+  };
+}
+
+function readCountrySet(raw: string | undefined): ReadonlySet<string> {
+  if (!raw?.trim()) return new Set();
+  const countries = raw.split(",").map((value) => value.trim().toUpperCase()).filter(Boolean);
+  if (countries.some((country) => !/^[A-Z]{2}$/.test(country))) {
+    throw new Error("PERPS_RESTRICTED_COUNTRIES must contain comma-separated ISO alpha-2 codes");
+  }
+  return new Set(countries);
+}
+
+function readPerpsAddresses(environment: NodeJS.ProcessEnv) {
+  const keys = [
+    "PERPS_REGISTRY_ADDRESS",
+    "PERPS_MARKET_ADDRESS",
+    "PERPS_ORACLE_ADDRESS",
+    "PERPS_MARGIN_ACCOUNT_ADDRESS",
+    "PERPS_FUNDING_ENGINE_ADDRESS",
+    "PERPS_RISK_ENGINE_ADDRESS",
+    "PERPS_LIQUIDATION_ENGINE_ADDRESS",
+    "PERPS_LIQUIDITY_VAULT_ADDRESS",
+    "PERPS_INSURANCE_FUND_ADDRESS",
+    "PERPS_FIPO_PRICE_FEED_ADDRESS",
+  ] as const;
+  const values = keys.map((key) => optionalAddress(environment, key));
+  if (!values.some(Boolean)) return undefined;
+  if (!values.every(Boolean)) {
+    throw new Error("All Perps contract addresses must be configured together");
+  }
+  return {
+    registryAddress: values[0]!,
+    marketAddress: values[1]!,
+    oracleAddress: values[2]!,
+    marginAccountAddress: values[3]!,
+    fundingEngineAddress: values[4]!,
+    riskEngineAddress: values[5]!,
+    liquidationEngineAddress: values[6]!,
+    liquidityVaultAddress: values[7]!,
+    insuranceFundAddress: values[8]!,
+    fipoPriceFeedAddress: values[9]!,
   };
 }
 

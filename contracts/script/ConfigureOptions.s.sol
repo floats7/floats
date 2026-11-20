@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { OptionToken } from "../src/options/OptionToken.sol";
 import { OptionsVault } from "../src/options/OptionsVault.sol";
 import { QuoteVerifier } from "../src/options/QuoteVerifier.sol";
@@ -42,9 +43,9 @@ abstract contract OptionsConfiguration {
         address market = vm.envAddress("OPTIONS_MARKET_ADDRESS");
         address keeper = vm.envAddress("KEEPER_ADDRESS");
 
-        targets = new address[](13);
-        values = new uint256[](13);
-        payloads = new bytes[](13);
+        targets = new address[](15);
+        values = new uint256[](15);
+        payloads = new bytes[](15);
         targets[0] = address(registry);
         payloads[0] = abi.encodeCall(SeriesRegistry.setSettlementEngine, (address(engine)));
         targets[1] = address(registry);
@@ -73,6 +74,14 @@ abstract contract OptionsConfiguration {
         payloads[11] = abi.encodeCall(RiskManager.setMarket, (market));
         targets[12] = address(risk);
         payloads[12] = abi.encodeCall(RiskManager.setSettlementEngine, (address(engine)));
+        targets[13] = address(vault);
+        payloads[13] = abi.encodeCall(
+            OptionsVault.configureYieldVault, (IERC4626(vm.envAddress("FUSD_VAULT_ADDRESS")))
+        );
+        targets[14] = address(vault);
+        payloads[14] = abi.encodeCall(
+            OptionsVault.setYieldBufferBps, (vm.envUint("OPTIONS_YIELD_BUFFER_BPS"))
+        );
         salt = keccak256(
             abi.encode(
                 "FLOATS_OPTIONS_CONFIGURATION", block.chainid, vm.envString("DEPLOYMENT_VERSION")

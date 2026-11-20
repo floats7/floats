@@ -76,7 +76,7 @@ export function MarketPublicInfo({ kind, symbol, spotEnabled = false, embedded =
           <p className="eyebrow">Recent activity</p>
           <h3>Onchain trades and positions</h3>
         </div>
-        <p>Confirmed Buy, Sell, Options and liquidity activity from public onchain events.</p>
+        <p>Confirmed Buy, Sell, Options, Perps and liquidity activity from public onchain events.</p>
       </div>
 
       {loading && <p className={styles.state} role="status">Loading finalized activity…</p>}
@@ -107,7 +107,7 @@ function MarketFact({ title, value, detail }: { readonly title: string; readonly
 }
 
 function activityLabel(value: string): string {
-  const labels: Record<string, string> = { cash_mint: "Deposit / Buy fIPO", cash_redeem: "Sell fIPO", in_kind_redeem: "Sell fIPO in-kind", OptionBought: "Buy option", OptionSoldBack: "Sell option", OptionClaimed: "Claim option", WithdrawalRequested: "Request Earn withdrawal", WithdrawalCancelled: "Cancel Earn withdrawal", WithdrawalFinalized: "Finalize Earn withdrawal", WithdrawalClaimed: "Claim Earn withdrawal" };
+  const labels: Record<string, string> = { cash_mint: "Deposit / Buy fIPO", cash_redeem: "Sell fIPO", in_kind_redeem: "Sell fIPO in-kind", OptionBought: "Buy option", OptionSoldBack: "Sell option", OptionClaimed: "Claim option", PerpsPositionModified: "Perps position changed", PerpsPositionLiquidated: "Perps position liquidated", PerpsIsolatedLiquidationExecuted: "Isolated liquidation", PerpsCrossLiquidationExecuted: "Cross liquidation", WithdrawalRequested: "Request Earn withdrawal", WithdrawalCancelled: "Cancel Earn withdrawal", WithdrawalFinalized: "Finalize Earn withdrawal", WithdrawalClaimed: "Claim Earn withdrawal" };
   return labels[value] ?? value.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replaceAll("_", " ");
 }
 

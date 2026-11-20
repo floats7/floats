@@ -1,0 +1,453 @@
+.shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(20rem, 28rem);
+  gap: var(--space-5);
+  padding-bottom: var(--space-9);
+}
+
+.overview,
+.transactionPanel,
+.yield,
+.risk,
+.records,
+.unavailable {
+  border: 1px solid var(--line-base);
+  background: rgb(0 0 0 / 0.48);
+}
+
+.overview,
+.transactionPanel,
+.yield,
+.risk,
+.records {
+  padding: var(--space-6);
+}
+
+.overviewHeading,
+.allocationHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.overviewHeading h2 {
+  margin-top: var(--space-3);
+  font-size: var(--text-3xl);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: var(--space-6);
+  border-top: 1px solid var(--line-base);
+  border-left: 1px solid var(--line-base);
+}
+
+.metrics > div {
+  padding: var(--space-5);
+  border-right: 1px solid var(--line-base);
+  border-bottom: 1px solid var(--line-base);
+}
+
+.metrics dt,
+.allocationFacts dt,
+.quote dt {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.metrics dd {
+  margin-top: var(--space-2);
+  color: var(--text-strong);
+  font-size: var(--text-xl);
+}
+
+.allocation {
+  margin-top: var(--space-6);
+}
+
+.contracts {
+  margin-top: var(--space-6);
+}
+
+.capacity {
+  margin-top: var(--space-6);
+  padding: var(--space-5);
+  border: 1px solid var(--line-base);
+}
+
+.capacityFacts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.capacityFacts dt {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.capacityFacts dd {
+  margin-top: var(--space-2);
+  color: var(--text-strong);
+}
+
+.capacity > p {
+  margin-top: var(--space-4);
+  color: var(--text-muted);
+  line-height: 1.65;
+}
+
+.contracts ul {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.contracts li {
+  display: grid;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.contracts li > span {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.contracts a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--text-strong);
+}
+
+.contracts code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--text-sm);
+}
+
+.contracts svg {
+  flex: 0 0 auto;
+}
+
+.allocationHeader h3 {
+  font-size: var(--text-xl);
+}
+
+.allocationHeader span {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.allocationBar {
+  height: 0.75rem;
+  margin-top: var(--space-4);
+  border: 1px solid var(--line-strong);
+  background: var(--metal-dark);
+}
+
+.allocationBar span {
+  display: block;
+  height: 100%;
+  background: var(--metal-light);
+}
+
+.allocationFacts,
+.quote {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.allocationFacts > div,
+.quote > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.transactionPanel h2 {
+  margin-top: var(--space-3);
+  font-size: var(--text-2xl);
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: var(--space-5);
+  border: 1px solid var(--line-base);
+}
+
+.tabs button {
+  min-height: 3rem;
+  border: 0;
+  border-right: 1px solid var(--line-base);
+  background: transparent;
+  cursor: pointer;
+}
+
+.tabs button:last-child {
+  border-right: 0;
+}
+
+.tabs button[aria-selected="true"] {
+  background: var(--surface-paper);
+  color: var(--text-on-paper);
+}
+
+.pauseNotice {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--line-base);
+  color: var(--text-muted);
+}
+
+.pauseNotice svg {
+  flex: 0 0 auto;
+}
+
+.amountField {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
+
+.amountField span {
+  color: var(--text-muted);
+}
+
+.amountField input {
+  width: 100%;
+  padding: var(--space-4);
+  border: 1px solid var(--line-base);
+  background: var(--surface-base);
+  color: var(--text-strong);
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+}
+
+.primaryAction {
+  width: 100%;
+  min-height: 3.5rem;
+  margin-top: var(--space-5);
+  border: 1px solid var(--text-strong);
+  background: var(--surface-paper);
+  color: var(--text-on-paper);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.primaryAction:disabled {
+  border-color: var(--line-strong);
+  background: var(--surface-plate);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.message {
+  margin-top: var(--space-4);
+  color: var(--negative);
+}
+
+.yield,
+.risk,
+.records {
+  grid-column: 1 / -1;
+}
+
+.recordsHeader {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+
+.recordsHeader h2 {
+  margin-top: var(--space-3);
+  font-size: var(--text-2xl);
+}
+
+.recordTabs {
+  display: flex;
+  border: 1px solid var(--line-base);
+}
+
+.recordTabs button {
+  min-height: 2.75rem;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-right: 1px solid var(--line-base);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.recordTabs button:last-child { border-right: 0; }
+.recordTabs button[aria-selected="true"] { background: var(--surface-paper); color: var(--text-on-paper); }
+
+.tableWrap {
+  margin-top: var(--space-5);
+  overflow-x: auto;
+}
+
+.tableWrap table { width: 100%; border-collapse: collapse; }
+.tableWrap th, .tableWrap td { padding: var(--space-3); border-bottom: 1px solid var(--line-soft); text-align: left; white-space: nowrap; }
+.tableWrap th { color: var(--text-muted); font-family: var(--font-mono); font-size: var(--text-xs); text-transform: uppercase; }
+.tableWrap a { display: inline-flex; align-items: center; gap: var(--space-2); }
+.emptyRecord { margin-top: var(--space-5); padding: var(--space-5); border: 1px dashed var(--line-base); color: var(--text-muted); }
+
+.requestActions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.requestActions button {
+  min-height: 2.25rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line-base);
+  background: transparent;
+  color: var(--text-strong);
+  cursor: pointer;
+}
+
+.requestActions button:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  background: var(--surface-paper);
+  color: var(--text-on-paper);
+}
+
+.requestActions button:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+
+.yield h2,
+.risk h2 {
+  max-width: 18ch;
+  margin-top: var(--space-3);
+  font-size: var(--text-2xl);
+}
+
+.yieldGrid,
+.riskGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-5);
+  margin-top: var(--space-6);
+}
+
+.yieldGrid article,
+.riskGrid p {
+  border-left: 1px solid var(--line-strong);
+  padding-left: var(--space-4);
+}
+
+.yieldGrid h3 {
+  font-size: var(--text-lg);
+}
+
+.yieldGrid strong {
+  display: block;
+  margin: var(--space-3) 0;
+  color: var(--text-strong);
+}
+
+.yieldGrid p,
+.riskGrid p {
+  color: var(--text-muted);
+}
+
+.riskTableWrap {
+  margin-top: var(--space-6);
+  overflow-x: auto;
+}
+
+.riskTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.riskTable th,
+.riskTable td {
+  min-width: 11rem;
+  padding: var(--space-4);
+  border: 1px solid var(--line-soft);
+  text-align: left;
+  vertical-align: top;
+}
+
+.riskTable thead th {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.riskTable tbody th {
+  color: var(--text-strong);
+  font-size: var(--text-sm);
+}
+
+.riskTable td {
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.unavailable {
+  grid-column: 1 / -1;
+  padding: var(--space-6);
+}
+
+@media (max-width: 64rem) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .yield,
+  .risk,
+  .records {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 44rem) {
+  .overview,
+  .transactionPanel,
+  .yield,
+  .risk,
+  .records {
+    padding: var(--space-5);
+  }
+
+  .recordsHeader { align-items: stretch; flex-direction: column; }
+
+  .metrics,
+  .capacityFacts,
+  .yieldGrid,
+  .riskGrid {
+    grid-template-columns: 1fr;
+  }
+}

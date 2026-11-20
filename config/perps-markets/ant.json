@@ -1,0 +1,29 @@
+{
+  "chainId": 4663,
+  "symbol": "ANT-PERP",
+  "underlyingSymbol": "ANT",
+  "underlyingAddress": "0xbBb6c29bCc3A1028a2B54310dF73F4F7A3BCb373",
+  "priceFeedAddress": null,
+  "marketState": "disabled",
+  "risk": {
+    "maxLeverageBps": 20000,
+    "initialMarginBps": 5000,
+    "maintenanceMarginBps": 2500,
+    "openInterestCapBps": 400,
+    "baseSpreadBps": 50,
+    "tradingFeeBps": 6,
+    "extendedSpreadMultiplierBps": 20000,
+    "extendedLeverageDivisorBps": 20000,
+    "maxPriceAgeSeconds": 300,
+    "isolatedOnly": true,
+    "fundingSkewCoefficient18": "100000000000000",
+    "maximumFundingRate18": "500000000000000"
+  },
+  "activationGates": {
+    "officialFeedRequired": true,
+    "feedStabilityRequired": true,
+    "sessionCapabilityRequired": true,
+    "minimumLiquidityRequired": true,
+    "governanceApprovalRequired": true
+  }
+}

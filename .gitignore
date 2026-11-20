@@ -17,6 +17,7 @@ docs/
 
 # Common generated output
 node_modules/
+.pnpm-store/
 .next/
 .turbo/
 .vercel/

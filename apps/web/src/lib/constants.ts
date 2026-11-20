@@ -12,6 +12,8 @@ export const NAV_LINKS: readonly NavLink[] = [
   { href: "/portfolio", label: "Portfolio" },
 ];
 
+export const FUSD_NAV_LINK: NavLink = { href: "/earn", label: "Earn" };
+
 /**
  * Country-level transaction restrictions published by RHJ.
  *

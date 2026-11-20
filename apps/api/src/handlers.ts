@@ -8,6 +8,226 @@ export async function getPublicConfig(context: ApiContext): Promise<Response> {
   return json({ data: context.publicConfig }, 200, PUBLIC_CACHE);
 }
 
+export async function getFusdState(context: ApiContext): Promise<Response> {
+  if (!context.fusd) return json({ data: null }, 200, PUBLIC_CACHE);
+  try {
+    return json({ data: await context.fusd.readState() }, 200, PUBLIC_CACHE);
+  } catch {
+    return internalError();
+  }
+}
+
+export async function getFusdActivity(context: ApiContext, requestUrl: URL, signal?: AbortSignal): Promise<Response> {
+  if (!context.fusdVaultAddress) return json({ data: [] }, 200, PUBLIC_CACHE);
+  const limit = parseLimit(requestUrl);
+  if (limit === undefined) return invalidRequest("INVALID_LIMIT");
+  try {
+    const activity = await context.readModels.listFusdActivity(context.fusdVaultAddress, limit, signal);
+    return json({ data: activity.map((item) => ({
+      transactionHash: item.transaction_hash,
+      blockNumber: item.block_number,
+      eventName: item.event_name,
+      walletAddress: item.wallet_address,
+      receiverAddress: item.receiver_address,
+      requestId: item.request_id,
+      assets6: item.assets_6,
+      shares18: item.shares_18,
+      observedAt: item.observed_at,
+    })) }, 200, PUBLIC_CACHE);
+  } catch {
+    return internalError();
+  }
+}
+
+export async function getFusdWallet(context: ApiContext, requestUrl: URL, signal?: AbortSignal): Promise<Response> {
+  if (!context.fusdVaultAddress) return json({ data: null }, 200, NO_STORE);
+  const wallet = requestUrl.searchParams.get("address");
+  if (!wallet || !/^0x[0-9a-fA-F]{40}$/.test(wallet)) return invalidRequest("INVALID_WALLET_ADDRESS");
+  try {
+    const withdrawals = await context.readModels.listFusdWithdrawals(context.fusdVaultAddress, wallet, signal);
+    return json({ data: {
+      walletAddress: wallet.toLowerCase(),
+      withdrawals: withdrawals.map((item) => ({
+        requestId: item.request_id,
+        ownerAddress: item.owner_address,
+        receiverAddress: item.receiver_address,
+        shares18: item.shares_18,
+        state: item.state,
+        assets6: item.assets_6,
+        updatedAt: item.updated_at,
+      })),
+    } }, 200, NO_STORE);
+  } catch {
+    return internalError();
+  }
+}
+
+export async function getPerpsMarkets(context: ApiContext, signal?: AbortSignal): Promise<Response> {
+  if (!context.publicConfig.perps || !context.perps) return json({ data: [] }, 200, PUBLIC_CACHE);
+  try {
+    const identities = await context.readModels.listPerpsMarketIdentities(signal);
+    const unique = [...new Map(identities.map((identity) => [identity.market_id, identity])).values()];
+    const markets = await Promise.all(unique.map(async (identity) => ({
+      ...await context.perps!.readMarket(identity.market_id as `0x${string}`),
+      blockNumber: identity.block_number,
+      updatedAt: identity.observed_at,
+    })));
+    return json({ data: markets }, 200, PUBLIC_CACHE);
+  } catch {
+    return internalError();
+  }
+}
+
+export function getPerpsAccess(context: ApiContext, request: Request): Response {
+  const country = request.headers.get("cf-ipcountry")?.trim().toUpperCase();
+  const restricted = Boolean(country && context.perpsRestrictedCountries?.has(country));
+  return json({ data: { allowed: !restricted, reason: restricted ? "RESTRICTED_JURISDICTION" : null } }, 200, NO_STORE);
+}
+
+export async function getPerpsPositions(
+  context: ApiContext,
+  requestUrl: URL,
+  signal?: AbortSignal,
+): Promise<Response> {
+  if (!context.publicConfig.perps || !context.perps) return json({ data: null }, 200, NO_STORE);
+  const wallet = requestUrl.searchParams.get("address");
+  if (!wallet || !/^0x[0-9a-fA-F]{40}$/.test(wallet)) {
+    return invalidRequest("INVALID_WALLET_ADDRESS");
+  }
+  try {
+    const account = wallet.toLowerCase() as `0x${string}`;
+    const identities = await context.readModels.listPerpsMarketIdentities(signal);
+    const marketIds = [...new Set(identities.map((identity) => identity.market_id))];
+    const [collateral, allPositions] = await Promise.all([
+      context.perps.readCollateral(account),
+      Promise.all(marketIds.map((marketId) => context.perps!.readPosition(account, marketId as `0x${string}`))),
+    ]);
+    return json({ data: {
+      walletAddress: account,
+      collateral,
+      positions: allPositions.filter((position) => position.size18 !== "0"),
+    } }, 200, NO_STORE);
+  } catch {
+    return internalError();
+  }
+}
+
+export async function getPerpsActivity(
+  context: ApiContext,
+  requestUrl: URL,
+  signal?: AbortSignal,
+): Promise<Response> {
+  if (!context.publicConfig.perps) return json({ data: [] }, 200, PUBLIC_CACHE);
+  const limit = parseLimit(requestUrl);
+  if (limit === undefined) return invalidRequest("INVALID_LIMIT");
+  try {
+    const activity = await context.readModels.listPerpsActivity(limit, signal);
+    return json({ data: activity.map((item) => ({
+      transactionHash: item.transaction_hash,
+      logIndex: item.log_index,
+      blockNumber: item.block_number,
+      contractAddress: item.contract_address,
+      eventName: item.event_name,
+      accountAddress: item.account_address,
+      marketId: item.market_id,
+      payload: item.payload,
+      observedAt: item.observed_at,
+    })) }, 200, PUBLIC_CACHE);
+  } catch {
+    return internalError();
+  }
+}
+
+export async function getPerpsLpState(context: ApiContext, signal?: AbortSignal): Promise<Response> {
+  const perps = context.publicConfig.perps;
+  if (!perps || !context.perps) return json({ data: null }, 200, PUBLIC_CACHE);
+  try {
+    const identities = await context.readModels.listPerpsMarketIdentities(signal);
+    const marketIds = [...new Set(identities.map((identity) => identity.market_id as `0x${string}`))];
+    const since = new Date(Date.now() - 7 * 86_400_000).toISOString();
+    const [state, history] = await Promise.all([
+      context.perps.readLpState(marketIds),
+      context.readModels.getPerpsLpSharePriceWindow(perps.liquidityVaultAddress, since, signal),
+    ]);
+    const realized = calculateRealizedLpApy(history);
+    return json({ data: { ...state, ...realized } }, 200, PUBLIC_CACHE);
+  } catch {
+    return internalError();
+  }
+}
+
+export function calculateRealizedLpApy(
+  history: readonly { readonly share_price_18: string; readonly observed_at: string; readonly block_number: number }[],
+): { readonly realizedApyBps: number | null; readonly realizedApyWindowSeconds: number | null; readonly realizedApyStartBlock: number | null; readonly realizedApyEndBlock: number | null } {
+  const first = history[0];
+  const last = history.at(-1);
+  if (!first || !last) return { realizedApyBps: null, realizedApyWindowSeconds: null, realizedApyStartBlock: null, realizedApyEndBlock: null };
+  const elapsedSeconds = Math.floor((Date.parse(last.observed_at) - Date.parse(first.observed_at)) / 1000);
+  const start = BigInt(first.share_price_18);
+  const end = BigInt(last.share_price_18);
+  if (elapsedSeconds < 86_400 || start <= 0n || end <= 0n) {
+    return { realizedApyBps: null, realizedApyWindowSeconds: elapsedSeconds > 0 ? elapsedSeconds : null, realizedApyStartBlock: first.block_number, realizedApyEndBlock: last.block_number };
+  }
+  const annualizedBps = (end - start) * 10_000n * 31_536_000n / start / BigInt(elapsedSeconds);
+  const bounded = annualizedBps > BigInt(Number.MAX_SAFE_INTEGER) ? BigInt(Number.MAX_SAFE_INTEGER) : annualizedBps < BigInt(Number.MIN_SAFE_INTEGER) ? BigInt(Number.MIN_SAFE_INTEGER) : annualizedBps;
+  return { realizedApyBps: Number(bounded), realizedApyWindowSeconds: elapsedSeconds, realizedApyStartBlock: first.block_number, realizedApyEndBlock: last.block_number };
+}
+
+export async function getPerpsLpWithdrawals(context: ApiContext, requestUrl: URL, signal?: AbortSignal): Promise<Response> {
+  const vault = context.publicConfig.perps?.liquidityVaultAddress;
+  if (!vault) return json({ data: [] }, 200, NO_STORE);
+  const wallet = requestUrl.searchParams.get("address");
+  if (!wallet || !/^0x[0-9a-fA-F]{40}$/.test(wallet)) return invalidRequest("INVALID_WALLET_ADDRESS");
+  try {
+    const rows = await context.readModels.listPerpsLpWithdrawals(vault, wallet, signal);
+    return json({ data: rows.map((item) => ({
+      requestId: item.request_id,
+      ownerAddress: item.owner_address,
+      receiverAddress: item.receiver_address,
+      shares18: item.shares_18,
+      unlockAt: item.unlock_at,
+      state: item.state,
+      assets6: item.assets_6,
+      blockNumber: item.block_number,
+      transactionHash: item.transaction_hash,
+      updatedAt: item.updated_at,
+    })) }, 200, NO_STORE);
+  } catch {
+    return internalError();
+  }
+}
+
+export async function postPerpsPreview(context: ApiContext, request: Request): Promise<Response> {
+  const country = request.headers.get("cf-ipcountry")?.trim().toUpperCase();
+  if (country && context.perpsRestrictedCountries?.has(country)) {
+    return json({ error: { code: "RESTRICTED_JURISDICTION" } }, 451, NO_STORE);
+  }
+  if (!context.perps) return json({ error: { code: "PERPS_NOT_ACTIVE" } }, 503, NO_STORE);
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return invalidRequest("INVALID_JSON");
+  }
+  if (!body || typeof body !== "object") return invalidRequest("INVALID_PERPS_PREVIEW");
+  const input = body as Record<string, unknown>;
+  if (
+    typeof input.account !== "string" || !/^0x[0-9a-fA-F]{40}$/.test(input.account)
+      || typeof input.marketId !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(input.marketId)
+      || typeof input.sizeDelta18 !== "string" || !/^-?[1-9][0-9]{0,76}$/.test(input.sizeDelta18)
+  ) return invalidRequest("INVALID_PERPS_PREVIEW");
+  try {
+    const preview = await context.perps.preview({
+      account: input.account.toLowerCase() as `0x${string}`,
+      marketId: input.marketId.toLowerCase() as `0x${string}`,
+      sizeDelta18: BigInt(input.sizeDelta18),
+    });
+    return json({ data: preview }, 200, NO_STORE);
+  } catch {
+    return json({ error: { code: "PERPS_PREVIEW_UNAVAILABLE" } }, 503, NO_STORE);
+  }
+}
+
 export async function getBridgeMessages(
   context: ApiContext,
   requestUrl: URL,
@@ -302,20 +522,27 @@ export async function getPublicActivity(context: ApiContext, requestUrl: URL, si
   const limit = parseLimit(requestUrl);
   if (limit === undefined) return invalidRequest("INVALID_LIMIT");
   try {
-    const [vault, options, withdrawals] = await Promise.all([
+    const [vault, options, withdrawals, perps] = await Promise.all([
       context.readModels.listPublicUserTransactions(limit, signal),
       context.readModels.listOptionsActivity(limit, signal),
       context.readModels.listOptionsWithdrawalActivity(limit, signal),
+      context.publicConfig.perps ? context.readModels.listPerpsActivity(limit, signal) : Promise.resolve([]),
     ]);
     const activity = [
       ...vault.map((item) => ({ transactionHash: item.transaction_hash, blockNumber: item.block_number, walletAddress: item.wallet_address, action: item.action, assetAmount: item.asset_amount, shareAmount: item.share_amount, observedAt: item.finalized_at ?? item.submitted_at })),
       ...options.map((item) => ({ transactionHash: item.transaction_hash, blockNumber: item.block_number, walletAddress: item.wallet_address, action: item.event_name, assetAmount: item.cash_amount_6, shareAmount: item.size_18, observedAt: item.observed_at })),
       ...withdrawals.filter((item) => item.owner_address || item.receiver_address).map((item) => ({ transactionHash: item.transaction_hash, blockNumber: item.block_number, walletAddress: item.owner_address ?? item.receiver_address ?? "", action: item.event_name, assetAmount: nullableDecimalString(item.assets_6), shareAmount: decimalString(item.shares), observedAt: item.observed_at })),
+      ...perps.filter((item) => item.account_address).map((item) => ({ transactionHash: item.transaction_hash, blockNumber: item.block_number, walletAddress: item.account_address ?? "", action: item.event_name, assetAmount: payloadDecimal(item.payload, "feeUsd6") ?? payloadDecimal(item.payload, "liquidationFee6"), shareAmount: payloadDecimal(item.payload, "sizeDelta18") ?? payloadDecimal(item.payload, "closedSize18"), observedAt: item.observed_at })),
     ].sort((left, right) => Date.parse(right.observedAt) - Date.parse(left.observedAt)).slice(0, limit);
     return json({ data: activity }, 200, PUBLIC_CACHE);
   } catch {
     return internalError();
   }
+}
+
+function payloadDecimal(payload: Readonly<Record<string, unknown>>, key: string): string | null {
+  const value = payload[key];
+  return typeof value === "string" && /^-?[0-9]+$/.test(value) ? value : null;
 }
 
 function mapWalletTransaction(transaction: Awaited<ReturnType<ApiContext["readModels"]["listUserTransactions"]>>[number]) {

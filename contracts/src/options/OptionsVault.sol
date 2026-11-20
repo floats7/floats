@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ERC4626 } from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -38,6 +39,9 @@ contract OptionsVault is ERC4626, ReentrancyGuard {
     error InvalidLiabilityChange();
     error InvalidWithdrawalState();
     error Insolvent();
+    error InvalidYieldVaultAsset(address expected, address actual);
+    error YieldVaultAlreadyConfigured();
+    error YieldVaultUnavailable();
 
     event MarketSet(address indexed market);
     event SettlementEngineSet(address indexed settlementEngine);
@@ -63,6 +67,10 @@ contract OptionsVault is ERC4626, ReentrancyGuard {
     event WithdrawalCancelled(uint256 indexed requestId);
     event WithdrawalFinalized(uint256 indexed requestId, uint256 shares, uint256 assets);
     event WithdrawalClaimed(uint256 indexed requestId, address indexed receiver, uint256 assets);
+    event YieldBufferSet(uint256 previousBps, uint256 newBps);
+    event YieldInvested(uint256 assets, uint256 shares);
+    event YieldRedeemed(uint256 shares, uint256 assets);
+    event YieldVaultConfigured(address indexed vault);
 
     address public immutable admin;
     address public immutable guardian;
@@ -74,6 +82,8 @@ contract OptionsVault is ERC4626, ReentrancyGuard {
     uint256 public claimableCollateral;
     uint256 public payableWithdrawalAssets;
     uint256 public nextWithdrawalRequestId = 1;
+    uint256 public yieldBufferBps = 1000;
+    IERC4626 public yieldVault;
 
     mapping(address keeper => bool allowed) public isKeeper;
     mapping(uint256 requestId => WithdrawalRequest request) public withdrawalRequests;
@@ -123,10 +133,20 @@ contract OptionsVault is ERC4626, ReentrancyGuard {
     }
 
     function totalAssets() public view override returns (uint256) {
-        uint256 balance = IERC20(asset()).balanceOf(address(this));
-        uint256 liabilities = reservedCollateral + claimableCollateral + payableWithdrawalAssets;
-        if (balance < liabilities) revert Insolvent();
-        return balance - liabilities;
+        uint256 managedAssets = IERC20(asset()).balanceOf(address(this)) + yieldVaultAssets();
+        uint256 liabilities = totalLiabilities();
+        if (managedAssets < liabilities) revert Insolvent();
+        return managedAssets - liabilities;
+    }
+
+    function totalLiabilities() public view returns (uint256) {
+        return reservedCollateral + claimableCollateral + payableWithdrawalAssets;
+    }
+
+    function yieldVaultAssets() public view returns (uint256) {
+        IERC4626 activeYieldVault = yieldVault;
+        if (address(activeYieldVault) == address(0)) return 0;
+        return activeYieldVault.previewRedeem(activeYieldVault.balanceOf(address(this)));
     }
 
     function availableCollateral() public view returns (uint256) {
@@ -139,6 +159,60 @@ contract OptionsVault is ERC4626, ReentrancyGuard {
 
     function maxMint(address) public view override returns (uint256) {
         return operationsPaused ? 0 : type(uint256).max;
+    }
+
+    function configureYieldVault(IERC4626 yieldVault_) external {
+        _requireAdmin();
+        if (address(yieldVault) != address(0)) revert YieldVaultAlreadyConfigured();
+        if (address(yieldVault_) == address(0)) revert InvalidAddress();
+        address yieldAsset = yieldVault_.asset();
+        if (yieldAsset != asset()) revert InvalidYieldVaultAsset(asset(), yieldAsset);
+        yieldVault = yieldVault_;
+        IERC20(asset()).forceApprove(address(yieldVault_), type(uint256).max);
+        emit YieldVaultConfigured(address(yieldVault_));
+    }
+
+    function setYieldBufferBps(uint256 newBps) external {
+        _requireAdmin();
+        if (newBps > 10_000) revert InvalidAmount();
+        uint256 previousBps = yieldBufferBps;
+        yieldBufferBps = newBps;
+        emit YieldBufferSet(previousBps, newBps);
+    }
+
+    /// @notice Invests only LP equity above all liabilities and the configured liquid buffer.
+    function rebalanceIdleCollateral() external nonReentrant returns (uint256 assetsInvested) {
+        _requireOperator();
+        if (operationsPaused) revert OperationsPaused();
+        IERC4626 activeYieldVault = yieldVault;
+        if (address(activeYieldVault) == address(0)) revert YieldVaultUnavailable();
+
+        uint256 liquidAssets = IERC20(asset()).balanceOf(address(this));
+        uint256 targetLiquid = totalLiabilities() + totalAssets() * yieldBufferBps / 10_000;
+        if (liquidAssets <= targetLiquid) return 0;
+
+        assetsInvested = liquidAssets - targetLiquid;
+        uint256 capacity = activeYieldVault.maxDeposit(address(this));
+        if (assetsInvested > capacity) assetsInvested = capacity;
+        if (assetsInvested == 0) return 0;
+
+        uint256 shares = activeYieldVault.deposit(assetsInvested, address(this));
+        emit YieldInvested(assetsInvested, shares);
+    }
+
+    /// @notice Returns every fUSD position to USDG and pauses new vault operations.
+    function emergencyExitYieldVault() external nonReentrant returns (uint256 assetsRecovered) {
+        if (msg.sender != admin && msg.sender != guardian) revert Unauthorized();
+        IERC4626 activeYieldVault = yieldVault;
+        if (address(activeYieldVault) == address(0)) revert YieldVaultUnavailable();
+        operationsPaused = true;
+        emit OperationsPauseSet(true, msg.sender);
+
+        uint256 shares = activeYieldVault.balanceOf(address(this));
+        if (shares != 0) {
+            assetsRecovered = activeYieldVault.redeem(shares, address(this), address(this));
+            emit YieldRedeemed(shares, assetsRecovered);
+        }
     }
 
     function deposit(uint256 assets, address receiver)
@@ -183,6 +257,7 @@ contract OptionsVault is ERC4626, ReentrancyGuard {
         if (amount == 0) revert InvalidAmount();
         uint256 available = availableCollateral();
         if (amount > available) revert InsufficientAvailableCollateral(available, amount);
+        _ensureLiquidAssets(totalLiabilities() + amount);
         reservedCollateral += amount;
         emit CollateralReserved(amount, reservedCollateral);
     }
@@ -211,6 +286,7 @@ contract OptionsVault is ERC4626, ReentrancyGuard {
         _requireSettlementEngine();
         if (receiver == address(0)) revert InvalidAddress();
         if (amount == 0 || amount > claimableCollateral) revert InvalidLiabilityChange();
+        _ensureLiquidAssets(totalLiabilities());
         claimableCollateral -= amount;
         IERC20(asset()).safeTransfer(receiver, amount);
         emit ClaimPaid(receiver, amount, claimableCollateral);
@@ -222,6 +298,7 @@ contract OptionsVault is ERC4626, ReentrancyGuard {
         if (amount == 0) revert InvalidAmount();
         uint256 available = availableCollateral();
         if (amount > available) revert InsufficientAvailableCollateral(available, amount);
+        _ensureLiquidAssets(totalLiabilities() + amount);
         IERC20(asset()).safeTransfer(receiver, amount);
         emit SellBackPaid(receiver, amount);
     }
@@ -273,6 +350,8 @@ contract OptionsVault is ERC4626, ReentrancyGuard {
             revert InsufficientAvailableCollateral(available, assets);
         }
 
+        _ensureLiquidAssets(totalLiabilities() + assets);
+
         request.assets = assets;
         request.state = WithdrawalState.Finalized;
         payableWithdrawalAssets += assets;
@@ -306,5 +385,19 @@ contract OptionsVault is ERC4626, ReentrancyGuard {
         if (msg.sender != settlementEngine || settlementEngine == address(0)) {
             revert Unauthorized();
         }
+    }
+
+    function _ensureLiquidAssets(uint256 requiredAssets) private {
+        uint256 liquidAssets = IERC20(asset()).balanceOf(address(this));
+        if (liquidAssets >= requiredAssets) return;
+
+        IERC4626 activeYieldVault = yieldVault;
+        if (address(activeYieldVault) == address(0)) {
+            revert InsufficientAvailableCollateral(liquidAssets, requiredAssets);
+        }
+
+        uint256 shortfall = requiredAssets - liquidAssets;
+        uint256 shares = activeYieldVault.withdraw(shortfall, address(this), address(this));
+        emit YieldRedeemed(shares, shortfall);
     }
 }

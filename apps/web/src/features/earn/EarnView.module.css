@@ -1,0 +1,7 @@
+.tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: var(--space-5); }
+.tabs button { display: grid; gap: var(--space-2); min-height: 5rem; padding: var(--space-4); border: 1px solid var(--line-base); background: rgb(0 0 0 / 0.48); color: var(--text-muted); text-align: left; cursor: pointer; }
+.tabs button + button { border-left: 0; }
+.tabs button[aria-selected="true"] { background: var(--surface-paper); color: var(--text-on-paper); }
+.tabs strong { font-size: var(--text-lg); }
+.tabs span { font-family: var(--font-mono); font-size: var(--text-xs); text-transform: uppercase; }
+@media (max-width: 44rem) { .tabs { grid-template-columns: 1fr; } .tabs button + button { border-left: 1px solid var(--line-base); border-top: 0; } }

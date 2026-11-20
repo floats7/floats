@@ -1,6 +1,6 @@
 import type { Address, Hex } from "./types.ts";
 
-type SolidityType = "address" | "bool" | "bytes32" | `uint${number}`;
+type SolidityType = "address" | "bool" | "bytes32" | `int${number}` | `uint${number}`;
 
 interface EventInput {
   readonly name: string;
@@ -32,6 +32,57 @@ const input = (name: string, type: SolidityType, indexed = false): EventInput =>
 });
 
 const EVENTS: readonly EventDefinition[] = [
+  { name: "PerpsPositionModified", topic: "0x0d50504f7163ee98c4b39b6ff598acda6b7e7f0b3859885b43b073f29f8fb7a9", inputs: [input("account", "address", true), input("marketId", "bytes32", true), input("sizeDelta18", "int256"), input("resultingSize18", "int256"), input("executionPriceUsd18", "uint256"), input("realizedPnlUsd18", "int256"), input("fundingPaymentUsd18", "int256"), input("feeUsd6", "uint256")] },
+  { name: "PerpsPositionLiquidated", topic: "0x450910c3f3c40aac7dde5bef15676877e9c90f48cb18a002d9a2fde0cd33e165", inputs: [input("account", "address", true), input("marketId", "bytes32", true), input("keeper", "address", true), input("closedSize18", "uint256"), input("markPriceUsd18", "uint256"), input("settlementUsd18", "int256"), input("liquidationFee6", "uint256"), input("badDebt6", "uint256")] },
+  { name: "PerpsPositionAutoDeleveraged", topic: "0x38c6f2cd36803e47dcac9ac5c75981ab7e49ec90a2d190c8a65639944f715f0d", inputs: [input("account", "address", true), input("marketId", "bytes32", true), input("closedSize18", "uint256"), input("markPriceUsd18", "uint256"), input("foregoneProfit6", "uint256"), input("resultingSize18", "int256")] },
+  { name: "PerpsMarketCreated", topic: "0x73088b3c6aadd5f61c7ed353ff5e8b50dfc042512001a5b3696e2a7322f968b8", inputs: [input("marketId", "bytes32", true), input("underlying", "address", true), input("underlyingUid", "bytes32", true), input("symbol", "bytes32"), input("priceFeed", "address"), input("isolatedOnly", "bool")] },
+  { name: "PerpsMarketConfigurationUpdated", topic: "0xa58cd41b611f5133e6dc830579a34a182f5d12a603d535c584034f08a604be07", inputs: [input("marketId", "bytes32", true)] },
+  { name: "PerpsMarketStateChanged", topic: "0x81920b01fede175cfe8268cb52e9145f247a839c8dbe0f637651262b1aa52e12", inputs: [input("marketId", "bytes32", true), input("previousState", "uint8"), input("newState", "uint8"), input("caller", "address", true)] },
+  { name: "PerpsSessionStateChanged", topic: "0x24ea3f3326c266060ff0c31d0494820125b128f3997044125ef36ddbeae21a35", inputs: [input("marketId", "bytes32", true), input("previousState", "uint8"), input("newState", "uint8"), input("caller", "address", true)] },
+  { name: "PerpsLiquidationEngineSet", topic: "0x3b0968e13fd8c056155795f1e4e6e6ecfe1a011135caa8bb22b7f850a0d5265c", inputs: [input("liquidationEngine", "address", true)] },
+  { name: "PerpsFundingUpdated", topic: "0x085e80c4e03b6b2c4c37e8bd35e9d4bcc94a05c9ee9ebaec75edbf09a7045fc9", inputs: [input("marketId", "bytes32", true), input("fundingRate18", "int256"), input("cumulativeFundingIndex18", "int256"), input("longOpenInterestUsd18", "uint256"), input("shortOpenInterestUsd18", "uint256"), input("updatedAt", "uint48")] },
+  { name: "PerpsFundingConfigurationSet", topic: "0x9d6f0bb247c9d6f895d1f8c9656b4f0a0a685c0f5f0ecfd231b342d8aa9d3e7d", inputs: [input("marketId", "bytes32", true), input("skewCoefficient18", "uint256"), input("maximumRate18", "uint256")] },
+  { name: "PerpsFundingPositionSourceSet", topic: "0x6971219021cf9751c612a3add7d1b1bc423133a43c376787c5c28dc6c7abddbf", inputs: [input("positionSource", "address", true)] },
+  { name: "PerpsFundingSettled", topic: "0x90aab708e734cf9680d539c0b328b46cd73bf0f77c693c7391d26e9dead7acab", inputs: [input("account", "address", true), input("marketId", "bytes32", true), input("paymentUsd18", "int256"), input("transferredAssets6", "uint256")] },
+  { name: "PerpsDeposited", topic: "0x2da466a7b24304f47e87fa2e1e5a81b9831ce54fec19055ce277ca2f39ba42c4", inputs: [input("account", "address", true), input("assets", "uint256")] },
+  { name: "PerpsWithdrawn", topic: "0xd1c19fbcd4551a5edfb66d43d2e337c04837afda3482b42bdf569a8fccdae5fb", inputs: [input("account", "address", true), input("receiver", "address", true), input("assets", "uint256")] },
+  { name: "PerpsCrossCollateralAdded", topic: "0x2791729d657c1f127449e2fca32bef0a56a3e475711632e2f18d71265bcf20bd", inputs: [input("account", "address", true), input("assets", "uint256")] },
+  { name: "PerpsCrossCollateralRemoved", topic: "0x617e6984704ce62e457eed311e7261086a01d6982734f3ccaf443389691bd73e", inputs: [input("account", "address", true), input("assets", "uint256")] },
+  { name: "PerpsIsolatedMarginAdded", topic: "0x5750715fde63ba3c837558e3c789e380c26e1a1f60b3be2e2e0b9fc95a68db06", inputs: [input("account", "address", true), input("marketId", "bytes32", true), input("assets", "uint256")] },
+  { name: "PerpsIsolatedMarginRemoved", topic: "0x440d1372af5e13172a476fdb129c78bf0ba1762feb3ac7760928705d14d4f0c0", inputs: [input("account", "address", true), input("marketId", "bytes32", true), input("assets", "uint256")] },
+  { name: "PerpsMarginModeChanged", topic: "0x8c6add1f07f73ca4c4aa3b948237e1e9a1d1d98fd9a934fe369a6f86c5bceee8", inputs: [input("account", "address", true), input("marketId", "bytes32", true), input("previousMode", "uint8"), input("newMode", "uint8")] },
+  { name: "PerpsMarginCredited", topic: "0x6a20c731c5bba58832470aa98590ba0044af26ccf1d00f277e2fed1725aa785f", inputs: [input("account", "address", true), input("marketId", "bytes32", true), input("assets", "uint256")] },
+  { name: "PerpsMarginPaid", topic: "0x7af4ba796a2c1a261e1e7de3541ccbd24ff82ae915a03e7b4da2043b66a5622d", inputs: [input("account", "address", true), input("marketId", "bytes32", true), input("receiver", "address", true), input("assets", "uint256")] },
+  { name: "PerpsMarginSeized", topic: "0x1ede22bb456b466cf6690bd18f95ae097d7317a38c3d0c53cc5f0ee9e46a0c8d", inputs: [input("account", "address", true), input("marketId", "bytes32", true), input("receiver", "address", true), input("requestedAssets", "uint256"), input("paidAssets", "uint256")] },
+  { name: "PerpsPositionStatusChanged", topic: "0x68ef2aae5dd89e2296c7c0a408afef49f661f7070e243aaded1de59b5d8a4dd5", inputs: [input("account", "address", true), input("marketId", "bytes32", true), input("positionOpen", "bool")] },
+  { name: "PerpsRiskEngineSet", topic: "0x9ceba4c2372abca6b9ba0f8ca4dfb6d663c37a6a0bf61ad02e135d785b341a4a", inputs: [input("riskEngine", "address", true)] },
+  { name: "PerpsLiabilityReserved", topic: "0x5562fd8c003bebf78f1c010c645c870c9e09a6543e9b6600e749772032a3cf38", inputs: [input("assets", "uint256"), input("totalReserved", "uint256")] },
+  { name: "PerpsLiabilityReleased", topic: "0x8193575de79bf8348d0ca964b3a57ffd9bac4dc6568bfd3b3d9d12a6dd98850a", inputs: [input("assets", "uint256"), input("totalReserved", "uint256")] },
+  { name: "PerpsBadDebtRecorded", topic: "0x8a02d53cceb0b6106e524a866d28fa8841ce3a647aa89fd7932ac96d2bde667f", inputs: [input("assets", "uint256"), input("totalBadDebt", "uint256")] },
+  { name: "PerpsBadDebtCovered", topic: "0x242e1f451f8c7015bf7d048b163e3aad53106aa7042dba8ba77adbdcc21c02d9", inputs: [input("assets", "uint256"), input("totalBadDebt", "uint256")] },
+  { name: "PerpsProtocolRevenueReceived", topic: "0x72d2852e14af5e5f0ecc20954fa175a74d80cc332e0b686d7b5a050b331a260a", inputs: [input("assets", "uint256")] },
+  { name: "PerpsTraderProfitPaid", topic: "0x590fdbd85324c203dad812154d9a8c267fe84441dc242967c95b2dfc2cea280b", inputs: [input("receiver", "address", true), input("assets", "uint256"), input("totalReserved", "uint256")] },
+  { name: "PerpsInsuranceFunded", topic: "0x5af8184bef8e4b45eb9f6ed7734d04da38ced226495548f46e0c8ff8d7d9a524", inputs: [input("sender", "address", true), input("assets", "uint256")] },
+  { name: "PerpsInsuranceBadDebtCovered", topic: "0x4e4393f5597b7480bc7e6aa0c8f8a1fd1475ec3daaa9825aef7089280f98119d", inputs: [input("receiver", "address", true), input("assets", "uint256")] },
+  { name: "PerpsInsuranceRecovered", topic: "0x8c1256b8896378cd5044f80c202f9772b9d77dc85c8a6eb51967210b09bfaa28", inputs: [input("receiver", "address", true), input("assets", "uint256")] },
+  { name: "PerpsIsolatedLiquidationExecuted", topic: "0x79b9dbec1a5d9f26357cf658b79dea1d2226d66760156df96955a75c0457dd30", inputs: [input("account", "address", true), input("marketId", "bytes32", true), input("keeper", "address", true), input("closedSize18", "uint256"), input("badDebt6", "uint256"), input("insuranceCovered6", "uint256"), input("liquidationFeePaid6", "uint256"), input("fullLiquidation", "bool")] },
+  { name: "PerpsCrossLiquidationExecuted", topic: "0xa646b5f0773ea031774d7fef0444f32fd1cdab1b074545205b7859040a2780a3", inputs: [input("account", "address", true), input("marketId", "bytes32", true), input("keeper", "address", true), input("closedSize18", "uint256"), input("badDebt6", "uint256"), input("insuranceCovered6", "uint256"), input("liquidationFeePaid6", "uint256"), input("fullLiquidation", "bool")] },
+  { name: "PerpsAdlDeficitQueued", topic: "0xea8ea29c7c4f813f38986371fb702c53d434b53d21a807fd9c8535a55b2823d4", inputs: [input("marketId", "bytes32", true), input("targetLong", "bool", true), input("deficit6", "uint256"), input("totalPendingDeficit6", "uint256")] },
+  { name: "PerpsAdlExecuted", topic: "0x5fc21e09e5c0682308968c3c63a715f90ac91b3b51af1e9a5b9b46f81ec08da7", inputs: [input("marketId", "bytes32", true), input("account", "address", true), input("keeper", "address", true), input("targetLong", "bool"), input("closedSize18", "uint256"), input("coveredDeficit6", "uint256"), input("remainingDeficit6", "uint256")] },
+  { name: "PerpsWithdrawalRequested", topic: "0xb79e7550b9c848eda97ad21f2e1c2736c4a1d876e671810090eee926da103d7c", inputs: [input("requestId", "uint256", true), input("owner", "address", true), input("receiver", "address", true), input("shares", "uint256"), input("unlockAt", "uint48")] },
+  { name: "PerpsWithdrawalCancelled", topic: "0xe3db0c7bb54dbc952074f8c31f0ad281b6a4c3e458f2e9fc2dc2fafe6975f9f0", inputs: [input("requestId", "uint256", true)] },
+  { name: "PerpsWithdrawalProcessed", topic: "0x177b9b65877b3bbb97d28f1a7bd7d95601c8f2b96a6866d6fa8e274b6d378752", inputs: [input("requestId", "uint256", true), input("shares", "uint256"), input("assets", "uint256")] },
+  { name: "PerpsWithdrawalClaimed", topic: "0xffb9d31cf96839cc5cd4d27c12dc3ed51b0a28af638f50074301388b97cc6313", inputs: [input("requestId", "uint256", true), input("receiver", "address", true), input("assets", "uint256")] },
+  { name: "FUSDBufferTargetSet", topic: "0x5de463dea7c9888f4ebf937739a89e12678e31d131cce389505ed65a6a1599bf", inputs: [input("previousBps", "uint256"), input("newBps", "uint256")] },
+  { name: "FUSDDepositsPauseSet", topic: "0x08bd9c8c7b5ea82dca14f90a1886bda334ce700851493967956a874ce17c3fe4", inputs: [input("paused", "bool"), input("caller", "address", true)] },
+  { name: "FUSDPerformanceFeeAccrued", topic: "0xb2866d2b84a5b91437cb8a33627e1b4a1fa5b0ea64db842c449648a8e0b9fdcd", inputs: [input("feeAssets", "uint256"), input("feeShares", "uint256"), input("highWatermark18", "uint256")] },
+  { name: "FUSDStrategyConfigured", topic: "0xb65e29ac886b6daff193da0b9528453149af4dc16576457af06b0f28d0642574", inputs: [input("strategy", "address", true)] },
+  { name: "FUSDStrategyEmergencyExited", topic: "0x3f59eabbe50dc016b357bda403e77d6948eae8421ef23b4844ea3464693d3231", inputs: [input("caller", "address", true), input("assetsRecovered", "uint256")] },
+  { name: "FUSDStrategyStatusSet", topic: "0xad17490f8dedc56ca6528e75c9d121914f8952500c74630653889cd1dfd391a8", inputs: [input("active", "bool"), input("caller", "address", true)] },
+  { name: "FUSDStrategyInvested", topic: "0xd043680d428fc2dcd7caedf64cee767254c5d61209d38ba534529cf2c39d7052", inputs: [input("assets", "uint256"), input("shares", "uint256")] },
+  { name: "FUSDStrategyWithdrawn", topic: "0x27683c8889e99eaeb6f7c9e177d5d70bcfc8ab059b36c61ed4a51fa26dddb7cb", inputs: [input("assets", "uint256"), input("shares", "uint256")] },
+  { name: "FUSDWithdrawalRequested", topic: "0x00ae2c76ca218353c7995e13a4af773a35837cb6ebb8288092d8190bcd9c8f68", inputs: [input("requestId", "uint256", true), input("owner", "address", true), input("receiver", "address", true), input("shares", "uint256")] },
+  { name: "FUSDWithdrawalProcessed", topic: "0x09d1133a9dce4226227ae7068990b4fedb07582402d626c0638b282584e6b190", inputs: [input("requestId", "uint256", true), input("shares", "uint256"), input("assets", "uint256")] },
   { name: "IssuerRoleGranted", topic: "0x2f8788117e7eff1d82e926ec794901d17c78024a50270940304540a733656f0d", inputs: [input("role", "bytes32", true), input("account", "address", true), input("sender", "address", true)] },
   { name: "IssuerRoleRevoked", topic: "0xf6391f5c32d9c69d2a47ea670b442974b53935d1edc7fd64eb21e047a839171b", inputs: [input("role", "bytes32", true), input("account", "address", true), input("sender", "address", true)] },
   { name: "IssuerImplementationUpgraded", topic: "0xbc7cd75a20ee27fd9adebab32041f755214dbc6bffa90cc0225b39da2e5c2d3b", inputs: [input("implementation", "address", true)] },
@@ -126,6 +177,10 @@ function decodeWord(word: Hex, type: SolidityType): string | boolean {
   if (type === "bool") {
     if (value !== 0n && value !== 1n) throw new Error("INVALID_BOOLEAN_WORD");
     return value === 1n;
+  }
+  if (type.startsWith("int")) {
+    const signed = value >= 1n << 255n ? value - (1n << 256n) : value;
+    return signed.toString();
   }
   return value.toString();
 }

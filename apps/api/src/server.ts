@@ -7,6 +7,9 @@ import {
   getBridgeMessages,
   getBridgeNav,
   getFeeRates,
+  getFusdState,
+  getFusdActivity,
+  getFusdWallet,
   getLatestIndexState,
   getMarket,
   getMarketCandidates,
@@ -20,6 +23,13 @@ import {
   getPublicActivity,
   getOptionsSeries,
   getOptionsVaultState,
+  getPerpsActivity,
+  getPerpsAccess,
+  getPerpsLpState,
+  getPerpsLpWithdrawals,
+  getPerpsMarkets,
+  getPerpsPositions,
+  postPerpsPreview,
   postOptionsPortfolio,
   postOptionsQuote,
   getPublicConfig,
@@ -65,7 +75,11 @@ const server = createServer(async (incoming, outgoing) => {
 function sensitiveEndpointLimit(request: Request): number | null {
   const pathname = new URL(request.url).pathname;
   if (pathname === "/api/wallet-history" || pathname === "/api/options/portfolio" || pathname === "/api/wallet-data") return 10;
-  if ((pathname === "/api/quote" || pathname === "/api/options/quote") && request.method === "POST") return 60;
+  if (
+    (pathname === "/api/quote" || pathname === "/api/options/quote"
+      || pathname === "/api/perps/preview")
+      && request.method === "POST"
+  ) return 60;
   return null;
 }
 
@@ -106,6 +120,16 @@ async function route(request: Request, url: URL): Promise<Response> {
   const endpoint = url.pathname.slice(5);
   if (request.method === "GET" && endpoint === "config") return getPublicConfig(context);
   if (request.method === "GET" && endpoint === "fee-rates") return getFeeRates(context);
+  if (request.method === "GET" && endpoint === "fusd") return getFusdState(context);
+  if (request.method === "GET" && endpoint === "fusd/activity") return getFusdActivity(context, url, request.signal);
+  if (request.method === "GET" && endpoint === "fusd/wallet") return getFusdWallet(context, url, request.signal);
+  if (request.method === "GET" && endpoint === "perps/markets") return getPerpsMarkets(context, request.signal);
+  if (request.method === "GET" && endpoint === "perps/access") return getPerpsAccess(context, request);
+  if (request.method === "GET" && endpoint === "perps/positions") return getPerpsPositions(context, url, request.signal);
+  if (request.method === "GET" && endpoint === "perps/activity") return getPerpsActivity(context, url, request.signal);
+  if (request.method === "GET" && endpoint === "perps/lp") return getPerpsLpState(context, request.signal);
+  if (request.method === "GET" && endpoint === "perps/lp/withdrawals") return getPerpsLpWithdrawals(context, url, request.signal);
+  if (request.method === "POST" && endpoint === "perps/preview") return postPerpsPreview(context, request);
   if (request.method === "GET" && endpoint === "assets") return getAssets(context, request.signal);
   if (request.method === "GET" && endpoint === "bridge/messages") {
     return getBridgeMessages(context, url, request.signal);

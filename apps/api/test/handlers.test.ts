@@ -23,6 +23,7 @@ import {
   postOptionsQuote,
   getPublicConfig,
   getRegistryChanges,
+  calculateRealizedLpApy,
 } from "../src/handlers.ts";
 import type { ReadModelRepository } from "../src/read-model-repository.ts";
 import type { VaultQuoteReader } from "../src/vault-quote-reader.ts";
@@ -52,6 +53,13 @@ function context(readModels: Partial<ReadModelRepository> = {}): ApiContext {
     candidateMarketData: {} as CandidateMarketData,
   };
 }
+
+test("realized Perps LP APY requires 24 hours and annualizes observed share-price return", () => {
+  const start = { share_price_18: "1000000000000000000", observed_at: "2026-11-01T00:00:00.000Z", block_number: 100 };
+  assert.equal(calculateRealizedLpApy([start, { ...start, observed_at: "2026-11-01T23:59:59.000Z", block_number: 101 }]).realizedApyBps, null);
+  const result = calculateRealizedLpApy([start, { share_price_18: "1010000000000000000", observed_at: "2026-11-08T00:00:00.000Z", block_number: 200 }]);
+  assert.deepEqual(result, { realizedApyBps: 5214, realizedApyWindowSeconds: 604800, realizedApyStartBlock: 100, realizedApyEndBlock: 200 });
+});
 
 test("public config endpoint cannot expose Supabase configuration", async () => {
   const response = await getPublicConfig(context());

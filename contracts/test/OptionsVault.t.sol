@@ -2,6 +2,8 @@
 pragma solidity ^0.8.24;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ERC4626 } from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import { OptionsVault } from "../src/options/OptionsVault.sol";
 
 interface OptionsVaultVm {
@@ -114,6 +116,39 @@ contract OptionsVaultTest {
         require(state == OptionsVault.WithdrawalState.Finalized, "withdrawal did not recover");
     }
 
+    function testInvestsOnlyIdleEquityAndRecallsUsdForNewLiability() public {
+        MockYieldVault yieldVault = new MockYieldVault(IERC20(address(usdg)));
+        vault.configureYieldVault(yieldVault);
+        vault.deposit(100_000e6, address(this));
+
+        uint256 invested = keeper.rebalance(vault);
+        require(invested == 90_000e6, "unexpected idle investment");
+        require(usdg.balanceOf(address(vault)) == 10_000e6, "buffer mismatch");
+        require(vault.totalAssets() == 100_000e6, "yield allocation changed equity");
+
+        vault.reserveCollateral(40_000e6);
+        require(usdg.balanceOf(address(vault)) == 40_000e6, "liability not made liquid");
+        require(vault.reservedCollateral() == 40_000e6, "reserve mismatch");
+        require(vault.totalAssets() == 60_000e6, "reserve accounting mismatch");
+
+        vault.paySellBack(address(0xCAFE), 5000e6);
+        require(usdg.balanceOf(address(vault)) == 40_000e6, "sell-back spent reserved USDG");
+        require(usdg.balanceOf(address(0xCAFE)) == 5000e6, "sell-back not paid");
+    }
+
+    function testGuardianEmergencyExitReturnsYieldAssetsAndPauses() public {
+        MockYieldVault yieldVault = new MockYieldVault(IERC20(address(usdg)));
+        vault.configureYieldVault(yieldVault);
+        vault.deposit(100_000e6, address(this));
+        keeper.rebalance(vault);
+
+        uint256 recovered = guardian.emergencyExit(vault);
+        require(recovered == 90_000e6, "unexpected recovered assets");
+        require(vault.operationsPaused(), "operations not paused");
+        require(yieldVault.balanceOf(address(vault)) == 0, "yield shares remain");
+        require(usdg.balanceOf(address(vault)) == 100_000e6, "USDG not recovered");
+    }
+
     function _assertSelector(bytes memory reason, bytes4 expected) private pure {
         require(reason.length >= 4, "missing selector");
         bytes4 actual;
@@ -131,6 +166,22 @@ contract VaultCaller {
 
     function finalize(OptionsVault vault, uint256 requestId) external {
         vault.finalizeWithdrawal(requestId);
+    }
+
+    function rebalance(OptionsVault vault) external returns (uint256) {
+        return vault.rebalanceIdleCollateral();
+    }
+
+    function emergencyExit(OptionsVault vault) external returns (uint256) {
+        return vault.emergencyExitYieldVault();
+    }
+}
+
+contract MockYieldVault is ERC4626 {
+    constructor(IERC20 asset_) ERC20("Mock Floats Dollar", "mfUSD") ERC4626(asset_) { }
+
+    function _decimalsOffset() internal pure override returns (uint8) {
+        return 12;
     }
 }
 

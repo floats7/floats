@@ -18,8 +18,26 @@ export interface PublicConfig {
   readonly optionsMarketAddress: string | null;
   readonly optionsVaultAddress: string | null;
   readonly optionTokenAddress: string | null;
+  readonly fusdVaultAddress?: string;
+  readonly fusdStrategyAddress?: string;
+  readonly fusdRateOracleAddress?: string;
+  readonly fusdToFipoRouterAddress?: string;
+  readonly perps?: PublicPerpsAddresses;
   readonly spotRoutes: readonly PublicSpotRoute[];
   readonly crossChainRoutes: readonly PublicCrossChainRoute[];
+}
+
+export interface PublicPerpsAddresses {
+  readonly registryAddress: string;
+  readonly marketAddress: string;
+  readonly oracleAddress: string;
+  readonly marginAccountAddress: string;
+  readonly fundingEngineAddress: string;
+  readonly riskEngineAddress: string;
+  readonly liquidationEngineAddress: string;
+  readonly liquidityVaultAddress: string;
+  readonly insuranceFundAddress: string;
+  readonly fipoPriceFeedAddress: string;
 }
 
 export interface PublicSpotRoute {
@@ -58,6 +76,11 @@ export interface PublicProtocolAddresses {
   readonly optionsMarketAddress?: string;
   readonly optionsVaultAddress?: string;
   readonly optionTokenAddress?: string;
+  readonly fusdVaultAddress?: string;
+  readonly fusdStrategyAddress?: string;
+  readonly fusdRateOracleAddress?: string;
+  readonly fusdToFipoRouterAddress?: string;
+  readonly perps?: PublicPerpsAddresses;
   readonly spotRoutes?: readonly PublicSpotRoute[];
   readonly crossChainRoutes?: readonly PublicCrossChainRoute[];
 }
@@ -117,6 +140,19 @@ export function createPublicConfig(
     optionsMarketAddress: addresses.optionsMarketAddress ?? null,
     optionsVaultAddress: addresses.optionsVaultAddress ?? null,
     optionTokenAddress: addresses.optionTokenAddress ?? null,
+    ...(addresses.fusdVaultAddress
+      && addresses.fusdStrategyAddress
+      && addresses.fusdRateOracleAddress
+      ? {
+          fusdVaultAddress: addresses.fusdVaultAddress,
+          fusdStrategyAddress: addresses.fusdStrategyAddress,
+          fusdRateOracleAddress: addresses.fusdRateOracleAddress,
+          ...(addresses.fusdToFipoRouterAddress
+            ? { fusdToFipoRouterAddress: addresses.fusdToFipoRouterAddress }
+            : {}),
+        }
+      : {}),
+    ...(addresses.perps ? { perps: addresses.perps } : {}),
     spotRoutes: addresses.spotRoutes ?? [],
     crossChainRoutes: addresses.crossChainRoutes ?? [],
   };

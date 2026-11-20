@@ -136,6 +136,116 @@ export interface OptionsWithdrawalActivityReadModel {
   readonly observed_at: string;
 }
 
+export interface FUSDActivityReadModel {
+  readonly transaction_hash: string;
+  readonly log_index: number;
+  readonly block_number: number;
+  readonly contract_address: string;
+  readonly event_name: string;
+  readonly wallet_address: string | null;
+  readonly receiver_address: string | null;
+  readonly request_id: string | null;
+  readonly assets_6: string | null;
+  readonly shares_18: string | null;
+  readonly observed_at: string;
+}
+
+export interface FUSDWithdrawalReadModel {
+  readonly request_id: string;
+  readonly owner_address: string;
+  readonly receiver_address: string;
+  readonly shares_18: string;
+  readonly state: string;
+  readonly assets_6: string | null;
+  readonly updated_at: string;
+}
+
+export interface PerpsMarketReadModel {
+  readonly market_id: string;
+  readonly symbol: string;
+  readonly underlying_address: string;
+  readonly underlying_uid: string;
+  readonly price_feed_address: string;
+  readonly market_state: string;
+  readonly session_state: string;
+  readonly isolated_only: boolean;
+  readonly max_leverage_bps: number;
+  readonly initial_margin_bps: number;
+  readonly maintenance_margin_bps: number;
+  readonly open_interest_cap_bps: number;
+  readonly base_spread_bps: number;
+  readonly trading_fee_bps: number;
+  readonly max_price_age_seconds: number;
+  readonly block_number: number;
+  readonly updated_at: string;
+}
+
+export interface PerpsPositionReadModel {
+  readonly account_address: string;
+  readonly market_id: string;
+  readonly margin_mode: string;
+  readonly size_18: string;
+  readonly entry_price_usd_18: string;
+  readonly last_funding_index_18: string;
+  readonly realized_pnl_usd_18: string;
+  readonly pending_fees_usd_18: string;
+  readonly open_interest_usd_18: string;
+  readonly reserved_liability_6: string;
+  readonly block_number: number;
+  readonly updated_at: string;
+}
+
+export interface PerpsActivityReadModel {
+  readonly transaction_hash: string;
+  readonly log_index: number;
+  readonly block_number: number;
+  readonly contract_address: string;
+  readonly event_name: string;
+  readonly account_address: string | null;
+  readonly market_id: string | null;
+  readonly payload: Readonly<Record<string, unknown>>;
+  readonly observed_at: string;
+}
+
+export interface PerpsLpStateReadModel {
+  readonly vault_address: string;
+  readonly managed_assets_6: string;
+  readonly available_liquidity_6: string;
+  readonly reserved_trader_liability_6: string;
+  readonly payable_withdrawal_assets_6: string;
+  readonly recognized_bad_debt_6: string;
+  readonly total_supply_18: string;
+  readonly utilization_bps: string;
+  readonly operations_paused: boolean;
+  readonly block_number: number;
+  readonly updated_at: string;
+}
+
+export interface PerpsLpWithdrawalReadModel {
+  readonly request_id: string;
+  readonly owner_address: string;
+  readonly receiver_address: string;
+  readonly shares_18: string;
+  readonly unlock_at: string;
+  readonly state: "queued" | "cancelled" | "processed" | "claimed";
+  readonly assets_6: string | null;
+  readonly block_number: number;
+  readonly transaction_hash: string;
+  readonly updated_at: string;
+}
+
+export interface PerpsLpSnapshotReadModel {
+  readonly share_price_18: string;
+  readonly observed_at: string;
+  readonly block_number: number;
+}
+
+export interface PerpsMarketIdentityReadModel {
+  readonly market_id: string;
+  readonly block_number: number;
+  readonly observed_at: string;
+}
+
 export interface ReadModelScope {
   readonly environment: AppEnvironment;
   readonly chainId: number;
@@ -531,6 +641,117 @@ export class ReadModelRepository {
     query.set("order", "block_number.desc,log_index.desc");
     query.set("limit", boundedLimit(limit));
     return this.client.select<readonly OptionsWithdrawalActivityReadModel[]>("options_withdrawal_events", query, signal);
+  }
+
+  public listFusdActivity(vaultAddress: string, limit = 50, signal?: AbortSignal): Promise<readonly FUSDActivityReadModel[]> {
+    requireWalletAddress(vaultAddress);
+    const query = this.scopedQuery("transaction_hash,log_index,block_number,contract_address,event_name,wallet_address,receiver_address,request_id,assets_6,shares_18,observed_at");
+    query.set("contract_address", `eq.${vaultAddress.toLowerCase()}`);
+    query.set("order", "block_number.desc,log_index.desc");
+    query.set("limit", boundedLimit(limit));
+    return this.client.select<readonly FUSDActivityReadModel[]>("api_fusd_activity", query, signal);
+  }
+
+  public listFusdWithdrawals(vaultAddress: string, walletAddress: string, signal?: AbortSignal): Promise<readonly FUSDWithdrawalReadModel[]> {
+    requireWalletAddress(vaultAddress);
+    requireWalletAddress(walletAddress);
+    const query = this.scopedQuery("request_id,owner_address,receiver_address,shares_18,state,assets_6,updated_at");
+    query.set("contract_address", `eq.${vaultAddress.toLowerCase()}`);
+    query.set("owner_address", `eq.${walletAddress.toLowerCase()}`);
+    query.set("order", "updated_at.desc");
+    query.set("limit", "100");
+    return this.client.select<readonly FUSDWithdrawalReadModel[]>("api_fusd_withdrawals", query, signal);
+  }
+
+  public listPerpsMarkets(signal?: AbortSignal): Promise<readonly PerpsMarketReadModel[]> {
+    const query = this.scopedQuery(
+      "market_id,symbol,underlying_address,underlying_uid,price_feed_address,market_state,session_state,isolated_only,max_leverage_bps,initial_margin_bps,maintenance_margin_bps,open_interest_cap_bps,base_spread_bps,trading_fee_bps,max_price_age_seconds,block_number,updated_at",
+    );
+    query.set("order", "symbol.asc");
+    query.set("limit", "100");
+    return this.client.select<readonly PerpsMarketReadModel[]>("perps_markets", query, signal);
+  }
+
+  public listPerpsMarketIdentities(
+    signal?: AbortSignal,
+  ): Promise<readonly PerpsMarketIdentityReadModel[]> {
+    const query = this.scopedQuery("market_id,block_number,observed_at");
+    query.set("event_name", "eq.PerpsMarketCreated");
+    query.set("canonical", "eq.true");
+    query.set("market_id", "not.is.null");
+    query.set("order", "block_number.asc,log_index.asc");
+    query.set("limit", "100");
+    return this.client.select<readonly PerpsMarketIdentityReadModel[]>("perps_activity", query, signal);
+  }
+
+  public listPerpsPositions(
+    walletAddress: string,
+    signal?: AbortSignal,
+  ): Promise<readonly PerpsPositionReadModel[]> {
+    requireWalletAddress(walletAddress);
+    const query = this.scopedQuery(
+      "account_address,market_id,margin_mode,size_18,entry_price_usd_18,last_funding_index_18,realized_pnl_usd_18,pending_fees_usd_18,open_interest_usd_18,reserved_liability_6,block_number,updated_at",
+    );
+    query.set("account_address", `eq.${walletAddress.toLowerCase()}`);
+    query.set("order", "updated_at.desc");
+    query.set("limit", "100");
+    return this.client.select<readonly PerpsPositionReadModel[]>("perps_positions", query, signal);
+  }
+
+  public listPerpsActivity(
+    limit = 50,
+    signal?: AbortSignal,
+  ): Promise<readonly PerpsActivityReadModel[]> {
+    const query = this.scopedQuery(
+      "transaction_hash,log_index,block_number,contract_address,event_name,account_address,market_id,payload,observed_at",
+    );
+    query.set("canonical", "eq.true");
+    query.set("order", "block_number.desc,log_index.desc");
+    query.set("limit", boundedLimit(limit));
+    return this.client.select<readonly PerpsActivityReadModel[]>("perps_activity", query, signal);
+  }
+
+  public getPerpsLpState(
+    vaultAddress: string,
+    signal?: AbortSignal,
+  ): Promise<readonly PerpsLpStateReadModel[]> {
+    requireWalletAddress(vaultAddress);
+    const query = this.scopedQuery(
+      "vault_address,managed_assets_6,available_liquidity_6,reserved_trader_liability_6,payable_withdrawal_assets_6,recognized_bad_debt_6,total_supply_18,utilization_bps,operations_paused,block_number,updated_at",
+    );
+    query.set("vault_address", `eq.${vaultAddress.toLowerCase()}`);
+    query.set("limit", "1");
+    return this.client.select<readonly PerpsLpStateReadModel[]>("perps_lp_state", query, signal);
+  }
+
+  public async getPerpsLpSharePriceWindow(
+    vaultAddress: string,
+    since: string,
+    signal?: AbortSignal,
+  ): Promise<readonly PerpsLpSnapshotReadModel[]> {
+    requireWalletAddress(vaultAddress);
+    const query = this.scopedQuery("share_price_18,observed_at,block_number");
+    query.set("vault_address", `eq.${vaultAddress.toLowerCase()}`);
+    query.set("share_price_18", "gt.0");
+    query.set("observed_at", `gte.${since}`);
+    query.set("order", "observed_at.asc");
+    query.set("limit", "1000");
+    return this.client.select<readonly PerpsLpSnapshotReadModel[]>("perps_lp_snapshots", query, signal);
+  }
+
+  public listPerpsLpWithdrawals(
+    vaultAddress: string,
+    walletAddress: string,
+    signal?: AbortSignal,
+  ): Promise<readonly PerpsLpWithdrawalReadModel[]> {
+    requireWalletAddress(vaultAddress);
+    requireWalletAddress(walletAddress);
+    const query = this.scopedQuery("request_id,owner_address,receiver_address,shares_18,unlock_at,state,assets_6,block_number,transaction_hash,updated_at");
+    query.set("vault_address", `eq.${vaultAddress.toLowerCase()}`);
+    query.set("owner_address", `eq.${walletAddress.toLowerCase()}`);
+    query.set("order", "updated_at.desc");
+    query.set("limit", "100");
+    return this.client.select<readonly PerpsLpWithdrawalReadModel[]>("perps_lp_withdrawals", query, signal);
   }
 
   public async issueWalletChallenge(

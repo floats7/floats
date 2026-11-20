@@ -74,6 +74,36 @@ export class OptionsWithdrawalEpochJob
   }
 }
 
+export class PerpsFundingJob extends TransactionJob<{ idempotencyKey: string; request: TransactionRequest }> { readonly name = "perps-funding" as const; }
+export class PerpsLiquidationJob extends TransactionJob<{ idempotencyKey: string; request: TransactionRequest }> { readonly name = "perps-liquidation" as const; }
+export class PerpsSessionJob extends TransactionJob<{ idempotencyKey: string; request: TransactionRequest }> { readonly name = "perps-session" as const; }
+export class PerpsWithdrawalJob extends TransactionJob<{ idempotencyKey: string; request: TransactionRequest }> { readonly name = "perps-withdrawal" as const; }
+
+export class PerpsRiskAlertJob {
+  constructor(private readonly sink: AlertSink) {}
+  async run(input: {
+    readonly idempotencyKey: string;
+    readonly utilizationBps: bigint;
+    readonly utilizationWarningBps: bigint;
+    readonly recognizedBadDebt6: bigint;
+    readonly insuranceBalance6: bigint;
+    readonly minimumInsurance6: bigint;
+    readonly largestLiquidationUsd18: bigint;
+    readonly largeLiquidationThresholdUsd18: bigint;
+    readonly openInterest: readonly { marketId: string; sideOpenInterestUsd18: bigint; capUsd18: bigint }[];
+    readonly openInterestWarningBps: bigint;
+  }) {
+    const context = { idempotencyKey: input.idempotencyKey };
+    if (input.recognizedBadDebt6 > 0n) await this.sink.publish({ code: "PERPS_BAD_DEBT", severity: "critical", message: "Perps vault has recognized bad debt", context: { ...context, recognizedBadDebt6: input.recognizedBadDebt6.toString() } });
+    if (input.minimumInsurance6 > 0n && input.insuranceBalance6 < input.minimumInsurance6) await this.sink.publish({ code: "PERPS_LOW_INSURANCE", severity: "critical", message: "Perps insurance balance is below its configured minimum", context: { ...context, insuranceBalance6: input.insuranceBalance6.toString(), minimumInsurance6: input.minimumInsurance6.toString() } });
+    if (input.utilizationBps >= input.utilizationWarningBps) await this.sink.publish({ code: "PERPS_HIGH_UTILIZATION", severity: "warning", message: "Perps LP utilization is approaching its safety limit", context: { ...context, utilizationBps: input.utilizationBps.toString() } });
+    if (input.largeLiquidationThresholdUsd18 > 0n && input.largestLiquidationUsd18 >= input.largeLiquidationThresholdUsd18) await this.sink.publish({ code: "PERPS_LARGE_LIQUIDATION", severity: "warning", message: "A large Perps liquidation was finalized", context: { ...context, liquidationUsd18: input.largestLiquidationUsd18.toString() } });
+    for (const market of input.openInterest) {
+      if (market.capUsd18 > 0n && market.sideOpenInterestUsd18 * 10_000n >= market.capUsd18 * input.openInterestWarningBps) await this.sink.publish({ code: "PERPS_HIGH_OPEN_INTEREST", severity: "warning", message: "Perps open interest is approaching the configured market cap", context: { ...context, marketId: market.marketId, sideOpenInterestUsd18: market.sideOpenInterestUsd18.toString(), capUsd18: market.capUsd18.toString() } });
+    }
+  }
+}
+
 export class DriftJob implements KeeperJob<{
   idempotencyKey: string;
   driftBps: number;

@@ -1,10 +1,14 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
+import { floatApi } from "@/lib/api-client";
 import styles from "./ContractRegistry.module.css";
 
 interface ContractEntry {
   readonly name: string;
   readonly address: `0x${string}`;
-  readonly group: "Core protocol" | "Options protocol";
+  readonly group: "Core protocol" | "Options protocol" | "Yield protocol" | "Perps protocol";
 }
 
 interface NetworkDeployment {
@@ -64,6 +68,43 @@ const deployments: readonly NetworkDeployment[] = [
 ] as const;
 
 export function ContractRegistry() {
+  const [liveContracts, setLiveContracts] = useState<readonly ContractEntry[]>([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void floatApi.getPublicConfig(controller.signal).then((config) => {
+      if (config.appEnvironment !== "mainnet") return;
+      const yieldContracts: ContractEntry[] = config.fusdVaultAddress
+        && config.fusdStrategyAddress
+        && config.fusdRateOracleAddress
+        ? [
+            { name: "FUSDVault", address: config.fusdVaultAddress as `0x${string}`, group: "Yield protocol" },
+            { name: "MorphoUSDGStrategy", address: config.fusdStrategyAddress as `0x${string}`, group: "Yield protocol" },
+            { name: "FUSDRateOracle", address: config.fusdRateOracleAddress as `0x${string}`, group: "Yield protocol" },
+            ...(config.fusdToFipoRouterAddress
+              ? [{ name: "FUSDToFIPORouter", address: config.fusdToFipoRouterAddress as `0x${string}`, group: "Yield protocol" as const }]
+              : []),
+          ]
+        : [];
+      const perpsContracts: ContractEntry[] = config.perps
+        ? [
+            { name: "PerpsMarketRegistry", address: config.perps.registryAddress as `0x${string}`, group: "Perps protocol" },
+            { name: "PerpsMarket", address: config.perps.marketAddress as `0x${string}`, group: "Perps protocol" },
+            { name: "PerpsOracle", address: config.perps.oracleAddress as `0x${string}`, group: "Perps protocol" },
+            { name: "MarginAccount", address: config.perps.marginAccountAddress as `0x${string}`, group: "Perps protocol" },
+            { name: "FundingEngine", address: config.perps.fundingEngineAddress as `0x${string}`, group: "Perps protocol" },
+            { name: "RiskEngine", address: config.perps.riskEngineAddress as `0x${string}`, group: "Perps protocol" },
+            { name: "LiquidationEngine", address: config.perps.liquidationEngineAddress as `0x${string}`, group: "Perps protocol" },
+            { name: "PerpsLiquidityVault", address: config.perps.liquidityVaultAddress as `0x${string}`, group: "Perps protocol" },
+            { name: "InsuranceFund", address: config.perps.insuranceFundAddress as `0x${string}`, group: "Perps protocol" },
+            { name: "FIPONavPriceFeed", address: config.perps.fipoPriceFeedAddress as `0x${string}`, group: "Perps protocol" },
+          ]
+        : [];
+      setLiveContracts([...yieldContracts, ...perpsContracts]);
+    }).catch(() => undefined);
+    return () => controller.abort();
+  }, []);
+
   return (
     <section className={`container ${styles.section}`} aria-labelledby="contract-registry-title">
       <header className={styles.header}>
@@ -72,19 +113,23 @@ export function ContractRegistry() {
         <p>Canonical Floats contract addresses for every supported network. Always verify the network and full address before interacting.</p>
       </header>
       <div className={styles.networks}>
-        {deployments.map((network) => (
+        {deployments.map((network) => {
+          const contracts = network.chainId === 4663 ? [...network.contracts, ...liveContracts] : network.contracts;
+          const groups = (["Core protocol", "Options protocol", "Yield protocol", "Perps protocol"] as const)
+            .filter((group) => contracts.some((contract) => contract.group === group));
+          return (
           <article key={network.chainId} className={styles.network}>
             <div className={styles.networkHeader}>
               <div><h3>{network.name}</h3><p>Chain ID <span className="tabular">{network.chainId}</span></p></div>
               <a href={network.explorerUrl} target="_blank" rel="noreferrer">Open explorer <Icon name="external-link" /></a>
             </div>
-            {(["Core protocol", "Options protocol"] as const).map((group) => (
+            {groups.map((group) => (
               <div key={group} className={styles.group}>
                 <h4>{group}</h4>
                 <div className={styles.scroller} role="region" aria-label={`${network.name} ${group} contracts`} tabIndex={0}>
                   <table>
                     <thead><tr><th scope="col">Contract</th><th scope="col">Address</th><th scope="col">Explorer</th></tr></thead>
-                    <tbody>{network.contracts.filter((contract) => contract.group === group).map((contract) => (
+                    <tbody>{contracts.filter((contract) => contract.group === group).map((contract) => (
                       <tr key={contract.address}>
                         <td>{contract.name}</td>
                         <td className="tabular">{contract.address}</td>
@@ -96,7 +141,8 @@ export function ContractRegistry() {
               </div>
             ))}
           </article>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

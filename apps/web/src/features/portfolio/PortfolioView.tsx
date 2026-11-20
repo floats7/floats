@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useWallet } from "@/features/wallet/WalletProvider";
+import { PerpsPositions } from "@/features/perps/PerpsPositions";
 import { usePortfolio } from "./PortfolioProvider";
 import { PortfolioSummary } from "./PortfolioSummary";
 import { TransactionTable } from "./TransactionTable";
@@ -53,6 +54,14 @@ export function PortfolioView() {
   return (
     <>
       <PortfolioSummary />
+      <section className={`container ${styles.perps}`} aria-labelledby="perps-portfolio-title">
+        <div>
+          <p className="eyebrow">Perpetual markets</p>
+          <h2 id="perps-portfolio-title">Perps positions</h2>
+          <p>All Cross and Isolated positions for this wallet, read from the active contracts.</p>
+        </div>
+        <PerpsPositions />
+      </section>
       <TransactionTable />
     </>
   );

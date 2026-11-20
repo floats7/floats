@@ -2,20 +2,21 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
-import { NAV_LINKS } from "@/lib/constants";
+import type { NavLink } from "@/lib/constants";
 import { Icon } from "@/components/ui/Icon";
 import styles from "./MenuOverlay.module.css";
 
 const CLOSE_ANIMATION_MS = 260;
 
 interface MenuOverlayProps {
+  links: readonly NavLink[];
   open: boolean;
   pathname: string;
   onClose: () => void;
 }
 
 /** Full-screen navigation on the native dialog element: focus trap and Escape come built in. */
-export function MenuOverlay({ open, pathname, onClose }: MenuOverlayProps) {
+export function MenuOverlay({ links, open, pathname, onClose }: MenuOverlayProps) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -53,7 +54,7 @@ export function MenuOverlay({ open, pathname, onClose }: MenuOverlayProps) {
 
       <nav className={`container ${styles.nav}`} aria-label="Primary">
         <ol className={styles.list}>
-          {NAV_LINKS.map((link, index) => (
+          {links.map((link, index) => (
             <li key={link.href} className={styles.item} style={{ "--index": index } as React.CSSProperties}>
               <Link href={link.href} className={styles.link} aria-current={link.href === pathname ? "page" : undefined} onClick={onClose}>
                 <span className={`${styles.number} tabular`}>{String(index + 1).padStart(2, "0")}</span>

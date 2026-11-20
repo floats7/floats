@@ -12,10 +12,12 @@ import { useIndexState } from "@/features/index-state/IndexStateProvider";
 import { OptionsChain } from "@/features/options/OptionsChain";
 import { OptionsVaultPanel } from "@/features/options/OptionsVaultPanel";
 import { OptionsPortfolio } from "@/features/options/OptionsPortfolio";
+import { PerpsTradePanel } from "@/features/perps/PerpsTradePanel";
+import { PerpsPositions } from "@/features/perps/PerpsPositions";
 import { TradePanel } from "@/features/trade/TradePanel";
 import { formatPercent, formatUsd } from "@/lib/format";
 import { decimalUnitsToNumber } from "@/lib/units";
-import { floatApi, type MarketHistoryPointDto } from "@/lib/api-client";
+import { floatApi, type MarketHistoryPointDto, type PerpsMarketDto } from "@/lib/api-client";
 import { resolveSharePriceUsd18 } from "@/lib/nav-history";
 import type { MarketProductId } from "./types";
 import { useMarkets } from "./useMarkets";
@@ -31,13 +33,34 @@ export function MarketDetailView({ assetId }: { readonly assetId: string }) {
   const market = normalizedAssetId === "index"
     ? markets.find((candidate) => candidate.kind === "index")
     : markets.find((candidate) => candidate.id.toLowerCase() === normalizedAssetId);
-  const enabled = useMemo(() => market?.products.filter((product) => product.enabled) ?? [], [market]);
+  const [perpsMarkets, setPerpsMarkets] = useState<readonly PerpsMarketDto[]>([]);
+  const perpsMarket = market
+    ? perpsMarkets.find((candidate) => candidate.underlyingAddress.toLowerCase() === market.address.toLowerCase())
+    : undefined;
+  const products = useMemo(() => market ? [
+    ...market.products,
+    ...(perpsMarket ? [{
+      id: "perps" as const,
+      label: "Perps",
+      enabled: perpsMarket.marketState !== "disabled",
+      disabledReason: perpsMarket.marketState !== "active"
+        ? "Perps market is not active"
+        : undefined,
+    }] : []),
+  ] : [], [market, perpsMarket]);
+  const enabled = useMemo(() => products.filter((candidate) => candidate.enabled), [products]);
   const [product, setProduct] = useState<MarketProductId>();
   const [history, setHistory] = useState<readonly MarketHistoryPointDto[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [chartSource, setChartSource] = useState<"public" | "oracle">("public");
   const [selectedOptionsSeriesId, setSelectedOptionsSeriesId] = useState<string>();
-  const [informationTab, setInformationTab] = useState<"series" | "positions" | "activity">("activity");
+  const [informationTab, setInformationTab] = useState<"series" | "positions" | "perps" | "activity">("activity");
+
+  useEffect(() => {
+    const controller = new AbortController();
+    floatApi.getPerpsMarkets(controller.signal).then(setPerpsMarkets).catch(() => setPerpsMarkets([]));
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     if (!enabled.length) return setProduct(undefined);
@@ -123,11 +146,13 @@ export function MarketDetailView({ assetId }: { readonly assetId: string }) {
               <div className={styles.informationTabs} role="tablist" aria-label="Market information">
                 <button type="button" role="tab" aria-selected={informationTab === "series"} onClick={() => setInformationTab("series")}>Canonical Series</button>
                 <button type="button" role="tab" aria-selected={informationTab === "positions"} onClick={() => setInformationTab("positions")}>My Positions</button>
+                {perpsMarket && <button type="button" role="tab" aria-selected={informationTab === "perps"} onClick={() => setInformationTab("perps")}>Perps Positions</button>}
                 <button type="button" role="tab" aria-selected={informationTab === "activity"} onClick={() => setInformationTab("activity")}>Public Activity</button>
               </div>
             </div>
             <div role="tabpanel" hidden={informationTab !== "series"}><OptionsChain underlying={market.address} embedded view="chain" selectedSeriesId={selectedOptionsSeriesId} onSelectedSeriesChange={setSelectedOptionsSeriesId} /></div>
             <div role="tabpanel" hidden={informationTab !== "positions"}><OptionsPortfolio embedded /></div>
+            <div role="tabpanel" hidden={informationTab !== "perps"}>{perpsMarket && <PerpsPositions marketId={perpsMarket.marketId} />}</div>
             <div role="tabpanel" hidden={informationTab !== "activity"}><MarketPublicInfo embedded kind={market.kind} symbol={market.symbol} spotEnabled={market.products.some((candidate) => candidate.id === "spot" && candidate.enabled)} /></div>
           </section>
         </div>
@@ -135,16 +160,17 @@ export function MarketDetailView({ assetId }: { readonly assetId: string }) {
           <p className="eyebrow">Transaction panel</p>
           <h2 id="market-transaction-title">Available products</h2>
           <div className={styles.productTabs} role="tablist" aria-label="Market products">
-            {market.products.map((candidate) => (
+            {products.map((candidate) => (
               <button key={candidate.id} type="button" role="tab" aria-selected={product === candidate.id} disabled={!candidate.enabled} title={candidate.disabledReason} onClick={() => setProduct(candidate.id)}>{candidate.label}</button>
             ))}
           </div>
-          {market.products.filter((candidate) => !candidate.enabled).map((candidate) => <p key={candidate.id} className={styles.disabledReason}>{candidate.label}: {candidate.disabledReason}</p>)}
+          {products.filter((candidate) => !candidate.enabled).map((candidate) => <p key={candidate.id} className={styles.disabledReason}>{candidate.label}: {candidate.disabledReason}</p>)}
           <div className={styles.transactionContent} aria-live="polite">
             {product === "mint-redeem" && <TradePanel />}
             {product === "options" && <OptionsChain underlying={market.address} embedded view="ticket" selectedSeriesId={selectedOptionsSeriesId} onSelectedSeriesChange={setSelectedOptionsSeriesId} />}
             {product === "liquidity" && <OptionsVaultPanel embedded />}
             {product === "spot" && <SpotTradePanel market={market} />}
+            {product === "perps" && perpsMarket && <PerpsTradePanel market={perpsMarket} />}
           </div>
         </section>
       </main>

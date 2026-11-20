@@ -88,6 +88,22 @@ export function loadIndexerRuntimeConfig(environment: NodeJS.ProcessEnv): Indexe
     "OPTIONS_VAULT_ADDRESS",
     "OPTIONS_RISK_MANAGER_ADDRESS",
   ]);
+  const fusdAddresses = optionalAddressGroup(environment, [
+    "FUSD_VAULT_ADDRESS",
+    "FUSD_STRATEGY_ADDRESS",
+    "FUSD_RATE_ORACLE_ADDRESS",
+  ]);
+  const perpsAddresses = optionalAddressGroup(environment, [
+    "PERPS_REGISTRY_ADDRESS",
+    "PERPS_MARKET_ADDRESS",
+    "PERPS_ORACLE_ADDRESS",
+    "PERPS_MARGIN_ACCOUNT_ADDRESS",
+    "PERPS_FUNDING_ENGINE_ADDRESS",
+    "PERPS_RISK_ENGINE_ADDRESS",
+    "PERPS_LIQUIDATION_ENGINE_ADDRESS",
+    "PERPS_LIQUIDITY_VAULT_ADDRESS",
+    "PERPS_INSURANCE_FUND_ADDRESS",
+  ]);
   return {
     rpcUrl: requireHttpsUrl(environment, "RPC_INDEXER"),
     addresses: [
@@ -97,6 +113,8 @@ export function loadIndexerRuntimeConfig(environment: NodeJS.ProcessEnv): Indexe
       requireAddress(environment, "REBALANCER_ADDRESS"),
       ...issuerMonitorAddresses,
       ...optionsAddresses,
+      ...fusdAddresses,
+      ...perpsAddresses,
     ],
     vaultAddress,
     registryAddress,

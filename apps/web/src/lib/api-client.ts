@@ -49,8 +49,190 @@ export interface PublicConfigDto {
   readonly optionsMarketAddress: string | null;
   readonly optionsVaultAddress: string | null;
   readonly optionTokenAddress: string | null;
+  readonly fusdVaultAddress?: string;
+  readonly fusdStrategyAddress?: string;
+  readonly fusdRateOracleAddress?: string;
+  readonly fusdToFipoRouterAddress?: string;
+  readonly perps?: PerpsAddressesDto;
   readonly spotRoutes: readonly SpotRouteDto[];
   readonly crossChainRoutes: readonly CrossChainRouteDto[];
+}
+
+export interface PerpsAddressesDto {
+  readonly registryAddress: string;
+  readonly marketAddress: string;
+  readonly oracleAddress: string;
+  readonly marginAccountAddress: string;
+  readonly fundingEngineAddress: string;
+  readonly riskEngineAddress: string;
+  readonly liquidationEngineAddress: string;
+  readonly liquidityVaultAddress: string;
+  readonly insuranceFundAddress: string;
+  readonly fipoPriceFeedAddress: string;
+}
+
+export interface PerpsAccessDto {
+  readonly allowed: boolean;
+  readonly reason: "RESTRICTED_JURISDICTION" | null;
+}
+
+export interface PerpsMarketDto {
+  readonly marketId: string;
+  readonly symbol: string;
+  readonly underlyingAddress: string;
+  readonly underlyingUid: string;
+  readonly priceFeedAddress: string;
+  readonly marketState: "disabled" | "active" | "reduce_only";
+  readonly sessionState: "regular" | "extended" | "overnight" | "closed";
+  readonly isolatedOnly: boolean;
+  readonly maxLeverageBps: number;
+  readonly initialMarginBps: number;
+  readonly maintenanceMarginBps: number;
+  readonly openInterestCapBps: number;
+  readonly baseSpreadBps: number;
+  readonly tradingFeeBps: number;
+  readonly maxPriceAgeSeconds: number;
+  readonly markPriceUsd18: string | null;
+  readonly oracleUpdatedAt: number | null;
+  readonly oracleHealth: "live" | "unavailable";
+  readonly blockNumber: number;
+  readonly updatedAt: string;
+}
+
+export interface PerpsTradePreviewDto {
+  readonly markPriceUsd18: string;
+  readonly executionPriceUsd18: string;
+  readonly spreadBps: number;
+  readonly feeUsd6: string;
+  readonly resultingNotionalUsd18: string;
+  readonly requiredInitialMarginUsd18: string;
+  readonly liquidationPriceUsd18: string;
+  readonly resultingSize18: string;
+}
+
+export interface PerpsWalletDto {
+  readonly walletAddress: string;
+  readonly collateral: {
+    readonly freeCollateral6: string;
+    readonly crossCollateral6: string;
+    readonly crossHealth: {
+      readonly equityUsd18: string;
+      readonly initialMarginUsd18: string;
+      readonly maintenanceMarginUsd18: string;
+      readonly marginRatio18: string;
+      readonly liquidatable: boolean;
+    };
+  };
+  readonly positions: readonly {
+    readonly accountAddress: string;
+    readonly marketId: string;
+    readonly marginMode: "isolated" | "cross";
+    readonly size18: string;
+    readonly entryPriceUsd18: string;
+    readonly lastFundingIndex18: string;
+    readonly realizedPnlUsd18: string;
+    readonly pendingFeesUsd18: string;
+    readonly openInterestUsd18: string;
+    readonly reservedLiability6: string;
+    readonly isolatedMargin6: string;
+    readonly equityUsd18: string;
+    readonly initialMarginUsd18: string;
+    readonly maintenanceMarginUsd18: string;
+    readonly marginRatio18: string;
+    readonly liquidatable: boolean;
+    readonly liquidationPriceUsd18: string;
+  }[];
+}
+
+export interface PerpsActivityDto {
+  readonly transactionHash: string;
+  readonly logIndex: number;
+  readonly blockNumber: number;
+  readonly contractAddress: string;
+  readonly eventName: string;
+  readonly accountAddress: string | null;
+  readonly marketId: string | null;
+  readonly payload: Readonly<Record<string, unknown>>;
+  readonly observedAt: string;
+}
+
+export interface PerpsLpStateDto {
+  readonly vaultAddress: string;
+  readonly managedAssets6: string;
+  readonly availableLiquidity6: string;
+  readonly reservedTraderLiability6: string;
+  readonly payableWithdrawalAssets6: string;
+  readonly recognizedBadDebt6: string;
+  readonly totalSupply18: string;
+  readonly utilizationBps: string;
+  readonly operationsPaused: boolean;
+  readonly minimumWithdrawalDelaySeconds: number;
+  readonly totalLongOpenInterestUsd18: string;
+  readonly totalShortOpenInterestUsd18: string;
+  readonly netExposureUsd18: string;
+  readonly realizedApyBps: number | null;
+  readonly realizedApyWindowSeconds: number | null;
+  readonly realizedApyStartBlock: number | null;
+  readonly realizedApyEndBlock: number | null;
+}
+
+export interface PerpsLpWithdrawalDto {
+  readonly requestId: string;
+  readonly ownerAddress: string;
+  readonly receiverAddress: string;
+  readonly shares18: string;
+  readonly unlockAt: string;
+  readonly state: "queued" | "cancelled" | "processed" | "claimed";
+  readonly assets6: string | null;
+  readonly blockNumber: number;
+  readonly transactionHash: string;
+  readonly updatedAt: string;
+}
+
+export interface FUSDStateDto {
+  readonly blockNumber: string;
+  readonly vaultAddress: string;
+  readonly strategyAddress: string;
+  readonly morphoVaultAddress: string;
+  readonly totalAssets6: string;
+  readonly totalSupply18: string;
+  readonly liquidAssets6: string;
+  readonly strategyAssets6: string;
+  readonly queuedWithdrawalAssets6: string;
+  readonly pricePerShare18: string;
+  readonly tvlCap6: string;
+  readonly targetBufferBps: number;
+  readonly performanceFeeBps: number;
+  readonly depositsPaused: boolean;
+  readonly strategyActive: boolean;
+  readonly externalCapacity6: string;
+  readonly requiredExternalCapacity6: string;
+  readonly capacityReady: boolean;
+}
+
+export interface FUSDActivityDto {
+  readonly transactionHash: string;
+  readonly blockNumber: number;
+  readonly eventName: string;
+  readonly walletAddress: string | null;
+  readonly receiverAddress: string | null;
+  readonly requestId: string | null;
+  readonly assets6: string | null;
+  readonly shares18: string | null;
+  readonly observedAt: string;
+}
+
+export interface FUSDWalletDto {
+  readonly walletAddress: string;
+  readonly withdrawals: readonly {
+    readonly requestId: string;
+    readonly ownerAddress: string;
+    readonly receiverAddress: string;
+    readonly shares18: string;
+    readonly state: string;
+    readonly assets6: string | null;
+    readonly updatedAt: string;
+  }[];
 }
 
 export interface SpotRouteDto {
@@ -468,6 +650,54 @@ export class FloatsApiClient {
 
   public getFeeRates(signal?: AbortSignal): Promise<FeeRatesDto> {
     return this.get<FeeRatesDto>("/fee-rates", signal);
+  }
+
+  public getFusdState(signal?: AbortSignal): Promise<FUSDStateDto | null> {
+    return this.get<FUSDStateDto | null>("/fusd", signal);
+  }
+
+  public getFusdActivity(limit = 50, signal?: AbortSignal): Promise<readonly FUSDActivityDto[]> {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new Error("fUSD activity limit must be between 1 and 100");
+    return this.get<readonly FUSDActivityDto[]>(`/fusd/activity?limit=${limit}`, signal);
+  }
+
+  public getFusdWallet(address: string, signal?: AbortSignal): Promise<FUSDWalletDto | null> {
+    if (!/^0x[0-9a-fA-F]{40}$/.test(address)) throw new Error("Wallet address is invalid");
+    return this.get<FUSDWalletDto | null>(`/fusd/wallet?address=${address.toLowerCase()}`, signal);
+  }
+
+  public getPerpsMarkets(signal?: AbortSignal): Promise<readonly PerpsMarketDto[]> {
+    return this.get<readonly PerpsMarketDto[]>("/perps/markets", signal);
+  }
+
+  public getPerpsAccess(signal?: AbortSignal): Promise<PerpsAccessDto> {
+    return this.get<PerpsAccessDto>("/perps/access", signal);
+  }
+
+  public requestPerpsPreview(
+    input: { account: string; marketId: string; sizeDelta18: string },
+    signal?: AbortSignal,
+  ): Promise<PerpsTradePreviewDto> {
+    return this.post<PerpsTradePreviewDto>("/perps/preview", input, signal);
+  }
+
+  public getPerpsPositions(address: string, signal?: AbortSignal): Promise<PerpsWalletDto | null> {
+    if (!/^0x[0-9a-fA-F]{40}$/.test(address)) throw new Error("Wallet address is invalid");
+    return this.get<PerpsWalletDto | null>(`/perps/positions?address=${address.toLowerCase()}`, signal);
+  }
+
+  public getPerpsActivity(limit = 50, signal?: AbortSignal): Promise<readonly PerpsActivityDto[]> {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new Error("Perps activity limit must be between 1 and 100");
+    return this.get<readonly PerpsActivityDto[]>(`/perps/activity?limit=${limit}`, signal);
+  }
+
+  public getPerpsLpState(signal?: AbortSignal): Promise<PerpsLpStateDto | null> {
+    return this.get<PerpsLpStateDto | null>("/perps/lp", signal);
+  }
+
+  public getPerpsLpWithdrawals(address: string, signal?: AbortSignal): Promise<readonly PerpsLpWithdrawalDto[]> {
+    if (!/^0x[0-9a-fA-F]{40}$/.test(address)) throw new Error("Wallet address is invalid");
+    return this.get<readonly PerpsLpWithdrawalDto[]>(`/perps/lp/withdrawals?address=${address.toLowerCase()}`, signal);
   }
 
   public getRegistryChanges(limit = 50, signal?: AbortSignal): Promise<readonly RegistryChangeDto[]> {

@@ -9,7 +9,11 @@ export type JobName =
   | "options-series"
   | "options-series-close"
   | "options-settlement"
-  | "options-withdrawal-epoch";
+  | "options-withdrawal-epoch"
+  | "perps-funding"
+  | "perps-liquidation"
+  | "perps-session"
+  | "perps-withdrawal";
 
 export type JobStatus =
   | "ready"
@@ -63,7 +67,12 @@ export interface Alert {
     | "EXCESSIVE_DRIFT"
     | "PREMIUM_DISCOUNT"
     | "LOW_GAS"
-    | "STUCK_NONCE";
+    | "STUCK_NONCE"
+    | "PERPS_BAD_DEBT"
+    | "PERPS_LOW_INSURANCE"
+    | "PERPS_HIGH_UTILIZATION"
+    | "PERPS_HIGH_OPEN_INTEREST"
+    | "PERPS_LARGE_LIQUIDATION";
   readonly severity: "warning" | "critical";
   readonly message: string;
   readonly context: Readonly<Record<string, string | number | boolean>>;

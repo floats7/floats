@@ -2,12 +2,13 @@
 
 import { useMotionValueEvent, useScroll } from "motion/react";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Logo } from "@/components/brand/Logo";
 import { XLink } from "@/components/brand/XLink";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
-import { NAV_LINKS } from "@/lib/constants";
+import { FUSD_NAV_LINK, NAV_LINKS, type NavLink } from "@/lib/constants";
+import { floatApi } from "@/lib/api-client";
 import { WalletButton } from "@/features/wallet/WalletButton";
 import { MenuOverlay } from "./MenuOverlay";
 import { OracleBadge } from "./OracleBadge";
@@ -20,6 +21,17 @@ export function SiteHeader() {
   const { scrollY } = useScroll();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [links, setLinks] = useState<readonly NavLink[]>(NAV_LINKS);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void floatApi.getPublicConfig(controller.signal).then((config) => {
+      if (config.fusdVaultAddress && !controller.signal.aborted) {
+        setLinks([...NAV_LINKS.slice(0, 3), FUSD_NAV_LINK, ...NAV_LINKS.slice(3)]);
+      }
+    }).catch(() => undefined);
+    return () => controller.abort();
+  }, []);
 
   useMotionValueEvent(scrollY, "change", (latest) => setScrolled(latest > SCROLL_THRESHOLD));
 
@@ -36,7 +48,7 @@ export function SiteHeader() {
 
         <nav className={styles.nav} aria-label="Primary">
           <ul className={styles.links}>
-            {NAV_LINKS.map((link) => (
+            {links.map((link) => (
               <li key={link.href}>
                 <Link href={link.href} className={styles.link} aria-current={link.href === pathname ? "page" : undefined}>
                   {link.label}
@@ -53,7 +65,7 @@ export function SiteHeader() {
         </div>
       </div>
 
-      <MenuOverlay open={menuOpen} pathname={pathname} onClose={() => setMenuOpen(false)} />
+      <MenuOverlay links={links} open={menuOpen} pathname={pathname} onClose={() => setMenuOpen(false)} />
     </header>
   );
 }

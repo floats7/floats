@@ -13,6 +13,14 @@ if (!/^[0-9a-f-]{36}$/.test(projectId)) throw new Error("Invalid Railway project
 const values = parseEnv(environmentPath);
 const apiOrigin = railwayEnvironment === "mainnet" ? "https://api.floats.trade" : "https://api-testnet.floats.trade";
 const webOrigin = railwayEnvironment === "mainnet" ? "https://floats.trade" : "https://testnet.floats.trade";
+const fusd = railwayEnvironment === "mainnet"
+  ? {
+      FUSD_VAULT_ADDRESS: required("FUSD_VAULT_ADDRESS"),
+      FUSD_STRATEGY_ADDRESS: required("FUSD_STRATEGY_ADDRESS"),
+      FUSD_RATE_ORACLE_ADDRESS: required("FUSD_RATE_ORACLE_ADDRESS"),
+      FUSD_TO_FIPO_ROUTER_ADDRESS: optional("FUSD_TO_FIPO_ROUTER_ADDRESS"),
+    }
+  : {};
 
 const serviceVariables: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   "floats-web": compact({
@@ -37,6 +45,7 @@ const serviceVariables: Readonly<Record<string, Readonly<Record<string, string>>
     OPTION_TOKEN_ADDRESS: optional("OPTION_TOKEN_ADDRESS"),
     OPTIONS_VAULT_ADDRESS: optional("OPTIONS_VAULT_ADDRESS"),
     SPOT_ROUTES_JSON: optional("SPOT_ROUTES_JSON") ?? "[]",
+    ...fusd,
   }),
   "floats-indexer": compact({
     APP_ENV: railwayEnvironment,
@@ -80,6 +89,7 @@ const serviceVariables: Readonly<Record<string, Readonly<Record<string, string>>
     OPTIONS_SETTLEMENT_ENGINE_ADDRESS: required("OPTIONS_SETTLEMENT_ENGINE_ADDRESS"),
     OPTIONS_VAULT_ADDRESS: required("OPTIONS_VAULT_ADDRESS"),
     OPTIONS_RISK_MANAGER_ADDRESS: required("OPTIONS_RISK_MANAGER_ADDRESS"),
+    ...fusd,
   }),
 };
 

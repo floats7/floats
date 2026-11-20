@@ -9,6 +9,23 @@
   gap: var(--space-3);
 }
 
+.perps {
+  display: grid;
+  gap: var(--space-5);
+  padding-top: var(--space-8);
+}
+
+.perps h2 {
+  margin-top: var(--space-3);
+  font-size: var(--text-3xl);
+}
+
+.perps > div:first-child > p:last-child {
+  max-width: 48rem;
+  margin-top: var(--space-3);
+  color: var(--text-muted);
+}
+
 @media (min-width: 64rem) {
   .grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));

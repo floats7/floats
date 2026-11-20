@@ -1,0 +1,28 @@
+{
+  "chainId": 4663,
+  "symbol": "FIPO-PERP",
+  "underlyingSymbol": "FIPO",
+  "underlyingAddress": "0x4B129357B164d65834bdBA935c3cD08FcB7e14DA",
+  "priceFeedAddress": null,
+  "marketState": "disabled",
+  "risk": {
+    "maxLeverageBps": 30000,
+    "initialMarginBps": 4000,
+    "maintenanceMarginBps": 2000,
+    "openInterestCapBps": 200,
+    "baseSpreadBps": 35,
+    "tradingFeeBps": 6,
+    "extendedSpreadMultiplierBps": 20000,
+    "extendedLeverageDivisorBps": 20000,
+    "maxPriceAgeSeconds": 300,
+    "isolatedOnly": false,
+    "fundingSkewCoefficient18": "100000000000000",
+    "maximumFundingRate18": "500000000000000"
+  },
+  "activationGates": {
+    "canonicalNavFeedRequired": true,
+    "feedStabilityRequired": true,
+    "minimumLiquidityRequired": true,
+    "governanceApprovalRequired": true
+  }
+}
