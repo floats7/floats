@@ -4,6 +4,7 @@
   "underlyingSymbol": "FIPO",
   "underlyingAddress": "0x4B129357B164d65834bdBA935c3cD08FcB7e14DA",
   "priceFeedAddress": null,
+  "priceFeedEnvironmentKey": "PERPS_FIPO_PRICE_FEED_ADDRESS",
   "marketState": "disabled",
   "risk": {
     "maxLeverageBps": 30000,

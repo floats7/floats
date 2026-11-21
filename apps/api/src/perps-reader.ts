@@ -24,7 +24,7 @@ const riskAbi = parseAbi([
   "function crossHealth(address account) view returns ((int256 equityUsd18,uint256 initialMarginUsd18,uint256 maintenanceMarginUsd18,uint256 marginRatio18,bool liquidatable) health)",
 ]);
 const oracleAbi = parseAbi([
-  "function getPrice(bytes32 marketId) view returns ((uint256 markPriceUsd18,uint256 updatedAt,uint80 roundId) price)",
+  "function getPrice(bytes32 marketId) view returns ((uint256 markPriceUsd18,uint48 updatedAt) price)",
 ]);
 const vaultAbi = parseAbi([
   "function managedAssets() view returns (uint256)",
@@ -109,9 +109,9 @@ export class PerpsReader {
       riskAbi,
       marginMode === "cross" ? "crossHealth" : "isolatedHealth",
       marginMode === "cross" ? [account] : [account, marketId],
-    ) as { equityUsd18: bigint; initialMarginUsd18: bigint; maintenanceMarginUsd18: bigint; marginRatio18: bigint; liquidatable: boolean };
-    const liquidationPrice = marginMode === "isolated"
-      ? await this.read(this.riskEngineAddress, riskAbi, "isolatedLiquidationPrice", [account, marketId]) as bigint
+    ).catch(() => undefined) as { equityUsd18: bigint; initialMarginUsd18: bigint; maintenanceMarginUsd18: bigint; marginRatio18: bigint; liquidatable: boolean } | undefined;
+    const liquidationPrice = marginMode === "isolated" && health
+      ? await this.read(this.riskEngineAddress, riskAbi, "isolatedLiquidationPrice", [account, marketId]).catch(() => 0n) as bigint
       : 0n;
     return {
       accountAddress: account,
@@ -125,11 +125,12 @@ export class PerpsReader {
       openInterestUsd18: openInterestUsd18.toString(),
       reservedLiability6: reservedLiability6.toString(),
       isolatedMargin6: (isolatedMarginResult as bigint).toString(),
-      equityUsd18: health.equityUsd18.toString(),
-      initialMarginUsd18: health.initialMarginUsd18.toString(),
-      maintenanceMarginUsd18: health.maintenanceMarginUsd18.toString(),
-      marginRatio18: health.marginRatio18.toString(),
-      liquidatable: health.liquidatable,
+      healthAvailable: Boolean(health),
+      equityUsd18: health?.equityUsd18.toString() ?? "0",
+      initialMarginUsd18: health?.initialMarginUsd18.toString() ?? "0",
+      maintenanceMarginUsd18: health?.maintenanceMarginUsd18.toString() ?? "0",
+      marginRatio18: health?.marginRatio18.toString() ?? "0",
+      liquidatable: health?.liquidatable ?? false,
       liquidationPriceUsd18: liquidationPrice.toString(),
     };
   }
@@ -160,7 +161,7 @@ export class PerpsReader {
     const oraclePrice = await this.read(this.oracleAddress, oracleAbi, "getPrice", [marketId])
       .catch(() => undefined);
     const [config, state, session] = decodeFunctionResult({ abi: registryAbi, functionName: "getMarket", data: result });
-    const price = oraclePrice as { markPriceUsd18: bigint; updatedAt: bigint; roundId: bigint } | undefined;
+    const price = oraclePrice as { markPriceUsd18: bigint; updatedAt: number } | undefined;
     return {
       marketId,
       symbol: decodeSymbol(config.symbol),

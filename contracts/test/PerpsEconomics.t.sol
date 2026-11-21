@@ -148,6 +148,24 @@ contract PerpsEconomicsTest {
         require(fresh.maxDeposit(address(lp)) == 0, "paused vault exposed deposits");
     }
 
+    function testWithdrawalDelayStartsAtFiveMinutesAndCanOnlyIncrease() public {
+        PerpsLiquidityVault fresh =
+            new PerpsLiquidityVault(address(usdg), address(this), address(0xA11CE), 5 minutes);
+        require(fresh.minimumWithdrawalDelay() == 5 minutes, "canary delay mismatch");
+
+        fresh.increaseWithdrawalDelay(1 days);
+        require(fresh.minimumWithdrawalDelay() == 1 days, "production delay was not applied");
+
+        try fresh.increaseWithdrawalDelay(5 minutes) {
+            revert("expected withdrawal delay decrease rejection");
+        } catch (bytes memory reason) {
+            require(
+                bytes4(reason) == PerpsLiquidityVault.WithdrawalDelayCannotDecrease.selector,
+                "wrong delay rejection"
+            );
+        }
+    }
+
     function testFuzzSignedPnlFundingFeesLeverageAndRounding(
         uint96 rawSize,
         uint16 rawEntry,
@@ -188,8 +206,14 @@ contract PerpsEconomicsTest {
         require(pnl == expectedPnl, "signed PnL rounding mismatch");
         require(fundingOwed == expectedFunding, "signed funding rounding mismatch");
         require(notional == expectedNotional, "notional mismatch");
-        require(initialMargin == _mulDivUp(expectedNotional, 2000, 10_000), "initial margin rounding mismatch");
-        require(maintenanceMargin == _mulDivUp(expectedNotional, 1000, 10_000), "maintenance rounding mismatch");
+        require(
+            initialMargin == _mulDivUp(expectedNotional, 2000, 10_000),
+            "initial margin rounding mismatch"
+        );
+        require(
+            maintenanceMargin == _mulDivUp(expectedNotional, 1000, 10_000),
+            "maintenance rounding mismatch"
+        );
 
         PerpsTypes.AccountHealth memory health = risk.isolatedHealth(TRADER, MARKET_ID);
         require(

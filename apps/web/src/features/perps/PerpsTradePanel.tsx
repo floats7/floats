@@ -7,6 +7,7 @@ import { BalanceShortcuts } from "@/features/wallet/BalanceShortcuts";
 import { useTokenBalance } from "@/features/wallet/useTokenBalance";
 import { floatApi, type PerpsMarketDto, type PerpsTradePreviewDto, type PublicConfigDto } from "@/lib/api-client";
 import { executePerpsTrade, fundPerpsMargin } from "@/lib/perps-transactions";
+import { formatUtcMarketOpen, isUsMarketOpen, nextUsMarketOpen } from "@/lib/market-hours";
 import { formatUnits } from "@/lib/units";
 import styles from "@/features/markets/SpotTradePanel.module.css";
 
@@ -14,7 +15,7 @@ export function PerpsTradePanel({ market }: { readonly market: PerpsMarketDto })
   const { address, chainId, provider, openConnect, switchChain } = useWallet();
   const [config, setConfig] = useState<PublicConfigDto>();
   const [side, setSide] = useState<"long" | "short">("long");
-  const [margin, setMargin] = useState("10");
+  const [margin, setMargin] = useState("");
   const [leverage, setLeverage] = useState(1);
   const [marginMode, setMarginMode] = useState<"isolated" | "cross">("isolated");
   const [preview, setPreview] = useState<PerpsTradePreviewDto>();
@@ -26,6 +27,8 @@ export function PerpsTradePanel({ market }: { readonly market: PerpsMarketDto })
   const usdgBalance = useTokenBalance(config?.usdgAddress);
   const wrongChain = Boolean(address && config && chainId !== config.chainId);
   const canIncrease = market.marketState === "active" && market.sessionState !== "closed" && market.oracleHealth === "live";
+  const underlyingMarketOpen = isUsMarketOpen(new Date());
+  const nextOpen = !underlyingMarketOpen ? formatUtcMarketOpen(nextUsMarketOpen(new Date())) : undefined;
   const maximumLeverage = Math.max(1, Math.floor(market.maxLeverageBps / 10_000));
   const marginAssets6 = parseUnits(margin, 6);
   const positionSize18 = marginAssets6 && market.markPriceUsd18
@@ -136,8 +139,8 @@ export function PerpsTradePanel({ market }: { readonly market: PerpsMarketDto })
       </div>}
       {positionMode && <p className={styles.note}>Margin mode is locked to {positionMode === "isolated" ? "Isolated" : "Cross"} while this position is open. Close the position before changing it.</p>}
       {market.isolatedOnly && <p className={styles.note}>Cross margin is unavailable for this market because its live risk configuration requires isolated collateral.</p>}
-      <p className={styles.note}>Session: {market.sessionState === "regular" ? "Open" : market.sessionState === "extended" ? "Extended" : market.sessionState === "overnight" ? "Overnight" : "Closed — reduce only"}{market.marketState === "reduce_only" ? " · Reduce only" : ""}</p>
-      <p className={styles.note}>Oracle: {market.oracleHealth === "live" ? "Live" : "Unavailable — new positions are blocked"}</p>
+      {!underlyingMarketOpen ? <p className={styles.note} role="status">Market is closed. Trading opens {nextOpen}.</p> : <p className={styles.note}>Market is open.</p>}
+      <p className={styles.note}>Price feed: {market.oracleHealth === "live" ? "Live" : underlyingMarketOpen ? "Waiting for a fresh market price." : "Paused while the market is closed."}</p>
       {!accessAllowed && <p className={styles.note} role="alert">Perpetual trading is unavailable in your jurisdiction. Public market information remains visible.</p>}
       {wrongChain && <p className={styles.note} role="alert">Switch to the configured Floats network before funding margin or submitting a position.</p>}
       <label><span>Margin in USDG</span><input value={margin} inputMode="decimal" onChange={(event) => { setMargin(event.target.value); setPreview(undefined); }} /></label>
@@ -156,7 +159,7 @@ export function PerpsTradePanel({ market }: { readonly market: PerpsMarketDto })
       </dl>}
       {status && <p role="status">{status}</p>}
       {!preview
-        ? <button type="button" disabled={busy || !canIncrease || !accessAllowed} title={canIncrease ? undefined : market.oracleHealth !== "live" ? "The official onchain oracle is unavailable. Existing positions can still be reviewed below the chart." : "New positions are disabled; existing positions can still be reduced or closed below the chart."} onClick={review}>{busy ? "Reading onchain preview…" : canIncrease && accessAllowed ? "Review position" : "New positions unavailable"}</button>
+        ? <button type="button" disabled={busy || !canIncrease || !accessAllowed} title={canIncrease ? undefined : market.oracleHealth !== "live" ? `Trading will resume after a fresh official price is available${nextOpen ? ` when the market opens ${nextOpen}` : ""}.` : "New positions are currently unavailable."} onClick={review}>{busy ? "Reading onchain preview…" : canIncrease && accessAllowed ? "Review position" : !underlyingMarketOpen ? `Market opens ${nextOpen}` : "Waiting for market price"}</button>
         : <button type="button" className={side === "long" ? styles.buyAction : styles.sellAction} disabled={busy} onClick={submit}>{wrongChain ? "Switch network" : side === "long" ? "Open long" : "Open short"}</button>}
       <p className={styles.note}>Perpetual positions use USDG margin. Leverage, funding, price gaps, liquidation, and market-hours restrictions can reduce or exhaust your margin.</p>
       <OnchainTransactionModal open={Boolean(modal)} phase={modal?.phase ?? "pending"} title={modal?.title ?? "Perps transaction"} steps={modal?.title?.startsWith("Fund ") ? (marginMode === "cross" ? ["Approve exact USDG amount", "Deposit collateral", "Select Cross mode", "Allocate Cross collateral", "Wait for confirmation"] : ["Approve exact USDG amount", "Deposit collateral", "Allocate isolated margin", "Wait for confirmation"]) : ["Confirm position in wallet", "Wait for confirmation"]} stepIndex={modal?.stepIndex ?? 0} hash={modal?.hash} explorerUrl={config?.blockExplorerUrl} error={modal?.error} onClose={() => setModal(undefined)} />

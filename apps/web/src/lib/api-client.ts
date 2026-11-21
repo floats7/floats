@@ -135,6 +135,7 @@ export interface PerpsWalletDto {
     readonly openInterestUsd18: string;
     readonly reservedLiability6: string;
     readonly isolatedMargin6: string;
+    readonly healthAvailable: boolean;
     readonly equityUsd18: string;
     readonly initialMarginUsd18: string;
     readonly maintenanceMarginUsd18: string;

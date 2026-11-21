@@ -1,15 +1,15 @@
 import { readFileSync } from "node:fs";
 import { createPublicClient, getAddress, http, parseAbi, type Address } from "viem";
 
-const registryAbi = parseAbi(["function admin() view returns (address)", "function guardian() view returns (address)"]);
+const registryAbi = parseAbi(["function admin() view returns (address)", "function guardian() view returns (address)", "function isKeeper(address) view returns (bool)"]);
 const oracleAbi = parseAbi(["function registry() view returns (address)"]);
-const marginAbi = parseAbi(["function collateralToken() view returns (address)", "function registry() view returns (address)", "function admin() view returns (address)", "function riskEngine() view returns (address)"]);
-const vaultAbi = parseAbi(["function asset() view returns (address)", "function admin() view returns (address)", "function guardian() view returns (address)", "function operationsPaused() view returns (bool)", "function minimumWithdrawalDelay() view returns (uint48)"]);
-const fundingAbi = parseAbi(["function admin() view returns (address)", "function registry() view returns (address)", "function positionSource() view returns (address)"]);
+const marginAbi = parseAbi(["function collateralToken() view returns (address)", "function registry() view returns (address)", "function admin() view returns (address)", "function riskEngine() view returns (address)", "function isOperator(address) view returns (bool)"]);
+const vaultAbi = parseAbi(["function asset() view returns (address)", "function admin() view returns (address)", "function guardian() view returns (address)", "function operationsPaused() view returns (bool)", "function minimumWithdrawalDelay() view returns (uint48)", "function isOperator(address) view returns (bool)"]);
+const fundingAbi = parseAbi(["function admin() view returns (address)", "function registry() view returns (address)", "function positionSource() view returns (address)", "function isKeeper(address) view returns (bool)"]);
 const riskAbi = parseAbi(["function admin() view returns (address)", "function marginAccount() view returns (address)", "function registry() view returns (address)", "function oracle() view returns (address)", "function positionSource() view returns (address)", "function fundingEngine() view returns (address)"]);
 const marketAbi = parseAbi(["function admin() view returns (address)", "function registry() view returns (address)", "function oracle() view returns (address)", "function fundingEngine() view returns (address)", "function riskEngine() view returns (address)", "function marginAccount() view returns (address)", "function liquidityVault() view returns (address)", "function liquidationEngine() view returns (address)", "function protocolFeeRecipient() view returns (address)"]);
 const insuranceAbi = parseAbi(["function collateralToken() view returns (address)", "function admin() view returns (address)", "function isOperator(address) view returns (bool)"]);
-const liquidationAbi = parseAbi(["function admin() view returns (address)", "function market() view returns (address)", "function marginAccount() view returns (address)", "function riskEngine() view returns (address)", "function insuranceFund() view returns (address)", "function liquidityVault() view returns (address)"]);
+const liquidationAbi = parseAbi(["function admin() view returns (address)", "function market() view returns (address)", "function marginAccount() view returns (address)", "function riskEngine() view returns (address)", "function insuranceFund() view returns (address)", "function liquidityVault() view returns (address)", "function isKeeper(address) view returns (bool)"]);
 const fipoFeedAbi = parseAbi(["function vault() view returns (address)", "function decimals() view returns (uint8)", "function latestRoundData() view returns (uint80,int256,uint256,uint256,uint80)"]);
 
 function fail(message: string): never { throw new Error(`Perps deployment verification failed: ${message}`); }
@@ -27,8 +27,8 @@ function required(values: ReadonlyMap<string, string>, key: string): string { co
 function address(values: ReadonlyMap<string, string>, key: string): Address { try { return getAddress(required(values, key)); } catch { fail(`${key} is not a valid address`); } }
 function integer(values: ReadonlyMap<string, string>, key: string): bigint { const value = required(values, key); if (!/^\d+$/.test(value)) fail(`${key} must be an integer`); return BigInt(value); }
 function equal(label: string, actual: unknown, expected: unknown): void {
-  const left = typeof actual === "string" ? actual.toLowerCase() : actual;
-  const right = typeof expected === "string" ? expected.toLowerCase() : expected;
+  const left = typeof actual === "string" ? actual.toLowerCase() : typeof actual === "number" ? BigInt(actual) : actual;
+  const right = typeof expected === "string" ? expected.toLowerCase() : typeof expected === "number" ? BigInt(expected) : expected;
   if (left !== right) fail(`${label} mismatch: expected ${String(expected)}, received ${String(actual)}`);
 }
 
@@ -51,24 +51,30 @@ const governance = address(values, "TIMELOCK_ADDRESS");
 const guardian = address(values, "GUARDIAN_ADDRESS");
 const usdg = address(values, "USDG_ADDRESS");
 const treasury = address(values, "TREASURY_ADDRESS");
+const keeper = address(values, "KEEPER_ADDRESS");
 for (const [name, contract] of Object.entries(contracts)) { const code = await client.getCode({ address: contract }); if (!code || code === "0x") fail(`${name} has no bytecode`); }
 async function read(contract: Address, abi: readonly unknown[], functionName: string) { return client.readContract({ address: contract, abi, functionName } as never); }
 
 equal("registry.admin", await read(contracts.registry, registryAbi, "admin"), governance);
 equal("registry.guardian", await read(contracts.registry, registryAbi, "guardian"), guardian);
+equal("registry keeper", await client.readContract({ address: contracts.registry, abi: registryAbi, functionName: "isKeeper", args: [keeper] }), true);
 equal("oracle.registry", await read(contracts.oracle, oracleAbi, "registry"), contracts.registry);
 equal("margin.collateralToken", await read(contracts.margin, marginAbi, "collateralToken"), usdg);
 equal("margin.registry", await read(contracts.margin, marginAbi, "registry"), contracts.registry);
 equal("margin.admin", await read(contracts.margin, marginAbi, "admin"), governance);
 equal("margin.riskEngine", await read(contracts.margin, marginAbi, "riskEngine"), contracts.risk);
+equal("margin market operator", await client.readContract({ address: contracts.margin, abi: marginAbi, functionName: "isOperator", args: [contracts.market] }), true);
 equal("vault.asset", await read(contracts.vault, vaultAbi, "asset"), usdg);
 equal("vault.admin", await read(contracts.vault, vaultAbi, "admin"), governance);
 equal("vault.guardian", await read(contracts.vault, vaultAbi, "guardian"), guardian);
 equal("vault.operationsPaused", await read(contracts.vault, vaultAbi, "operationsPaused"), true);
 equal("vault.minimumWithdrawalDelay", await read(contracts.vault, vaultAbi, "minimumWithdrawalDelay"), integer(values, "PERPS_WITHDRAWAL_DELAY_SECONDS"));
+equal("vault market operator", await client.readContract({ address: contracts.vault, abi: vaultAbi, functionName: "isOperator", args: [contracts.market] }), true);
+equal("vault liquidation operator", await client.readContract({ address: contracts.vault, abi: vaultAbi, functionName: "isOperator", args: [contracts.liquidation] }), true);
 equal("funding.admin", await read(contracts.funding, fundingAbi, "admin"), governance);
 equal("funding.registry", await read(contracts.funding, fundingAbi, "registry"), contracts.registry);
 equal("funding.positionSource", await read(contracts.funding, fundingAbi, "positionSource"), contracts.market);
+equal("funding keeper", await client.readContract({ address: contracts.funding, abi: fundingAbi, functionName: "isKeeper", args: [keeper] }), true);
 equal("risk.admin", await read(contracts.risk, riskAbi, "admin"), governance);
 equal("risk.marginAccount", await read(contracts.risk, riskAbi, "marginAccount"), contracts.margin);
 equal("risk.registry", await read(contracts.risk, riskAbi, "registry"), contracts.registry);
@@ -93,6 +99,7 @@ equal("liquidation.marginAccount", await read(contracts.liquidation, liquidation
 equal("liquidation.riskEngine", await read(contracts.liquidation, liquidationAbi, "riskEngine"), contracts.risk);
 equal("liquidation.insuranceFund", await read(contracts.liquidation, liquidationAbi, "insuranceFund"), contracts.insurance);
 equal("liquidation.liquidityVault", await read(contracts.liquidation, liquidationAbi, "liquidityVault"), contracts.vault);
+equal("liquidation keeper", await client.readContract({ address: contracts.liquidation, abi: liquidationAbi, functionName: "isKeeper", args: [keeper] }), true);
 equal("fIPO feed vault", await read(contracts.fipoFeed, fipoFeedAbi, "vault"), address(values, "FLOATS_VAULT_ADDRESS"));
 equal("fIPO feed decimals", await read(contracts.fipoFeed, fipoFeedAbi, "decimals"), 18);
 const fipoRound = await client.readContract({ address: contracts.fipoFeed, abi: fipoFeedAbi, functionName: "latestRoundData" });

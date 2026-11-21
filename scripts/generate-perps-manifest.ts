@@ -14,8 +14,9 @@ const values = parseEnvironment(environmentPath);
 const environment = required(values, "APP_ENV");
 if (environment !== "testnet" && environment !== "mainnet") fail("APP_ENV must be testnet or mainnet");
 const rpcUrl = values.get("RPC_INDEXER")?.trim() || required(values, "RPC_URL");
+const explorerUrl = (values.get("BLOCK_EXPLORER_URL")?.trim() || required(values, "EXPLORER_URL")).replace(/\/$/, "");
 const names = ["REGISTRY", "MARKET", "ORACLE", "MARGIN_ACCOUNT", "FUNDING_ENGINE", "RISK_ENGINE", "LIQUIDATION_ENGINE", "LIQUIDITY_VAULT", "INSURANCE_FUND", "FIPO_PRICE_FEED"] as const;
-const contracts = Object.fromEntries(names.map((name) => { const contract = address(values, `PERPS_${name}_ADDRESS`); return [name.toLowerCase(), { address: contract, codeHash: codeHash(contract, rpcUrl) }]; }));
+const contracts = Object.fromEntries(names.map((name) => { const contract = address(values, `PERPS_${name}_ADDRESS`); return [name.toLowerCase(), { address: contract, explorerUrl: `${explorerUrl}/address/${contract}`, codeHash: codeHash(contract, rpcUrl) }]; }));
 const manifest = {
   environment,
   chainId: Number(required(values, "CHAIN_ID")),

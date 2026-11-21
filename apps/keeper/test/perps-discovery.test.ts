@@ -16,7 +16,7 @@ const vaultStateAbi = parseAbi([
 const marketAbi = parseAbi(["function openInterest(bytes32 marketId) view returns (uint256 longOpenInterestUsd18,uint256 shortOpenInterestUsd18)"]);
 const positionAbi = parseAbi(["function getPosition(address account,bytes32 marketId) view returns ((int256 size18,uint256 entryPriceUsd18,int256 lastFundingIndex18,int256 realizedPnlUsd18,uint256 pendingFeesUsd18) position)"]);
 const adlAbi = parseAbi(["function pendingShortAdlDeficit6(bytes32 marketId) view returns (uint256)"]);
-const oracleAbi = parseAbi(["function getPrice(bytes32 marketId) view returns ((uint256 markPriceUsd18,uint256 updatedAt,uint80 roundId) price)"]);
+const oracleAbi = parseAbi(["function getPrice(bytes32 marketId) view returns ((uint256 markPriceUsd18,uint48 updatedAt) price)"]);
 const registryAbi = parseAbi(["function getMarket(bytes32 marketId) view returns ((address underlying,bytes32 underlyingUid,bytes32 symbol,address priceFeed,uint32 maxLeverageBps,uint32 initialMarginBps,uint32 maintenanceMarginBps,uint32 openInterestCapBps,uint32 baseSpreadBps,uint32 tradingFeeBps,uint32 extendedSpreadMultiplierBps,uint32 extendedLeverageDivisorBps,uint48 maxPriceAge,bool isolatedOnly) config,uint8 state,uint8 session)"]);
 const ADDRESS = "0x1111111111111111111111111111111111111111" as Hex;
 const ADDRESS_TWO = "0x2222222222222222222222222222222222222222" as Hex;
@@ -96,7 +96,7 @@ test("Perps discovery selects the largest profitable bounded ADL candidate", asy
     result: { size18: -1n * 10n ** 18n, entryPriceUsd18, lastFundingIndex18: 0n, realizedPnlUsd18: 0n, pendingFeesUsd18: 0n },
   });
   const pending = encodeFunctionResult({ abi: adlAbi, functionName: "pendingShortAdlDeficit6", result: 20_000_000n });
-  const price = encodeFunctionResult({ abi: oracleAbi, functionName: "getPrice", result: { markPriceUsd18: 100n * 10n ** 18n, updatedAt: 1n, roundId: 1n } });
+  const price = encodeFunctionResult({ abi: oracleAbi, functionName: "getPrice", result: { markPriceUsd18: 100n * 10n ** 18n, updatedAt: 1 } });
   const replies = [position(110n * 10n ** 18n), pending, price, position(120n * 10n ** 18n), pending, price];
   const fetchImplementation: typeof fetch = async () => Response.json({ jsonrpc: "2.0", id: 1, result: replies.shift() });
   const discovery = new PerpsActionDiscovery(new URL("https://rpc.example"), { registry: ADDRESS, market: ADDRESS, oracle: ADDRESS, funding: ADDRESS, risk: ADDRESS, liquidation: ADDRESS, vault: ADDRESS, insurance: ADDRESS }, fetchImplementation);

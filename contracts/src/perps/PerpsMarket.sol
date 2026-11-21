@@ -628,7 +628,6 @@ contract PerpsMarket is IPerpsPositionSource, ReentrancyGuard {
         _reservedLiability[account][marketId] = adl.previousReserve - adl.releasedReserve;
         position.size18 = adl.resultingSize;
         position.lastFundingIndex18 = adl.fundingIndex;
-        position.realizedPnlUsd18 += adl.closePnlUsd18;
         if (adl.resultingSize == 0) position.entryPriceUsd18 = 0;
         marginAccount.setPositionOpen(account, marketId, adl.resultingSize != 0);
 

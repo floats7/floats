@@ -9,6 +9,7 @@ import { useTokenBalance } from "@/features/wallet/useTokenBalance";
 import { floatApi, type PerpsActivityDto, type PerpsTradePreviewDto, type PerpsWalletDto, type PublicConfigDto } from "@/lib/api-client";
 import { changeIsolatedPerpsMargin, executePerpsTrade } from "@/lib/perps-transactions";
 import { formatUnits, parseUnits } from "@/lib/units";
+import { formatUtcMarketOpen, isUsMarketOpen, nextUsMarketOpen } from "@/lib/market-hours";
 import styles from "./PerpsPositions.module.css";
 
 export function PerpsPositions({ marketId }: { readonly marketId?: string }) {
@@ -23,6 +24,8 @@ export function PerpsPositions({ marketId }: { readonly marketId?: string }) {
   const [modal, setModal] = useState<{ phase: OnchainTransactionPhase; stepIndex: number; hash?: string; error?: string }>();
   const usdgBalance = useTokenBalance(config?.usdgAddress);
   const wrongChain = Boolean(address && config && chainId !== config.chainId);
+  const underlyingMarketOpen = isUsMarketOpen(new Date());
+  const nextOpen = !underlyingMarketOpen ? formatUtcMarketOpen(nextUsMarketOpen(new Date())) : undefined;
 
   useEffect(() => { void floatApi.getPublicConfig().then(setConfig); }, []);
 
@@ -106,7 +109,7 @@ export function PerpsPositions({ marketId }: { readonly marketId?: string }) {
   };
 
   if (!address) return <EmptyState title="Connect a wallet to view Perps positions" description="Position ownership is read directly from the connected address. No message signature is required." action={<button type="button" onClick={openConnect}>Connect wallet</button>} />;
-  if (error) return <EmptyState title="Perps positions are temporarily unavailable" description="The API could not reconcile the wallet with current onchain state." action={<button type="button" onClick={() => setRefresh((value) => value + 1)}>Try again</button>} />;
+  if (error) return <EmptyState title={underlyingMarketOpen ? "Positions are updating" : "Market is closed"} description={underlyingMarketOpen ? "We are waiting for the latest onchain market price. Try again shortly." : `Your position remains onchain. Live health and trading resume when the market opens ${nextOpen}.`} action={<button type="button" onClick={() => setRefresh((value) => value + 1)}>Check again</button>} />;
   if (wallet === undefined) return <p role="status">Reading onchain Perps positions…</p>;
 
   const positions = wallet?.positions.filter((position) => !marketId || position.marketId === marketId) ?? [];
@@ -115,6 +118,7 @@ export function PerpsPositions({ marketId }: { readonly marketId?: string }) {
 
   return (
     <div className={styles.wrapper}>
+      {!underlyingMarketOpen && <p role="status">Market is closed. Your position remains onchain. Live health and position changes resume when trading opens {nextOpen}.</p>}
       {wrongChain && <p role="alert">Switch to the configured Floats network before changing a position or its margin.</p>}
       <div className={styles.collateral}>
         <div><span>Free collateral</span><strong>{formatUnits(wallet!.collateral.freeCollateral6, 6, 2)} USDG</strong></div>
@@ -130,10 +134,10 @@ export function PerpsPositions({ marketId }: { readonly marketId?: string }) {
               <td><strong>{size > 0n ? "Long" : "Short"}</strong><br />{formatUnits((size < 0n ? -size : size).toString(), 18, 6)}</td>
               <td>{position.marginMode === "isolated" ? "Isolated" : "Cross"}</td>
               <td>${formatUnits(position.entryPriceUsd18, 18, 4)}</td>
-              <td>${formatSigned(position.equityUsd18, 18, 2)}</td>
-              <td><span data-risk={riskTone(position.marginRatio18, position.liquidatable)}>{position.liquidatable ? "Liquidatable" : formatRatio(position.marginRatio18)}</span></td>
-              <td>{position.marginMode === "cross" ? "Portfolio health" : `$${formatUnits(position.liquidationPriceUsd18, 18, 4)}`}</td>
-              <td><div className={styles.actions}>{position.marginMode === "isolated" && <><button type="button" onClick={() => setMarginEdit({ position, action: "add", amount: "" })}>Add margin</button><button type="button" onClick={() => setMarginEdit({ position, action: "remove", amount: "" })}>Remove margin</button></>}{([25, 50, 100] as const).map((percent) => <button type="button" key={percent} onClick={() => void reviewReduction(position, percent)}>{percent === 100 ? "Close" : `Reduce ${percent}%`}</button>)}</div></td>
+              <td>{position.healthAvailable ? `$${formatSigned(position.equityUsd18, 18, 2)}` : "Updates when market opens"}</td>
+              <td>{position.healthAvailable ? <span data-risk={riskTone(position.marginRatio18, position.liquidatable)}>{position.liquidatable ? "Liquidatable" : formatRatio(position.marginRatio18)}</span> : "Waiting for live price"}</td>
+              <td>{!position.healthAvailable ? "Waiting for live price" : position.marginMode === "cross" ? "Portfolio health" : `$${formatUnits(position.liquidationPriceUsd18, 18, 4)}`}</td>
+              <td><div className={styles.actions}>{position.marginMode === "isolated" && <><button type="button" onClick={() => setMarginEdit({ position, action: "add", amount: "" })}>Add margin</button><button type="button" disabled={!position.healthAvailable} title={position.healthAvailable ? undefined : `Available when the market opens ${nextOpen}.`} onClick={() => setMarginEdit({ position, action: "remove", amount: "" })}>Remove margin</button></>}{([25, 50, 100] as const).map((percent) => <button type="button" key={percent} disabled={!position.healthAvailable} title={position.healthAvailable ? undefined : `Available when the market opens ${nextOpen}.`} onClick={() => void reviewReduction(position, percent)}>{percent === 100 ? "Close" : `Reduce ${percent}%`}</button>)}</div></td>
             </tr>;
           })}</tbody>
         </table>

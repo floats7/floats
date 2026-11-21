@@ -37,6 +37,7 @@ contract PerpsLiquidityVault is ERC4626, ReentrancyGuard {
     error InvalidWithdrawalState();
     error OperationsPaused();
     error Unauthorized();
+    error WithdrawalDelayCannotDecrease(uint48 currentDelay, uint48 requestedDelay);
 
     event OperatorSet(address indexed operator, bool allowed);
     event OperationsPauseSet(bool paused, address indexed caller);
@@ -55,11 +56,15 @@ contract PerpsLiquidityVault is ERC4626, ReentrancyGuard {
     );
     event PerpsWithdrawalCancelled(uint256 indexed requestId);
     event PerpsWithdrawalProcessed(uint256 indexed requestId, uint256 shares, uint256 assets);
-    event PerpsWithdrawalClaimed(uint256 indexed requestId, address indexed receiver, uint256 assets);
+    event PerpsWithdrawalClaimed(
+        uint256 indexed requestId, address indexed receiver, uint256 assets
+    );
+    event WithdrawalDelayIncreased(uint48 previousDelay, uint48 newDelay);
 
+    uint48 public constant MINIMUM_CANARY_WITHDRAWAL_DELAY = 5 minutes;
     address public immutable admin;
     address public immutable guardian;
-    uint48 public immutable minimumWithdrawalDelay;
+    uint48 public minimumWithdrawalDelay;
 
     bool public operationsPaused;
     uint256 public reservedTraderLiability;
@@ -77,7 +82,9 @@ contract PerpsLiquidityVault is ERC4626, ReentrancyGuard {
         if (asset_ == address(0) || admin_ == address(0) || guardian_ == address(0)) {
             revert InvalidAddress();
         }
-        if (minimumWithdrawalDelay_ == 0) revert InvalidUnlockTime();
+        if (minimumWithdrawalDelay_ < MINIMUM_CANARY_WITHDRAWAL_DELAY) {
+            revert InvalidUnlockTime();
+        }
         admin = admin_;
         guardian = guardian_;
         minimumWithdrawalDelay = minimumWithdrawalDelay_;
@@ -296,6 +303,18 @@ contract PerpsLiquidityVault is ERC4626, ReentrancyGuard {
         }
         operationsPaused = paused;
         emit OperationsPauseSet(paused, msg.sender);
+    }
+
+    /// @notice Permanently raises the delay applied to future withdrawal requests.
+    /// @dev Existing requests retain the unlock timestamp captured when they were created.
+    function increaseWithdrawalDelay(uint48 newDelay) external {
+        _requireAdmin();
+        uint48 previousDelay = minimumWithdrawalDelay;
+        if (newDelay <= previousDelay) {
+            revert WithdrawalDelayCannotDecrease(previousDelay, newDelay);
+        }
+        minimumWithdrawalDelay = newDelay;
+        emit WithdrawalDelayIncreased(previousDelay, newDelay);
     }
 
     function _requireAdmin() private view {

@@ -191,6 +191,10 @@ contract PerpsLiquidationTest {
             market.getPosition(address(adlTrader), MARKET_ID).size18 == -75e16,
             "ADL target size mismatch"
         );
+        require(
+            market.getPosition(address(adlTrader), MARKET_ID).realizedPnlUsd18 == 0,
+            "foregone ADL profit must not be recorded as realized PnL"
+        );
 
         try keeper.executeAdl(liquidation, address(adlTrader), MARKET_ID, 25e16) {
             revert("expected per-call ADL bound rejection");

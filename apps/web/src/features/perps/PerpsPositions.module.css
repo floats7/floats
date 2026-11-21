@@ -11,7 +11,7 @@
 .review { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto auto; gap: .75rem; align-items: end; padding: 1rem; border: 1px solid var(--line); }
 .review div { display: grid; gap: .35rem; }
 .review span { color: var(--muted); font-size: .75rem; text-transform: uppercase; }
-[data-risk="safe"] { color: var(--positive); }
-[data-risk="warning"] { color: #f0b35b; }
-[data-risk="danger"] { color: var(--negative); }
+.wrapper [data-risk="safe"] { color: var(--positive); }
+.wrapper [data-risk="warning"] { color: #f0b35b; }
+.wrapper [data-risk="danger"] { color: var(--negative); }
 @media (max-width: 720px) { .collateral, .review { grid-template-columns: 1fr; } .collateral div { border-right: 0; border-bottom: 1px solid var(--line); } }

@@ -37,7 +37,7 @@ const registryAbi = parseAbi([
   "function setSessionState(bytes32 marketId,uint8 next)",
   "function getMarket(bytes32 marketId) view returns ((address underlying,bytes32 underlyingUid,bytes32 symbol,address priceFeed,uint32 maxLeverageBps,uint32 initialMarginBps,uint32 maintenanceMarginBps,uint32 openInterestCapBps,uint32 baseSpreadBps,uint32 tradingFeeBps,uint32 extendedSpreadMultiplierBps,uint32 extendedLeverageDivisorBps,uint48 maxPriceAge,bool isolatedOnly) config,uint8 state,uint8 session)",
 ]);
-const oracleAbi = parseAbi(["function getPrice(bytes32 marketId) view returns ((uint256 markPriceUsd18,uint256 updatedAt,uint80 roundId) price)"]);
+const oracleAbi = parseAbi(["function getPrice(bytes32 marketId) view returns ((uint256 markPriceUsd18,uint48 updatedAt) price)"]);
 const insuranceAbi = parseAbi(["function collateralToken() view returns (address)"]);
 const erc20Abi = parseAbi(["function balanceOf(address account) view returns (uint256)"]);
 

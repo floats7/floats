@@ -56,13 +56,18 @@ if (privateKey) {
 }
 const feedAbi = parseAbi(["function decimals() view returns (uint8)", "function latestRoundData() view returns (uint80 roundId,int256 answer,uint256 startedAt,uint256 updatedAt,uint80 answeredInRound)"]);
 for (const path of marketPaths) {
-  const market = JSON.parse(readFileSync(path, "utf8")) as { chainId?: unknown; symbol?: unknown; underlyingAddress?: unknown; priceFeedAddress?: unknown; marketState?: unknown };
+  const market = JSON.parse(readFileSync(path, "utf8")) as { chainId?: unknown; symbol?: unknown; underlyingAddress?: unknown; priceFeedAddress?: unknown; priceFeedEnvironmentKey?: unknown; marketState?: unknown };
   if (market.chainId !== Number(chainId)) fail(`${path} chainId mismatch`);
   if (typeof market.symbol !== "string" || !/^[A-Z0-9-]+-PERP$/.test(market.symbol)) fail(`${path} symbol is invalid`);
   if (typeof market.underlyingAddress !== "string" || !isAddress(market.underlyingAddress)) fail(`${path} underlyingAddress is invalid`);
-  if (typeof market.priceFeedAddress !== "string" || !isAddress(market.priceFeedAddress)) fail(`${path} requires an official priceFeedAddress`);
+  const configuredFeed = typeof market.priceFeedAddress === "string"
+    ? market.priceFeedAddress
+    : typeof market.priceFeedEnvironmentKey === "string"
+      ? values.get(market.priceFeedEnvironmentKey)?.trim()
+      : undefined;
+  if (!configuredFeed || !isAddress(configuredFeed)) fail(`${path} requires an official priceFeedAddress`);
   if (market.marketState !== "disabled") fail(`${path} must start disabled`);
-  const feed = getAddress(market.priceFeedAddress);
+  const feed = getAddress(configuredFeed);
   const code = await client.getCode({ address: feed });
   if (!code || code === "0x") fail(`${path} price feed has no bytecode`);
   const [decimals, round] = await Promise.all([

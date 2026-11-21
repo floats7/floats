@@ -7,20 +7,35 @@ interface MarketFile {
   readonly underlyingSymbol: string;
   readonly underlyingAddress: string;
   readonly priceFeedAddress: string | null;
+  readonly priceFeedEnvironmentKey?: string;
   readonly marketState: "disabled";
   readonly risk: Readonly<Record<string, string | number | boolean>>;
 }
 
 function fail(message: string): never { throw new Error(`Perps market preparation failed: ${message}`); }
-const path = process.argv[2];
-if (!path) fail("usage: prepare-perps-market-config.ts <market-config.json>");
+function parseEnvironment(path: string): ReadonlyMap<string, string> {
+  const values = new Map<string, string>();
+  for (const raw of readFileSync(path, "utf8").split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#")) continue;
+    const separator = line.indexOf("=");
+    if (separator > 0) values.set(line.slice(0, separator), line.slice(separator + 1));
+  }
+  return values;
+}
+
+const [path, environmentPath] = process.argv.slice(2);
+if (!path) fail("usage: prepare-perps-market-config.ts <market-config.json> [environment-file]");
 const parsed = JSON.parse(readFileSync(path, "utf8")) as MarketFile;
 if (!Number.isSafeInteger(parsed.chainId) || parsed.chainId <= 0) fail("chainId is invalid");
 if (!/^[A-Z0-9][A-Z0-9-]{0,30}-PERP$/.test(parsed.symbol)) fail("symbol is invalid");
 if (!/^[A-Z0-9][A-Z0-9-]{0,30}$/.test(parsed.underlyingSymbol)) fail("underlyingSymbol is invalid");
 if (!isAddress(parsed.underlyingAddress)) fail("underlyingAddress is invalid");
 if (parsed.marketState !== "disabled") fail("new markets must remain disabled");
-if (!parsed.priceFeedAddress || !isAddress(parsed.priceFeedAddress)) {
+const environment = environmentPath ? parseEnvironment(environmentPath) : new Map<string, string>();
+const configuredFeed = parsed.priceFeedAddress
+  || (parsed.priceFeedEnvironmentKey ? environment.get(parsed.priceFeedEnvironmentKey)?.trim() : undefined);
+if (!configuredFeed || !isAddress(configuredFeed)) {
   fail("an official priceFeedAddress is required before a timelock market proposal can be prepared");
 }
 const requiredRisk = [
@@ -35,7 +50,7 @@ const values = {
   PERPS_CONFIG_UNDERLYING_ADDRESS: getAddress(parsed.underlyingAddress),
   PERPS_CONFIG_UNDERLYING_UID: keccak256(toBytes(parsed.underlyingSymbol)),
   PERPS_CONFIG_SYMBOL: stringToHex(parsed.symbol, { size: 32 }),
-  PERPS_CONFIG_PRICE_FEED_ADDRESS: getAddress(parsed.priceFeedAddress),
+  PERPS_CONFIG_PRICE_FEED_ADDRESS: getAddress(configuredFeed),
   PERPS_CONFIG_MAX_LEVERAGE_BPS: parsed.risk.maxLeverageBps,
   PERPS_CONFIG_INITIAL_MARGIN_BPS: parsed.risk.initialMarginBps,
   PERPS_CONFIG_MAINTENANCE_MARGIN_BPS: parsed.risk.maintenanceMarginBps,
